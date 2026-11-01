@@ -1,6 +1,6 @@
 # Pedirr
 
-Sports content requests for Sportarr. The project is under active implementation; this revision delivers the deployment foundation, authentication, user administration, metadata discovery, and request workflow APIs; remaining features are tracked in docs/progress.md.
+Sports content requests for Sportarr. The project is under active implementation; this revision delivers the deployment foundation, authentication, user administration, metadata discovery, request workflow, and encrypted Sportarr settings APIs; remaining features are tracked in docs/progress.md.
 
 ## Development
 
@@ -8,7 +8,7 @@ Requires Node.js 22 and Docker Compose. Run `npm ci`, `npm run db:generate`, `np
 
 ## Docker
 
-Copy `.env.example` to `.env`, replace the database password with a long random URL-safe value, then run `docker compose up --build -d`. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
+Copy `.env.example` to `.env`, replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up --build -d`. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
 
 - Liveness: `http://localhost:3000/api/v1/health/live`
 - Readiness (database, Redis, worker): `http://localhost:3000/api/v1/health/ready`
@@ -68,3 +68,17 @@ docker compose run --rm --no-deps app node apps/server/test/integration/requests
 ```
 
 It checks simultaneous duplicate submissions, conflicting moderation, role/user policies, authorization, subscriber privacy and rollback when the outbox write fails, inside a disposable schema.
+
+## Sportarr settings
+
+Administrator endpoints:
+
+- GET `/api/v1/admin/settings/sportarr`: URL, selected defaults, and a `hasApiKey` flag. Never returns credentials or ciphertext.
+- POST `/api/v1/admin/settings/sportarr/test`: accepts `url` and `apiKey`; checks application identity, authenticated league access, root folders and quality profiles. Returns the detected version and selectable defaults.
+- PUT `/api/v1/admin/settings/sportarr`: accepts `url`, `apiKey`, `rootFolderId`, and `qualityProfileId`. Tests the connection and validates both defaults before saving.
+
+Omit `apiKey` to reuse the stored credential for the same normalized URL. A different URL requires a new key. Private HTTP installations are supported. URL prefixes are preserved; credentials, query strings and fragments in the URL are rejected, and redirects are not followed. The client sends credentials only in `X-Api-Key`, uses a 15-second timeout, and does not expose upstream response bodies or network errors.
+
+API keys are encrypted using AES-256-GCM with authenticated field context and a random nonce per write. Keep `SETTINGS_ENCRYPTION_KEY` identical across API and worker replicas and back it up separately from PostgreSQL. Replacing it without re-encrypting settings makes saved secrets unreadable; provide credentials again to recover. No secrets belong in source control.
+
+The native read client is isolated behind `ContentManager`. Event listing consumes all pages with `showAll=true`; incomplete, duplicated or inconsistent pages fail the entire read. Connection success validates read access, not download capability or compatibility of future write operations. Tests currently mock Sportarr; a real instance has not yet been exercised.

@@ -5,7 +5,7 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Twenty tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
+- Twenty-seven tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
@@ -19,12 +19,14 @@
 
 - PostgreSQL request integration test passed concurrent deduplication, competing moderation, auto-approval precedence and outbox-failure rollback. CI now includes database integration tests.
 
+- Encrypted Sportarr settings and authenticated connection testing; native read client behind ContentManager preserves URL bases and validates complete event pagination. Mock tests cover credentials, redaction, application identity, pagination and authenticated encryption.
+
 ## Remaining MVP work
 
 1. Authentication and administrator UI.
 2. Multilingual discovery interface and league/season/event detail views.
 3. Request/moderation UI and reconciliation of already available manager content.
-4. Encrypted settings, Sportarr connection test, safe season/event fulfillment, version checks.
+4. Sportarr settings UI, safe season/event fulfillment, compatibility checks and real-instance validation.
 5. Transactional outbox publication, recurring reconciliation, retries, progress and availability.
 6. SMTP and Discord delivery with localized templates.
 7. Request and client mock tests, database concurrency tests, browser flows, accessible visual review, deployment validation.

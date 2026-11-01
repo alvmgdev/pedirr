@@ -44,6 +44,7 @@ services:
       HUB_REQUESTS_PER_MINUTE: ${HUB_REQUESTS_PER_MINUTE:-20}
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?Set SETTINGS_ENCRYPTION_KEY}
     depends_on:
       migrate:
         condition: service_completed_successfully

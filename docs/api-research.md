@@ -28,3 +28,5 @@ Read GET `/api/leagues/{id}/events?showAll=true&page=1&pageSize=200` through all
 Native write endpoints are source-verified but are not all covered by the stable read contract. Establish an explicit supported-version range with a real installation before claiming compatibility. Never enable all seasons to fulfill one event. Preserve existing manager settings.
 
 The public contract was rechecked during adapter implementation. There is no documented public popularity ranking; Pedirr ranks its own non-rejected league requests. Public season detail uses GET `/api/public/v1/seasons/{identifier}`.
+
+Sportarr connection implementation rechecked the pinned source: `src/Program.cs` defines native `/api/system/status` with `appName=Sportarr` and the full version. `src/Endpoints/TagAndQualityProfileEndpoints.cs` defines `/api/qualityprofile`. The compatibility `/api/v3/system/status` advertises `appName=Sonarr`, so it is intentionally not used for native identity detection.
