@@ -8,6 +8,7 @@ const argon2 = require('argon2');
 process.env.APP_ORIGIN = 'http://localhost:3187';
 process.env.SESSION_SECRET = 'test-secret-that-is-longer-than-thirty-two-characters';
 const { AuthController, AuthService, SecurityGuard, passwordOptions } = require('../dist/auth');
+const { UsersController, UsersService } = require('../dist/users');
 const { Infrastructure } = require('../dist/infrastructure');
 let app, base, user;
 const sessions = new Map();
@@ -28,7 +29,7 @@ const infrastructure = { redis: { eval: async (_, __, key) => {
 } };
 function publicUser() { const {passwordHash, ...result} = user; return result; }
 class TestModule {}
-Module({controllers: [AuthController], providers: [AuthService,
+Module({controllers: [AuthController, UsersController], providers: [AuthService, UsersService,
   {provide: Infrastructure, useValue: infrastructure}, {provide: APP_GUARD, useClass: SecurityGuard},
 ]})(TestModule);
 before(async () => {
@@ -87,4 +88,14 @@ test('shared login rate limiter rejects excessive attempts', async () => {
   let response;
   for (let i = 0; i < 16; i++) response = await login(await csrf());
   assert.equal(response.status, 429);
+});
+
+test('ordinary users cannot read or change administrator policies', async () => {
+  counters.clear();
+  const response = await login(await csrf());
+  const cookie = response.headers.get('set-cookie').split(';')[0];
+  assert.equal((await fetch(base + '/admin/policies', {headers: {cookie}})).status, 403);
+  assert.equal((await fetch(base + '/admin/policies', {method: 'PATCH', headers: {
+    cookie, origin: process.env.APP_ORIGIN, 'x-csrf-token': await csrf(cookie), 'content-type': 'application/json',
+  }, body: JSON.stringify({registrationEnabled: true, userAutoApprove: true, adminAutoApprove: true})})).status, 403);
 });
