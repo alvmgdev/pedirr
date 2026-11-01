@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { port, required } from './config';
 import { logger } from './infrastructure';
@@ -12,6 +13,7 @@ async function bootstrap() {
   required('REDIS_URL');
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   app.use(helmet());
+  app.use(cookieParser());
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.enableShutdownHooks();

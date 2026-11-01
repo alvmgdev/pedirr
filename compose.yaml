@@ -41,6 +41,8 @@ services:
       DATABASE_URL: postgresql://pedirr:${POSTGRES_PASSWORD}@postgres:5432/pedirr
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
     depends_on:
       migrate:
         condition: service_completed_successfully

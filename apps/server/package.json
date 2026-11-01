@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "worker": "node dist/worker.js",
     "dev": "tsx watch src/main.ts",
-    "dev:worker": "tsx watch src/worker.ts"
+    "dev:worker": "tsx watch src/worker.ts",
+    "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
