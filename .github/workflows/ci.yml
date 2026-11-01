@@ -3,6 +3,22 @@ on: [push, pull_request]
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: pedirr
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: pedirr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pedirr -d pedirr"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://pedirr:ci-only-password@localhost:5432/pedirr
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,4 +30,6 @@ jobs:
       - run: npm run check
       - run: npm run build
       - run: npm test
+      - run: node apps/server/test/integration/users.cjs
+      - run: node apps/server/test/integration/requests.cjs
       - run: npm audit --audit-level=moderate

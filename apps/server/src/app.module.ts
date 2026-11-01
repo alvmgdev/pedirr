@@ -1,3 +1,5 @@
+import { RequestsController } from './requests/controller';
+import { RequestsService } from './requests/service';
 import { CatalogController } from './metadata/controller';
 import { HubProvider } from './metadata/hub';
 import { MetadataProvider } from './metadata/provider';
@@ -8,5 +10,5 @@ import { Infrastructure } from './infrastructure';
 import { HealthController } from './health.controller';
 import { AuthController, AuthService, SecurityGuard } from './auth';
 
-@Module({ providers: [{ provide: MetadataProvider, useClass: HubProvider }, Infrastructure, AuthService, UsersService, { provide: APP_GUARD, useClass: SecurityGuard }], controllers: [CatalogController, HealthController, AuthController, UsersController] })
+@Module({ providers: [{ provide: MetadataProvider, useClass: HubProvider }, Infrastructure, AuthService, UsersService, RequestsService, { provide: APP_GUARD, useClass: SecurityGuard }], controllers: [RequestsController, CatalogController, HealthController, AuthController, UsersController] })
 export class AppModule {}

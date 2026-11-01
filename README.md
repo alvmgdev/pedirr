@@ -1,6 +1,6 @@
 # Pedirr
 
-Sports content requests for Sportarr. The project is under active implementation; this revision delivers the deployment foundation, authentication, user administration, and metadata discovery APIs; remaining features are tracked in docs/progress.md.
+Sports content requests for Sportarr. The project is under active implementation; this revision delivers the deployment foundation, authentication, user administration, metadata discovery, and request workflow APIs; remaining features are tracked in docs/progress.md.
 
 ## Development
 
@@ -35,7 +35,7 @@ Authentication tests run an HTTP server with mocked PostgreSQL and Redis. They c
 
 ## Approval and registration policies
 
-GET and PATCH `/api/v1/admin/policies` require administrator access. PATCH accepts all three boolean fields: `registrationEnabled`, `userAutoApprove`, and `adminAutoApprove`. All default to false. A user's `autoApprove` field overrides their role when true or false; null inherits the role policy. The request workflow will consume this policy when implemented.
+GET and PATCH `/api/v1/admin/policies` require administrator access. PATCH accepts all three boolean fields: `registrationEnabled`, `userAutoApprove`, and `adminAutoApprove`. All default to false. A user's `autoApprove` field overrides their role when true or false; null inherits the role policy. New requests consume this policy transactionally. An explicit user setting overrides the role policy. Existing requests retain their status when another user subscribes.
 
 Run the PostgreSQL concurrency test against a running Compose database:
 
@@ -52,3 +52,19 @@ Authenticated discovery routes live under `/api/v1/catalog`: `search?q=`, `leagu
 Sportarr Hub is the initial implementation of the replaceable `MetadataProvider` interface. Redis shares cached responses, request locks, an outbound budget, and upstream cooldowns across API replicas. `HUB_REQUESTS_PER_MINUTE` defaults to a conservative 20; this is an application limit, not a claim about Hub's quota. A 503 response with `METADATA_BUSY` includes `retryAfterSeconds`; clients should retry after that delay. Upstream 429 Retry-After values establish a shared cooldown. Requests time out after 10 seconds and do not follow redirects.
 
 Events are cached for two minutes, searches/details/seasons for five minutes, and league lists for one hour. Cache expiry controls when Pedirr checks Hub again; it does not guarantee when Hub refreshes its sources. `upcoming` filters scheduled UTC timestamps over the next seven days and returns `hasMore`; an empty filtered page can still have a next page. `popular` ranks non-rejected league requests in this installation and is empty before requests exist. It is not an upstream popularity chart.
+
+## Requests and moderation
+
+POST `/api/v1/requests` accepts `kind` (`season` or `event`) and a Hub `identifier`. A season is always selected explicitly; the server resolves its league from metadata. The response contains `created` and `request`. Duplicate identifiers and aliases resolve to the same canonical request and subscribe the caller without repeating approval or fulfillment work.
+
+GET `/api/v1/requests` accepts `page`, `status`, and `mine=true`; GET `/api/v1/requests/{id}` includes history and the caller's subscription status. Users can see shared requests, but other subscribers' identities are omitted. POST `/api/v1/requests/{id}/review` requires an administrator, a `decision` (`approve` or `reject`), the current integer `version`, and a nonempty `reason` for rejection. Only pending requests can be reviewed. A stale or concurrent decision returns `REQUEST_CHANGED` with HTTP 409.
+
+Creation, subscription, history and outbox records commit atomically. Approval currently records queued integration work; Sportarr fulfillment and outbox delivery are still being implemented. Existing content in Sportarr will be reconciled by that integration; this revision only deduplicates Pedirr requests.
+
+The database workflow test uses mocked upstream metadata with real PostgreSQL transactions:
+
+```sh
+docker compose run --rm --no-deps app node apps/server/test/integration/requests.cjs
+```
+
+It checks simultaneous duplicate submissions, conflicting moderation, role/user policies, authorization, subscriber privacy and rollback when the outbox write fails, inside a disposable schema.
