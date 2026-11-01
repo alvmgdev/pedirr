@@ -5,16 +5,20 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Twelve authentication, authorization, administration and policy tests with dependency mocks.
+- Seventeen tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
 - npm dependency audit reports zero known vulnerabilities after dependency overrides and lockfile fixes.
 
+- Sportarr Hub metadata adapter behind an interface; authenticated search, leagues, seasons, teams, events, upcoming and local popularity endpoints. Shared Redis cache, outbound budget and Retry-After cooldown.
+
+- Live Hub reads validated search, league, season and event responses. Docker HTTP smoke test authenticated a temporary user, searched live metadata through Redis, rejected an invalid calendar date, and removed the temporary user.
+
 ## Remaining MVP work
 
 1. Authentication and administrator UI.
-2. Sportarr Hub adapter, cache, multilingual discovery interface, league/season/event details.
+2. Multilingual discovery interface and league/season/event detail views.
 3. Transactional request workflow, subscriptions, deduplication, moderation and auto-approval policies.
 4. Encrypted settings, Sportarr connection test, safe season/event fulfillment, version checks.
 5. Transactional outbox publication, recurring reconciliation, retries, progress and availability.

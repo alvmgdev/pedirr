@@ -41,6 +41,7 @@ services:
       DATABASE_URL: postgresql://pedirr:${POSTGRES_PASSWORD}@postgres:5432/pedirr
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      HUB_REQUESTS_PER_MINUTE: ${HUB_REQUESTS_PER_MINUTE:-20}
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
     depends_on:
