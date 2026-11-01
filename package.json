@@ -1,0 +1,25 @@
+{
+  "name": "pedirr",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "dev:api": "npm run dev -w @pedirr/server",
+    "dev:worker": "npm run dev:worker -w @pedirr/server"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.0"
+  },
+  "overrides": {
+    "multer": "^2.5.0",
+    "js-yaml": "^5.4.1",
+    "deepmerge-ts": "^8.0.0"
+  }
+}
