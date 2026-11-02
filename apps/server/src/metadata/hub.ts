@@ -94,6 +94,6 @@ export class HubProvider extends MetadataProvider {
   seasons(league: string, page: number) { return this.read(`leagues/${encodeURIComponent(league)}/seasons`, { page, page_size: 50 }, parsePage); }
   season(id: string) { return this.read(`seasons/${encodeURIComponent(id)}`, {}, parseItem); }
   team(id: string) { return this.read(`teams/${encodeURIComponent(id)}`, {}, parseItem); }
-  events(filters: EventFilters) { return this.read('events', { ...filters, page_size: 50, order: 'asc' }, parsePage, 120); }
+  events(filters: EventFilters) { return this.read('events', { ...filters, page_size: 50, order: 'asc' }, parsePage, filters.season ? 3600 : 120); }
   event(id: string) { return this.read(`events/${encodeURIComponent(id)}`, {}, parseItem, 120); }
 }

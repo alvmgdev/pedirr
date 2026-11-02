@@ -77,7 +77,7 @@ export class RequestsService {
     return { items: items.map(({ subscribers, ...request }) => ({ ...request, subscribed: subscribers.length > 0 })), total, page, pageSize: 30 };
   }
   async detail(id: string, viewer: Viewer) {
-    const request = await this.infrastructure.db.request.findUnique({ where: { id }, include: { ...include, subscribers: { where: { userId: viewer.id }, select: { userId: true } }, history: { select: { id: true, action: true, details: true, createdAt: true }, orderBy: { createdAt: 'asc' } } } });
+    const request = await this.infrastructure.db.request.findUnique({ where: { id }, include: { ...include, subscribers: { where: { userId: viewer.id }, select: { userId: true } }, events: { where: { active: true }, select: { id: true, metadata: true, available: true, progress: true, checkedAt: true } }, history: { select: { id: true, action: true, details: true, createdAt: true }, orderBy: { createdAt: 'asc' } } } });
     if (!request) throw new NotFoundException({ code: 'REQUEST_NOT_FOUND', message: 'Request not found' });
     const { subscribers, ...result } = request;
     return { ...result, subscribed: subscribers.length > 0 };

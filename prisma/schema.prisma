@@ -88,6 +88,7 @@ model Request {
   updatedAt        DateTime @updatedAt
   subscribers      RequestSubscriber[]
   history          RequestHistory[]
+  events           RequestEvent[]
   @@unique([entityId, scopeKey])
   @@index([status, updatedAt])
 }
@@ -149,4 +150,18 @@ model NotificationDelivery {
   lastError  String?
   createdAt  DateTime @default(now())
   @@unique([eventId, channel, recipient])
+}
+
+model RequestEvent {
+  id          String @id @default(uuid())
+  requestId   String
+  request     Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  externalId  String
+  metadata    Json
+  remoteId    Int?
+  active      Boolean @default(true)
+  available   Boolean @default(false)
+  progress    Float @default(0)
+  checkedAt   DateTime?
+  @@unique([requestId, externalId])
 }

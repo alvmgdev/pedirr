@@ -32,4 +32,5 @@ jobs:
       - run: npm test
       - run: node apps/server/test/integration/users.cjs
       - run: node apps/server/test/integration/requests.cjs
+      - run: node apps/server/test/integration/fulfillment.cjs
       - run: npm audit --audit-level=moderate

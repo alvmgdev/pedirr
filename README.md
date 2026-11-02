@@ -51,7 +51,7 @@ Authenticated discovery routes live under `/api/v1/catalog`: `search?q=`, `leagu
 
 Sportarr Hub is the initial implementation of the replaceable `MetadataProvider` interface. Redis shares cached responses, request locks, an outbound budget, and upstream cooldowns across API replicas. `HUB_REQUESTS_PER_MINUTE` defaults to a conservative 20; this is an application limit, not a claim about Hub's quota. A 503 response with `METADATA_BUSY` includes `retryAfterSeconds`; clients should retry after that delay. Upstream 429 Retry-After values establish a shared cooldown. Requests time out after 10 seconds and do not follow redirects.
 
-Events are cached for two minutes, searches/details/seasons for five minutes, and league lists for one hour. Cache expiry controls when Pedirr checks Hub again; it does not guarantee when Hub refreshes its sources. `upcoming` filters scheduled UTC timestamps over the next seven days and returns `hasMore`; an empty filtered page can still have a next page. `popular` ranks non-rejected league requests in this installation and is empty before requests exist. It is not an upstream popularity chart.
+Event listings within a season are cached for one hour to allow complete scans under the shared quota; other events are cached for two minutes, searches/details/seasons for five minutes, and league lists for one hour. Cache expiry controls when Pedirr checks Hub again; it does not guarantee when Hub refreshes its sources. `upcoming` filters scheduled UTC timestamps over the next seven days and returns `hasMore`; an empty filtered page can still have a next page. `popular` ranks non-rejected league requests in this installation and is empty before requests exist. It is not an upstream popularity chart.
 
 ## Requests and moderation
 
@@ -59,7 +59,7 @@ POST `/api/v1/requests` accepts `kind` (`season` or `event`) and a Hub `identifi
 
 GET `/api/v1/requests` accepts `page`, `status`, and `mine=true`; GET `/api/v1/requests/{id}` includes history and the caller's subscription status. Users can see shared requests, but other subscribers' identities are omitted. POST `/api/v1/requests/{id}/review` requires an administrator, a `decision` (`approve` or `reject`), the current integer `version`, and a nonempty `reason` for rejection. Only pending requests can be reviewed. A stale or concurrent decision returns `REQUEST_CHANGED` with HTTP 409.
 
-Creation, subscription, history and outbox records commit atomically. Approval currently records queued integration work; Sportarr fulfillment and outbox delivery are still being implemented. Existing content in Sportarr will be reconciled by that integration; this revision only deduplicates Pedirr requests.
+Creation, subscription, history and outbox records commit atomically. Approval records durable integration work. The worker reconciles with Sportarr before creating anything and skips searches for imported events. Catalog availability checks before a new request are still being implemented.
 
 The database workflow test uses mocked upstream metadata with real PostgreSQL transactions:
 
@@ -83,4 +83,18 @@ API keys are encrypted using AES-256-GCM with authenticated field context and a 
 
 The native read client is isolated behind `ContentManager`. Event listing consumes all pages with `showAll=true`; incomplete, duplicated or inconsistent pages fail the entire read. Connection success validates read access, not download capability or compatibility of future write operations. Tests currently mock Sportarr; a real instance has not yet been exercised.
 
-The native write adapter adds leagues without league-wide monitoring and leaves existing league preferences untouched. It creates or monitors explicit events, verifies their external and local league identities, and reconciles potentially committed writes before retrying. Search uses POST `/api/event/{id}/automatic-search`. The worker must pass the write compatibility gate (Sportarr 4.1.11 or a later 4.1 patch); later minor/major releases require review. These adapter operations are tested with mocks and are not connected to request fulfillment yet.
+The native write adapter adds leagues without league-wide monitoring and leaves existing league preferences untouched. It creates or monitors explicit events, verifies their external and local league identities, and reconciles potentially committed writes before retrying. Search uses POST `/api/event/{id}/automatic-search`. The worker must pass the write compatibility gate (Sportarr 4.1.11 or a later 4.1 patch); later minor/major releases require review. These adapter operations are tested with mocks and connected to the fulfillment worker.
+
+## Background reconciliation
+
+The BullMQ worker publishes fulfillment outbox entries every minute using stable job IDs. A database acknowledgement follows queue insertion, so a crash can safely republish the same work. Every five-minute bucket also schedules reconciliation for approved, downloading and available requests; this recovers lost queue data and detects removed files. Failed jobs retry five times with backoff, honoring metadata Retry-After delays. Later periodic runs retry persistent failures. Notification outbox entries remain unpublished until notification delivery is implemented.
+
+A renewable shared lease serializes work against each configured Sportarr URL. The worker verifies the exact event or complete season metadata before writing. New seasons are discovered again over time; adding new events never enables other seasons or rewrites league preferences. Searches run only for already-started events without files or active queue work, with a shared six-hour throttle (five minutes after a failed search command).
+
+`AVAILABLE` requires Sportarr's multipart-complete `hasFile` plus an existing imported file. Queue completion alone remains `DOWNLOADING` until import. A season additionally requires Hub to report it non-current, its end date to have passed, and every listed event to be completed or cancelled. An empty scope cannot become available. Conservative metadata can therefore delay availability; later metadata corrections can reopen a request. Failures preserve the approval state and expose a sanitized `lastError` code with `integrationState=error`.
+
+Active event progress is persisted in `RequestEvent` and included in request detail responses. Run the transaction-backed worker test with:
+
+```sh
+docker compose run --rm --no-deps app node apps/server/test/integration/fulfillment.cjs
+```
