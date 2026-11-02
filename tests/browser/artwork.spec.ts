@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('catalog artwork frames white logos and falls back after image failures', async ({ page }) => {
+test('catalog artwork frames white logos and uses the default photograph after image failures', async ({ page }) => {
   const items = [
     { id: 'league-1', entityType: 'league', name: 'Premier League', sportName: 'Soccer', logoUrl: 'https://artwork.invalid/logo.svg' },
     { id: 'event-1', entityType: 'event', name: 'Arsenal vs Liverpool', leagueName: 'Premier League', scheduledStart: '2026-11-07T17:30:00Z', thumbUrl: 'https://artwork.invalid/photo.svg' },
@@ -25,11 +25,42 @@ test('catalog artwork frames white logos and falls back after image failures', a
   await expect(logo.locator('img')).toHaveCSS('object-fit', 'contain');
   await expect(logo).toHaveCSS('background-color', 'rgb(233, 238, 245)');
   await expect(page.locator('.fixture-event img')).toHaveCSS('object-fit', 'cover');
-  await expect(page.locator('.fixture-league').last().locator('.artwork-initials')).toHaveText('NB');
-  await expect(page.locator('.fixture-team .artwork-initials')).toHaveText('AC');
+  await expect(page.locator('.fixture-league').last().locator('.artwork-default img')).toHaveAttribute('src', '/images/sports-default.webp');
+  await expect(page.locator('.fixture-team .artwork-default img')).toHaveAttribute('src', '/images/sports-default.webp');
+  await expect(logo.locator('img')).toHaveCSS('background-color', 'rgb(168, 180, 196)');
+  await expect(page.locator('.artwork-default img').first()).toHaveJSProperty('naturalWidth', 512);
   await page.screenshot({ path: 'test-results/artwork-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: 'Arsenal vs Liverpool' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/artwork-mobile.png', fullPage: true });
+  const filters = page.getByRole('navigation', { name: 'Filter returned results' });
+  await filters.getByRole('button', { name: 'Teams', exact: true }).click();
+  await expect(page.locator('.fixture')).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Athletic Club' })).toBeVisible();
+  await expect(page.getByRole('textbox')).toHaveValue('sport');
+  await filters.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(page.locator('.fixture')).toHaveCount(4);
+
+});
+
+test('request status tabs preserve personal filtering and reset pagination', async ({ page }) => {
+  const queries: string[] = [];
+  await page.route('**/api/v1/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/requests')) queries.push(url.search);
+    return route.fulfill({ json: url.pathname.endsWith('/auth/me')
+      ? { id: 'viewer', email: 'viewer@example.invalid', role: 'USER', locale: 'en', timezone: 'UTC' }
+      : { items: [], total: 0 } });
+  });
+  await page.goto('/requests?mine=true&page=3');
+  const filters = page.getByRole('navigation', { name: 'Status', exact: true });
+  await filters.getByRole('button', { name: 'Available', exact: true }).click();
+  await expect(filters.getByRole('button', { name: 'Available', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => queries.at(-1)).toContain('status=AVAILABLE');
+  expect(new URL(page.url()).searchParams.get('mine')).toBe('true');
+  expect(new URL(page.url()).searchParams.get('page')).toBe('1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/request-tabs-mobile.png', fullPage: true });
 });

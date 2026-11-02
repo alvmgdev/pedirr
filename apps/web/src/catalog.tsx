@@ -28,7 +28,9 @@ export function Discover({ user }: { user: User }) {
     queryFn: () =>
       api<{ items: { id: string; metadata: Item }[] }>("/catalog/popular"),
   });
-  const items = result.data?.results ?? result.data?.items ?? [];
+  const category = params.get("type") ?? "";
+  const results = result.data?.results ?? result.data?.items ?? [];
+  const items = query && category ? results.filter(item => item.entityType === category) : results;
   return (
     <>
       <header className="page-heading">
@@ -83,6 +85,15 @@ export function Discover({ user }: { user: User }) {
               </span>
             )}
           </nav>
+          {query && (
+            <nav className="filter-tabs" aria-label={t("resultType")}>
+              {[["", "allResults"], ["league", "leagues"], ["team", "teams"], ["event", "events"]].map(([value, label]) => (
+                <button key={value} aria-pressed={category === value} onClick={() => setParams({ ...Object.fromEntries(params), type: value })}>
+                  {t(label)}
+                </button>
+              ))}
+            </nav>
+          )}
           <p className="muted">
             {t("scheduleNote", { timezone: user.timezone })}
           </p>

@@ -1,6 +1,8 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  resultType: "Filter returned results",
+  allResults: "All",
   alreadyAvailable:
     "This content is already available in Sportarr. No request is needed.",
   availabilityUnknown:
@@ -172,6 +174,8 @@ const en = {
   notifications: "Notifications",
 };
 const es: Record<keyof typeof en, string> = {
+  resultType: "Filtrar resultados recibidos",
+  allResults: "Todos",
   alreadyAvailable:
     "Este contenido ya está disponible en Sportarr. No hace falta pedirlo.",
   availabilityUnknown:

@@ -342,18 +342,12 @@ main {
 }
 .artwork-logo img {
   padding: 5px;
-  background: white;
+  background: #a8b4c4;
   border-radius: 4px;
   object-fit: contain;
 }
 .artwork-photo img {
   object-fit: cover;
-}
-.artwork-initials {
-  color: #294d88;
-  font: 600 32px "Barlow Condensed", sans-serif;
-  background: #e2eaf6;
-  border-bottom: 4px solid #bacbe7;
 }
 .detail-artwork .artwork {
   width: 112px;
@@ -1016,4 +1010,28 @@ th {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: visible;
   }
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 4px 2px 10px;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+}
+.filter-tabs button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  padding: 9px 14px;
+  font-size: 15px;
+}
+.filter-tabs button[aria-pressed="true"] {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
 }

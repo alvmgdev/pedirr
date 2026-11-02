@@ -26,27 +26,14 @@ export function Requests() {
         <h1>{t("requests")}</h1>
         <p>{t("requestHelp")}</p>
       </header>
+      <nav className="filter-tabs" aria-label={t("status")}>
+        {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map(value => (
+          <button key={value} aria-pressed={status === value} onClick={() => change({ status: value })}>
+            {t(value || "all")}
+          </button>
+        ))}
+      </nav>
       <div className="filters">
-        <label>
-          {t("status")}
-          <select
-            value={status}
-            onChange={(event) => change({ status: event.target.value })}
-          >
-            <option value="">{t("all")}</option>
-            {[
-              "PENDING",
-              "APPROVED",
-              "REJECTED",
-              "DOWNLOADING",
-              "AVAILABLE",
-            ].map((value) => (
-              <option key={value} value={value}>
-                {t(value)}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="check">
           <input
             type="checkbox"

@@ -82,12 +82,16 @@ export function Artwork({ item, kind = "league" }: { item: Item; kind?: string }
     ? [item.thumbUrl, item.imageUrl, item.posterUrl, item.logoUrl]
     : [item.logoUrl, item.imageUrl, item.thumbUrl, item.posterUrl];
   const image = candidates.find(value => typeof value === "string" && /^https?:\/\//.test(value) && !failed.includes(value));
-  const words = item.name.match(/[\p{L}\p{N}]+/gu) ?? [];
-  const initials = words.filter(word => !["vs", "v", "the", "and"].includes(word.toLowerCase())).slice(0, 2).map(word => Array.from(word)[0]).join("").toLocaleUpperCase() || "?";
-  const photo = kind === "event" && image !== item.logoUrl;
+  const photo = !image || (kind === "event" && image !== item.logoUrl);
   return (
-    <span className={`artwork ${image ? (photo ? "artwork-photo" : "artwork-logo") : "artwork-initials"}`} aria-hidden="true">
-      {image ? <img src={image} alt="" loading="lazy" decoding="async" onError={() => setFailed(previous => [...previous, image])} /> : <span>{initials}</span>}
+    <span className={`artwork ${photo ? "artwork-photo" : "artwork-logo"}${image ? "" : " artwork-default"}`} aria-hidden="true">
+      <img
+        src={image ?? "/images/sports-default.webp"}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={image ? () => setFailed(previous => [...previous, image]) : undefined}
+      />
     </span>
   );
 }
