@@ -3,10 +3,10 @@ import { Infrastructure } from '../infrastructure';
 
 export async function dispatch(infrastructure: Infrastructure, queue: Queue) {
   const { db } = infrastructure;
-  const pending = await db.outboxEvent.findMany({ where: { publishedAt: null, type: 'request.fulfill' }, orderBy: { createdAt: 'asc' }, take: 100 });
+  const pending = await db.outboxEvent.findMany({ where: { publishedAt: null, type: { in: ['request.fulfill', 'request.created', 'request.status'] } }, orderBy: { createdAt: 'asc' }, take: 100 });
   for (const event of pending) {
     const payload = event.payload as { requestId: string };
-    await queue.add('sync', { requestId: payload.requestId }, { jobId: `outbox-${event.id}` });
+    await queue.add(event.type === 'request.fulfill' ? 'sync' : 'notify', event.type === 'request.fulfill' ? { requestId: payload.requestId } : { eventId: event.id }, { jobId: `outbox-${event.id}` });
     // Queue insertion is idempotent. A crash between these writes republishes the same job ID.
     await db.outboxEvent.update({ where: { id: event.id }, data: { publishedAt: new Date() } });
   }

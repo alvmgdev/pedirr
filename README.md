@@ -87,7 +87,7 @@ The native write adapter adds leagues without league-wide monitoring and leaves 
 
 ## Background reconciliation
 
-The BullMQ worker publishes fulfillment outbox entries every minute using stable job IDs. A database acknowledgement follows queue insertion, so a crash can safely republish the same work. Every five-minute bucket also schedules reconciliation for approved, downloading and available requests; this recovers lost queue data and detects removed files. Failed jobs retry five times with backoff, honoring metadata Retry-After delays. Later periodic runs retry persistent failures. Notification outbox entries remain unpublished until notification delivery is implemented.
+The BullMQ worker publishes fulfillment outbox entries every minute using stable job IDs. A database acknowledgement follows queue insertion, so a crash can safely republish the same work. Every five-minute bucket also schedules reconciliation for approved, downloading and available requests; this recovers lost queue data and detects removed files. Failed jobs retry five times with backoff, honoring metadata Retry-After delays. Later periodic runs retry persistent failures. Notification outbox entries are published to the same queue and delivered independently of Sportarr synchronization.
 
 A renewable shared lease serializes work against each configured Sportarr URL. The worker verifies the exact event or complete season metadata before writing. New seasons are discovered again over time; adding new events never enables other seasons or rewrites league preferences. Searches run only for already-started events without files or active queue work, with a shared six-hour throttle (five minutes after a failed search command).
 
@@ -98,3 +98,13 @@ Active event progress is persisted in `RequestEvent` and included in request det
 ```sh
 docker compose run --rm --no-deps app node apps/server/test/integration/fulfillment.cjs
 ```
+
+## Email and Discord notifications
+
+GET/PUT `/api/v1/admin/settings/notifications` manages SMTP and Discord settings. GET `/api/v1/admin/settings/notifications/deliveries` lists the latest 100 delivery attempts for administrators. Both channels start disabled. SMTP passwords and Discord webhook URLs are encrypted with field-specific context; GET returns only presence flags. Omit a secret to retain it, or send an empty string to clear it. Changing SMTP connection details requires explicitly supplying the password again.
+
+SMTP fields are `emailEnabled`, `smtpHost`, `smtpPort`, `smtpSecurity` (`tls`, `starttls`, or `plain`), `smtpUser`, optional `smtpPassword`, and `emailFrom`. Prefer TLS or mandatory STARTTLS; plain mode is for an explicitly configured local relay. Discord fields are `discordEnabled`, optional `discordWebhook`, and `discordLocale` (`en` or `es`). Only HTTPS Discord webhook URLs are accepted. Redirects are disabled and Discord mentions are suppressed.
+
+Subscribers receive status emails in their profile language. Administrators also receive newly created request emails. Discord receives one channel-wide message in its configured language. Enabling a channel does not send historical notices. Text-only emails avoid HTML injection and use stable Message-ID values. SMTP has connection/greeting/socket timeouts and cannot load files or URLs from message content.
+
+Each recipient/channel/outbox event has a unique delivery record. Successful deliveries are skipped on retry; failures record sanitized codes and retry through BullMQ. The latest attempts are visible to administrators. Delivery is at least once: a process crash after provider acceptance but before the database acknowledgement can cause a duplicate. SMTP/Discord do not provide a shared transactional boundary with Pedirr. Tests use mocked Discord and a local SMTP fixture; no external recipients are contacted during tests.

@@ -5,7 +5,7 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Thirty-nine tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
+- Forty-five tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
@@ -23,9 +23,11 @@
 
 - Native write client supports inert league creation, explicit event monitoring, separate search commands and queue normalization, with reconciliation after ambiguous writes and strict identity checks. Source-based write compatibility gate covers Sportarr 4.1.11 and later 4.1 patches. Worker integration is implemented and transaction-tested.
 
-- BullMQ dispatcher publishes fulfillment outbox records, schedules recurring reconciliation and retries failures. Worker persists scoped event progress, checks imported multipart state, handles removed files and throttles searches under a shared renewable manager lease. Notification outbox records remain pending.
+- BullMQ dispatcher publishes fulfillment outbox records, schedules recurring reconciliation and retries failures. Worker persists scoped event progress, checks imported multipart state, handles removed files and throttles searches under a shared renewable manager lease. Notification outbox records are delivered by the worker.
 
 - Docker migration applied successfully; live BullMQ dispatcher completed jobs with zero failures and API readiness returned 200.
+
+- SMTP and Discord settings, encrypted credentials, localized text templates, per-recipient delivery records and retries. Tests cover successful-delivery deduplication, Retry-After, mention suppression, historical-event exclusion and delivery to a local SMTP fixture.
 
 ## Remaining MVP work
 
@@ -34,7 +36,7 @@
 3. Request/moderation UI and reconciliation of already available manager content.
 4. Sportarr settings UI, safe season/event fulfillment, compatibility checks and real-instance validation.
 5. Broader worker failure/recovery and real Sportarr end-to-end validation.
-6. SMTP and Discord delivery with localized templates.
+6. Notification settings UI and final notification flow validation.
 7. Request and client mock tests, database concurrency tests, browser flows, accessible visual review, deployment validation.
 
 A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.

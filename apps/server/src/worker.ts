@@ -1,3 +1,5 @@
+import { Notifications } from './notifications/service';
+import { NotificationSettings } from './settings/notifications';
 import 'reflect-metadata';
 import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
@@ -16,8 +18,10 @@ async function main() {
     attempts: 5, backoff: { type: 'pedirr' }, removeOnComplete: { age: 172800 }, removeOnFail: { age: 604800 },
   } });
   const fulfillment = new Fulfillment(infrastructure, new HubProvider(infrastructure), new SportarrSettings(infrastructure));
+  const notifications = new Notifications(infrastructure, new NotificationSettings(infrastructure));
   const worker = new Worker('pedirr-work', async job => {
     if (job.name === 'dispatch') return dispatch(infrastructure, queue);
+    if (job.name === 'notify' && typeof job.data.eventId === 'string') return notifications.run(job.data.eventId);
     if (job.name === 'sync' && typeof job.data.requestId === 'string') return fulfillment.run(job.data.requestId);
     throw new Error('Unsupported work item');
   }, { connection, concurrency: 1, settings: { backoffStrategy: (attempts, _type, error) => {
