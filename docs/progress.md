@@ -39,6 +39,8 @@
 
 - Real PostgreSQL/Redis worker integration verifies request creation and moderation through services, BullMQ dispatch, native Sportarr HTTP fixture writes, downloading/imported state changes, localized notification capture, replay deduplication and preservation of existing league monitoring. CI runs this test with isolated database and queue namespaces. HTTP authentication and SMTP transport are covered separately; a combined HTTP-to-SMTP flow remains pending.
 
+- Development API and worker now use TypeScript decorator metadata through `ts-node` and Node watch mode. An isolated Docker development API smoke passed CSRF generation and unauthenticated-route rejection; the public instance was not restarted.
+
 ## Remaining MVP work
 
 1. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.

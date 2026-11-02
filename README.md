@@ -6,6 +6,10 @@ Sports content requests for Sportarr. The project is under active implementation
 
 Requires Node.js 22 and Docker Compose. Run `npm ci`, `npm run db:generate`, `npm run check`, `npm run build`, and `npm test`.
 
+For source development, export `DATABASE_URL` and `REDIS_URL` pointing to development services reachable from your shell, plus `APP_ORIGIN`, `SESSION_SECRET`, and `SETTINGS_ENCRYPTION_KEY` as described below. Shell commands do not automatically load the Compose `.env` file. The default Compose database and Redis ports are private; use Docker for the standard installation, or provide separate reachable development services.
+
+Run `npm run db:migrate` before starting the API. In separate terminals, run `npm run dev:api`, `npm run dev:worker`, and `npm run dev:web`. API and worker use TypeScript's compiler through `ts-node` with Node's watch mode, preserving Nest dependency-injection and validation metadata. These commands reload imported source files on change. For the default Vite proxy, export `PORT=3187` for the API and `APP_ORIGIN=http://localhost:5173`; open the frontend at that exact origin. Stop an existing application on port 3187 before using it for development.
+
 ## Docker
 
 Copy `.env.example` to `.env`, replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up --build -d`. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.

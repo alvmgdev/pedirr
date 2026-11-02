@@ -7,8 +7,8 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js",
     "worker": "node dist/worker.js",
-    "dev": "tsx watch src/main.ts",
-    "dev:worker": "tsx watch src/worker.ts",
+    "dev": "node --watch --require ts-node/register src/main.ts",
+    "dev:worker": "node --watch --require ts-node/register src/worker.ts",
     "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
@@ -34,7 +34,7 @@
     "@types/express": "^5.0.5",
     "@types/node": "^22.19.0",
     "@types/nodemailer": "^8.0.2",
-    "tsx": "^4.20.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
