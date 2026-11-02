@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, client, type RequestRecord, type User } from "./api";
-import { ErrorMessage, Loading, Pager, Status } from "./ui";
+import { Artwork, ErrorMessage, Loading, Pager, Status } from "./ui";
 export function Requests() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -68,7 +68,8 @@ export function Requests() {
               key={request.id}
               to={"/requests/" + request.id}
             >
-              <div>
+              <Artwork item={request.scope.event ?? request.scope.league ?? { id: request.id, name: request.entity.title }} kind={request.scope.kind === "event" ? "event" : "league"} />
+              <div className="request-name">
                 <h2>{request.entity.title}</h2>
                 <p>{request.scope.season?.name ?? t("event")}</p>
               </div>

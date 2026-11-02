@@ -27,3 +27,9 @@ Reject the generic card dashboard: no fabricated statistics, decorative gradient
 ## Interaction requirements
 
 English and Spanish strings share keys. The locale switch is available before login. Store anonymous preference locally and synchronize authenticated preference through the profile API. All dates use the profile timezone. Search has an explicit submission button to respect provider limits. Loading, errors, pagination, duplicate requests and pending actions are visible. Keyboard navigation and reduced-motion preferences must be respected.
+
+## Catalog artwork refinement
+
+Keep stadium blue #163dd5, ink #142a52, cloud #f6f8fc, white #ffffff and sea glass #b7e3dd; add a pale blue-gray #e9eef5 artwork surround. Preserve Barlow for names and Barlow Condensed for schedule dates/initials. Left-align names and secondary context.
+
+Compare: a full-bleed poster grid would obscure event dates and crop league emblems; a schedule row with a generous artwork panel preserves the date-led identity. Choose separate compact rows with a framed emblem or cropped event photo, clear name hierarchy and right-aligned time. Desktop: date | artwork | event and league | time. Mobile: artwork | name, with date/time below the name. League/team rows omit the date. White-backed logos sit within an inset white plate bounded by the gray surround; never invert or recolor brand artwork. Missing or failed images fall back to word initials. Use existing metadata fields, without per-item discovery calls. Apply the same artwork treatment to requests and detail headings.

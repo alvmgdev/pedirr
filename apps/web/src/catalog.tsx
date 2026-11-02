@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, type Item, type Page, type User } from "./api";
-import { ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
+import { Artwork, ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
 export function Discover({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -129,7 +129,8 @@ export function Discover({ user }: { user: User }) {
                 key={item.id}
                 to={"/catalog/league/" + item.metadata.id}
               >
-                {item.metadata.name}
+                <Artwork item={item.metadata} kind="league" />
+                <span>{item.metadata.name}</span>
               </Link>
             ))
           ) : (
@@ -203,7 +204,8 @@ export function CatalogDetail({ user }: { user: User }) {
         {t("back")}
       </Link>
       <header className="detail-heading">
-        <div>
+        <div className="detail-artwork"><Artwork item={item} kind={kind} /></div>
+        <div className="detail-copy">
           <p className="muted">
             {t(kind)}
             {item.sportName ? ` / ${item.sportName}` : ""}

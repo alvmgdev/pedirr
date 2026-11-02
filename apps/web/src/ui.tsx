@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { ApiError, type Item } from "./api";
@@ -75,6 +76,22 @@ export function Pager({
     </nav>
   );
 }
+export function Artwork({ item, kind = "league" }: { item: Item; kind?: string }) {
+  const [failed, setFailed] = useState<string[]>([]);
+  const candidates = kind === "event"
+    ? [item.thumbUrl, item.imageUrl, item.posterUrl, item.logoUrl]
+    : [item.logoUrl, item.imageUrl, item.thumbUrl, item.posterUrl];
+  const image = candidates.find(value => typeof value === "string" && /^https?:\/\//.test(value) && !failed.includes(value));
+  const words = item.name.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const initials = words.filter(word => !["vs", "v", "the", "and"].includes(word.toLowerCase())).slice(0, 2).map(word => Array.from(word)[0]).join("").toLocaleUpperCase() || "?";
+  const photo = kind === "event" && image !== item.logoUrl;
+  return (
+    <span className={`artwork ${image ? (photo ? "artwork-photo" : "artwork-logo") : "artwork-initials"}`} aria-hidden="true">
+      {image ? <img src={image} alt="" loading="lazy" decoding="async" onError={() => setFailed(previous => [...previous, image])} /> : <span>{initials}</span>}
+    </span>
+  );
+}
+
 export function Fixture({
   item,
   kind = "event",
@@ -90,10 +107,8 @@ export function Fixture({
   const Heading = headingLevel === 2 ? "h2" : "h3";
   const date = item.scheduledStart ? new Date(item.scheduledStart) : null;
   const valid = date && !Number.isNaN(date.getTime());
-  const image = item.logoUrl ?? item.imageUrl;
-  const safeImage = image && /^https?:\/\//.test(image) ? image : undefined;
   return (
-    <Link className="fixture" to={`/catalog/${kind}/${item.id}`}>
+    <Link className={`fixture fixture-${kind}`} to={`/catalog/${kind}/${item.id}`}>
       {kind === "event" ? (
         <div className="fixture-date">
           {valid ? (
@@ -115,22 +130,8 @@ export function Fixture({
             <span>{t("dateUnknown")}</span>
           )}
         </div>
-      ) : (
-        <div className="fixture-emblem">
-          {safeImage ? (
-            <img
-              src={safeImage}
-              alt=""
-              loading="lazy"
-              onError={(event) => {
-                event.currentTarget.style.visibility = "hidden";
-              }}
-            />
-          ) : (
-            <span aria-hidden="true">{item.name.slice(0, 2)}</span>
-          )}
-        </div>
-      )}
+      ) : null}
+      <Artwork item={item} kind={kind} />
       <div className="fixture-name">
         <Heading>{item.name}</Heading>
         <p>{item.leagueName ?? item.sportName ?? item.country ?? t(kind)}</p>
