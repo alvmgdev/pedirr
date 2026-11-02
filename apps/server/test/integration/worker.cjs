@@ -8,6 +8,10 @@ const Redis = require('ioredis');
 const { Queue, QueueEvents, Worker } = require('bullmq');
 const { Test } = require('@nestjs/testing');
 const { ValidationPipe } = require('@nestjs/common');
+const { SwaggerModule, DocumentBuilder } = require('@nestjs/swagger');
+const { completeOpenApi } = require('../../dist/openapi');
+const Ajv = require('ajv');
+const addFormats = require('ajv-formats');
 const cookieParser = require('cookie-parser');
 const argon2 = require('argon2');
 const { AppModule } = require('../../dist/app.module');
@@ -81,6 +85,21 @@ async function main() {
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.listen(0, '127.0.0.1');
     const base = await app.getUrl();
+    const specification = completeOpenApi(SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('Pedirr API').setVersion('1.0').setDescription('Test contracts').build()), process.env.APP_ORIGIN);
+    const ajv = new Ajv({ strict: false }); addFormats(ajv);
+    const contracts = [];
+    for (const [path, item] of Object.entries(specification.paths)) {
+      for (const method of ['get', 'post', 'put', 'patch']) {
+        const operation = item[method]; if (!operation) continue;
+        const success = operation.responses[method === 'post' ? '201' : '200'];
+        const validate = ajv.compile({ components: specification.components, ...success.content['application/json'].schema });
+        contracts.push({ method: method.toUpperCase(), pattern: new RegExp('^' + path.replace(/\{[^}]+\}/g, '[^/]+') + '$'), validate });
+        if (path.startsWith('/api/v1/admin/')) assert.deepEqual(operation.security, [{ Session: [] }]);
+      }
+    }
+    assert.equal(specification.components.securitySchemes.Session.name, 'pedirr_session');
+    assert.deepEqual(specification.paths['/api/v1/auth/login'].post.security, []);
+
     async function call(path, { method = 'GET', body, cookie = '', csrf = true, status = 200 } = {}) {
       const headers = { Cookie: cookie, Origin: process.env.APP_ORIGIN };
       if (method !== 'GET' && csrf) {
@@ -91,7 +110,13 @@ async function main() {
       if (body !== undefined) headers['Content-Type'] = 'application/json';
       const response = await fetch(base + '/api/v1/' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
       assert.equal(response.status, status, `${method} ${path}`);
-      return { body: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
+      const result = await response.json();
+      if (response.ok) {
+        const contract = contracts.find(item => item.method === method && item.pattern.test('/api/v1/' + path));
+        assert.ok(contract, `Missing response contract: ${method} ${path}`);
+        assert.ok(contract.validate(result), `Response contract failed: ${method} ${path}: ${JSON.stringify(contract.validate.errors)}`);
+      }
+      return { body: result, cookie: response.headers.get('set-cookie')?.split(';')[0] };
     }
     smtp = await smtpFixture();
     const fulfillment = new Fulfillment(infrastructure, metadata, app.get(SportarrSettings));
@@ -117,6 +142,11 @@ async function main() {
     const admin = (await call('auth/login', { method: 'POST', body: { email: 'admin@example.invalid', password }, status: 201 })).cookie;
     const user = (await call('auth/login', { method: 'POST', body: { email: 'user@example.invalid', password }, status: 201 })).cookie;
     assert.ok(admin); assert.ok(user);
+    await call('auth/me', { cookie: user });
+    await call('admin/users', { cookie: admin });
+    await call('admin/policies', { cookie: admin });
+    await call('admin/settings/sportarr', { cookie: admin });
+    await call('admin/settings/notifications', { cookie: admin });
     for (const body of [{ locale: null }, { timezone: null }, { timezone: '' }, { timezone: 'Not/A_Zone' }]) {
       await call('me', { method: 'PATCH', cookie: user, body, status: 400 });
     }
@@ -156,6 +186,8 @@ async function main() {
     const detail = (await call(`requests/${approved.id}`, { cookie: user })).body;
     assert.equal(detail.status, 'AVAILABLE'); assert.equal(detail.events.length, 1);
     assert.equal(detail.events[0].available, true); assert.equal(detail.subscribed, true);
+    await call('requests', { cookie: user });
+    await call('admin/settings/notifications/deliveries', { cookie: admin });
     assert.equal(await db.session.count(), 2);
     const outbox = await db.outboxEvent.findMany({ where: { type: { in: ['request.created', 'request.status'] } } });
     for (const record of outbox) await run('notify', { eventId: record.id });

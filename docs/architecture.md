@@ -10,4 +10,4 @@ Visible states: pending, approved, rejected, downloading, available. Season requ
 
 Security implementation requirements: Argon2id passwords, opaque revocable sessions, CSRF tokens and Origin validation, same-origin deployment, server authorization, shared rate limiting, encrypted settings secrets with an external key, strict input validation, and redacted structured logs. UI and notifications support en/es; timestamps are stored in UTC. All source and documentation are English.
 
-Deployment consists of app, worker, PostgreSQL, Redis, and a single migration task. Future modules: auth/users, catalog/discovery, requests/moderation, settings/integrations, synchronization, notifications.
+Deployment consists of app, worker, PostgreSQL, Redis, and a single migration task. Implemented modules: auth/users, catalog/discovery, requests/moderation, settings/integrations, synchronization, notifications.

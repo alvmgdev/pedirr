@@ -43,11 +43,13 @@
 
 - Notification outbox records now distinguish publication from successful processing. The dispatcher recovers lost/exhausted jobs after 15 minutes while preserving live/delayed retries. The real HTTP-to-SMTP integration test passes lost-job recovery, transient SMTP failure recovery, delayed-job preservation and confirmed-delivery deduplication. Migration `202611020002_outbox_processing` adds processing timestamps and queue identifiers.
 
+- OpenAPI now includes success response contracts for every route, cookie/CSRF/Origin authentication requirements, administrator permissions and error conventions. The HTTP integration test compiles every success schema and checks actual workflow responses against the specification.
+
 ## Remaining MVP work
 
 1. Review remaining failure/recovery paths after the passing HTTP-to-SMTP workflow test. Real Sportarr validation is still unavailable without a real instance.
 2. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
-3. Complete response documentation, accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
+3. Complete accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
 
 
 A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.

@@ -1,6 +1,6 @@
 # Pedirr
 
-Sports content requests for Sportarr. The project is under active implementation; this revision delivers the deployment foundation, authentication, user administration, metadata discovery, request workflow, and encrypted Sportarr settings APIs; remaining features are tracked in docs/progress.md.
+Sports content requests for Sportarr. Includes a bilingual web interface, authentication and user administration, sports discovery, season/event requests, approval policies, Sportarr synchronization, and email/Discord notifications. Final verification is tracked in [implementation status](docs/progress.md).
 
 ## Development
 
@@ -132,3 +132,5 @@ Availability inspection performs only GET requests. It matches exact Hub short I
 ## Full workflow integration test
 
 After building the image, run `docker compose run --rm --no-deps app node apps/server/test/integration/worker.cjs`. This starts an isolated API and SMTP receiver, uses real PostgreSQL transactions and Redis/BullMQ jobs, and serves controlled Sportarr HTTP responses. It verifies login, CSRF, role checks, encrypted settings, request approval, event monitoring, downloading/imported states, localized email delivery, replay deduplication, and logout. The test creates and removes a unique database schema and Redis namespace; it does not alter application users/settings or send external messages. It validates Pedirr's integration behavior, not compatibility with a running Sportarr installation.
+
+OpenAPI documents JSON response schemas, session-cookie authentication, CSRF/Origin headers, administrator-only operations, pagination, and error handling. The workflow integration test compiles all success-response schemas and validates its actual HTTP responses against them. Metadata objects allow provider-specific fields; optional metadata is not guaranteed to exist.

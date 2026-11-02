@@ -1,3 +1,4 @@
+import { completeOpenApi } from './openapi';
 import 'reflect-metadata';
 import { static as staticFiles, Request, Response, NextFunction } from 'express';
 import { existsSync } from 'node:fs';
@@ -22,7 +23,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
   const document = SwaggerModule.createDocument(app, new DocumentBuilder()
     .setTitle('Pedirr API').setDescription('Sports content requests and moderation')
-    .setVersion('1.0').addCookieAuth('pedirr_session').build());
+    .setVersion('1.0').build());
+  completeOpenApi(document, required('APP_ORIGIN'));
   SwaggerModule.setup('api/docs', app, document, { jsonDocumentUrl: 'api/openapi.json' });
   const webRoot = resolve(__dirname, '../../web/dist');
   if (existsSync(resolve(webRoot, 'index.html'))) {
