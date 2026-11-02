@@ -1,0 +1,22 @@
+# MVP acceptance review
+
+This review maps the original scope to implementation and verification. It does not treat test counts alone as acceptance. Current verification uses real PostgreSQL/Redis and a controlled Sportarr HTTP fixture; no live Sportarr instance or external notification destination has been configured by the developer.
+
+| Requirement | Implementation and evidence | Remaining check or limitation |
+| --- | --- | --- |
+| Register/login, roles, administrator user management | `auth.ts`, `users.ts`; authentication tests, PostgreSQL user concurrency test, HTTP session/logout and role checks. | Registration is intentionally disabled until an administrator enables it. |
+| League/team/event discovery, upcoming and popular leagues | Hub provider and catalog routes; source contract research, metadata cache/filter tests, browser discovery. | Popularity is local request activity, explicitly labeled; upstream quotas and broadcast completeness have no verified SLA. |
+| Explicit season/event requests and five states | Request service, availability and fulfillment; PostgreSQL deduplication/moderation tests, HTTP pending-to-approved-to-downloading-to-available flow. | Add a complete season fulfillment integration scenario before closing the audit. |
+| Manual and automatic approval | Administrator controls; role/user precedence and concurrent review tests. | Rejected requests remain visible rather than silently being reopened by a duplicate submission. |
+| Sportarr settings and monitoring | Encrypted settings, connection test and native manager interface; HTTP fixture and client tests. | Source-reviewed writes are gated to Sportarr 4.1.11 and later 4.1 patches. Live-instance validation remains an explicitly unverified integration environment. |
+| Periodic status synchronization | BullMQ dispatcher, renewable manager lease, scoped RequestEvent state; queue integration and lost-file recovery tests. | Imported availability requires upstream complete-file state and a present file. Open seasons cannot be declared complete prematurely. |
+| Email and Discord notifications | Encrypted settings and channel interface; actual local SMTP delivery, Discord request mocks, localized templates, replay and failed/lost-job recovery. | Delivery is at-least-once: a crash after external acceptance but before database confirmation can duplicate a message. |
+| Avoid duplicate/already available requests | Canonical external identities, unique request scope, transaction locking and read-only availability check; concurrency and browser tests. | Availability is a point-in-time upstream observation; fulfillment reconciles again before writes. |
+| Modular, horizontally scalable deployment | Separate API/worker, PostgreSQL sessions/outbox, Redis budgets/locks/queue; interfaces for metadata/managers/notifications. | No production-scale load benchmark is claimed. |
+| Docker and environment configuration | Dockerfile, Compose, private PostgreSQL/Redis, migration service, `.env.example`, administrator bootstrap and README. | Verify the latest rebuilt runtime after the accessibility/error-handling changes. |
+| Security | Argon2id, session-bound CSRF and Origin, server role checks, validation, Helmet CSP, React escaping, rate limiting, AES-GCM settings and sanitized unexpected errors. | Tests cover authentication, secret handling and failure responses; no external penetration-test claim. |
+| Quality and documentation | 54 server tests, four isolated integration programs, nine browser tests; 35 OpenAPI operations with validated response schemas. | Final check/build/audit and clean-worktree record remain pending. |
+| English/Spanish and interface design | Typed translation-key parity, locale/timezone settings, localized notices; English desktop and Spanish mobile Axe/keyboard checks and reviewed screenshots. | Automated accessibility checks are not a comprehensive assistive-technology certification. |
+| English source/docs and small commits | English source/documentation, bilingual UI catalog and functional Git history. | No remote repository or PR publication was requested. |
+
+Out-of-scope features remain excluded: films/TV/music, payments, native mobile applications and media-server login. The API research and architectural implementation phases are recorded in `api-research.md` and `architecture.md`.
