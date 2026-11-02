@@ -58,7 +58,7 @@ export function Discover({ user }: { user: User }) {
       </form>
       <div className="workspace-columns">
         <section>
-          <nav className="tabs">
+          <nav className="tabs" aria-label={t("discover")}>
             <button
               className={!query && mode === "upcoming" ? "selected" : ""}
               onClick={() => {
@@ -94,6 +94,7 @@ export function Discover({ user }: { user: User }) {
             <div className="fixtures">
               {items.map((item) => (
                 <Fixture
+                  headingLevel={2}
                   key={(item.entityType ?? mode) + item.id}
                   item={item}
                   kind={
@@ -119,7 +120,7 @@ export function Discover({ user }: { user: User }) {
             />
           )}
         </section>
-        <aside className="sidebar-note">
+        <aside className="sidebar-note" aria-label={t("popular")}>
           <h2>{t("popular")}</h2>
           {popular.data?.items.length ? (
             popular.data.items.map((item) => (

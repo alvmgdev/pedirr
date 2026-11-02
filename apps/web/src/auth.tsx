@@ -46,7 +46,7 @@ export function Login() {
     },
   });
   return (
-    <div className="login-page">
+    <main className="login-page">
       <section className="login-story">
         <LinkBrand />
         <div>
@@ -58,7 +58,7 @@ export function Login() {
           <div className="pitch-box" />
         </div>
       </section>
-      <main className="login-main">
+      <div className="login-main">
         <Language />
         <div className="login-form">
           <h2>{t(register ? "register" : "login")}</h2>
@@ -116,8 +116,8 @@ export function Login() {
             {t(register ? "login" : "register")}
           </button>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
 export function LinkBrand() {

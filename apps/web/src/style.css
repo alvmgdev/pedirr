@@ -305,7 +305,7 @@ main {
   flex: 1;
   min-width: 0;
 }
-.fixture-name h3 {
+.fixture-name :is(h2, h3) {
   overflow-wrap: anywhere;
 }
 .fixture-name p {
@@ -765,7 +765,7 @@ progress {
   .fixture-date strong {
     font-size: 34px;
   }
-  .fixture-name h3 {
+  .fixture-name :is(h2, h3) {
     font-size: 18px;
   }
   .fixture time {

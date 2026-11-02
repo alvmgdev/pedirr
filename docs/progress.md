@@ -45,11 +45,13 @@
 
 - OpenAPI now includes success response contracts for every route, cookie/CSRF/Origin authentication requirements, administrator permissions and error conventions. The HTTP integration test compiles every success schema and checks actual workflow responses against the specification.
 
+- Accessibility review covers login, discovery, event details, requests, moderation, account and all administration tabs. Axe checks WCAG 2 A/AA, WCAG 2.1 AA and best-practice rules in English desktop and Spanish mobile fixtures. Navigation landmarks and heading order were corrected; keyboard skip-to-content and horizontal overflow checks pass. This is automated coverage plus a focused keyboard check, not a claim of complete assistive-technology certification.
+
 ## Remaining MVP work
 
 1. Review remaining failure/recovery paths after the passing HTTP-to-SMTP workflow test. Real Sportarr validation is still unavailable without a real instance.
 2. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
-3. Complete accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
+3. Complete deployment checks and requirement-by-requirement completion audit.
 
 
 A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.

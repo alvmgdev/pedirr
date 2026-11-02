@@ -73,11 +73,11 @@ function App() {
       <a href="#main" className="skip-link">
         {t("skipContent")}
       </a>
-      <aside className="app-nav">
+      <aside className="app-nav" aria-label={t("mainNavigation")}>
         <NavLink to="/" aria-label="Pedirr">
           <LinkBrand />
         </NavLink>
-        <nav>
+        <nav aria-label={t("mainNavigation")}>
           <NavLink end to="/">
             {t("discover")}
           </NavLink>
@@ -94,10 +94,10 @@ function App() {
         </div>
       </aside>
       <div className="app-content">
-        <div className="topbar">
+        <header className="topbar">
           <span>{t("scheduleNote", { timezone: user.timezone })}</span>
           <Language user={user} />
-        </div>
+        </header>
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Discover user={user} />} />

@@ -9,6 +9,7 @@ const en = {
   managerNotConfigured:
     "Sportarr has not been configured yet. Your request can be saved for the administrator.",
 
+  mainNavigation: "Main navigation",
   skipContent: "Skip to content",
   policies: "Access and approval",
   registrationEnabled: "Allow registration",
@@ -179,6 +180,7 @@ const es: Record<keyof typeof en, string> = {
   managerNotConfigured:
     "Sportarr todavía no está configurado. Tu petición puede guardarse para el administrador.",
 
+  mainNavigation: "Navegación principal",
   skipContent: "Saltar al contenido",
   policies: "Acceso y aprobación",
   registrationEnabled: "Permitir registro",

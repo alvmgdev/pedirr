@@ -75,7 +75,7 @@ export function Administration({ user }: { user: User }) {
       <header className="page-heading">
         <h1>{t("admin")}</h1>
       </header>
-      <nav className="tabs admin-tabs">
+      <nav className="tabs admin-tabs" aria-label={t("admin")}>
         {["users", "policies", "sportarr", "notifications"].map((item) => (
           <button
             key={item}

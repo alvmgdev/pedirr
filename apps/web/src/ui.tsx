@@ -78,13 +78,16 @@ export function Pager({
 export function Fixture({
   item,
   kind = "event",
+  headingLevel = 3,
   timezone,
 }: {
   item: Item;
   kind?: string;
+  headingLevel?: 2 | 3;
   timezone: string;
 }) {
   const { t, i18n } = useTranslation();
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const date = item.scheduledStart ? new Date(item.scheduledStart) : null;
   const valid = date && !Number.isNaN(date.getTime());
   const image = item.logoUrl ?? item.imageUrl;
@@ -129,7 +132,7 @@ export function Fixture({
         </div>
       )}
       <div className="fixture-name">
-        <h3>{item.name}</h3>
+        <Heading>{item.name}</Heading>
         <p>{item.leagueName ?? item.sportName ?? item.country ?? t(kind)}</p>
       </div>
       {valid ? (
