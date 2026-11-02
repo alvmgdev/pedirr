@@ -9,7 +9,7 @@ import { Infrastructure, logger } from './infrastructure';
 import { HubProvider } from './metadata/hub';
 import { SportarrSettings } from './settings/sportarr';
 import { Fulfillment, errorCode } from './jobs/fulfillment';
-import { dispatch } from './jobs/dispatch';
+import { createProcessor } from './jobs/processor';
 
 async function main() {
   const infrastructure = new Infrastructure();
@@ -19,12 +19,7 @@ async function main() {
   } });
   const fulfillment = new Fulfillment(infrastructure, new HubProvider(infrastructure), new SportarrSettings(infrastructure));
   const notifications = new Notifications(infrastructure, new NotificationSettings(infrastructure));
-  const worker = new Worker('pedirr-work', async job => {
-    if (job.name === 'dispatch') return dispatch(infrastructure, queue);
-    if (job.name === 'notify' && typeof job.data.eventId === 'string') return notifications.run(job.data.eventId);
-    if (job.name === 'sync' && typeof job.data.requestId === 'string') return fulfillment.run(job.data.requestId);
-    throw new Error('Unsupported work item');
-  }, { connection, concurrency: 1, settings: { backoffStrategy: (attempts, _type, error) => {
+  const worker = new Worker('pedirr-work', createProcessor(infrastructure, queue, fulfillment, notifications), { connection, concurrency: 1, settings: { backoffStrategy: (attempts, _type, error) => {
     if (error instanceof HttpException) {
       const body = error.getResponse();
       if (typeof body === 'object' && 'retryAfterSeconds' in body && typeof body.retryAfterSeconds === 'number') return Math.max(1000, body.retryAfterSeconds * 1000);

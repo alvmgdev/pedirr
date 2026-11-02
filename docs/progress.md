@@ -37,6 +37,8 @@
 
 - Pre-request availability lookup recognizes existing requests and exact imported Sportarr content without writes. Submission rechecks availability and refuses uncertain configured-manager results. The UI shows availability or links/follows the existing request. Seven browser tests pass.
 
+- Real PostgreSQL/Redis worker integration verifies request creation and moderation through services, BullMQ dispatch, native Sportarr HTTP fixture writes, downloading/imported state changes, localized notification capture, replay deduplication and preservation of existing league monitoring. CI runs this test with isolated database and queue namespaces. HTTP authentication and SMTP transport are covered separately; a combined HTTP-to-SMTP flow remains pending.
+
 ## Remaining MVP work
 
 1. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.

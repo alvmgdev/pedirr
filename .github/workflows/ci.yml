@@ -17,7 +17,17 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     env:
+      REDIS_URL: redis://localhost:6379
       DATABASE_URL: postgresql://pedirr:ci-only-password@localhost:5432/pedirr
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +43,7 @@ jobs:
       - run: node apps/server/test/integration/users.cjs
       - run: node apps/server/test/integration/requests.cjs
       - run: node apps/server/test/integration/fulfillment.cjs
+      - run: node apps/server/test/integration/worker.cjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm audit --audit-level=moderate
