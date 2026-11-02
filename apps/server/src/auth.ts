@@ -1,7 +1,7 @@
 import { Body, CanActivate, Controller, ExecutionContext, ForbiddenException, Get, HttpException, Injectable, Patch, Post, Req, Res, SetMetadata, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
-import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsIn, ValidateIf, IsString, MaxLength, MinLength } from 'class-validator';
 import { Request, Response } from 'express';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as argon2 from 'argon2';
@@ -21,8 +21,8 @@ export class Credentials {
   @ApiProperty({ minLength: 12, maxLength: 128 }) @IsString() @MinLength(12) @MaxLength(128) password!: string;
 }
 export class ProfileUpdate {
-  @ApiProperty({ enum: ['en', 'es'], required: false }) @IsOptional() @IsIn(['en', 'es']) locale?: string;
-  @ApiProperty({ required: false }) @IsOptional() @IsString() @MaxLength(100) timezone?: string;
+  @ApiProperty({ enum: ['en', 'es'], required: false }) @ValidateIf((_, value) => value !== undefined) @IsIn(['en', 'es']) locale?: string;
+  @ApiProperty({ required: false }) @ValidateIf((_, value) => value !== undefined) @IsString() @MinLength(1) @MaxLength(100) timezone?: string;
 }
 export class PasswordUpdate {
   @ApiProperty() @IsString() @MaxLength(128) currentPassword!: string;

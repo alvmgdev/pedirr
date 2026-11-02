@@ -117,6 +117,11 @@ async function main() {
     const admin = (await call('auth/login', { method: 'POST', body: { email: 'admin@example.invalid', password }, status: 201 })).cookie;
     const user = (await call('auth/login', { method: 'POST', body: { email: 'user@example.invalid', password }, status: 201 })).cookie;
     assert.ok(admin); assert.ok(user);
+    for (const body of [{ locale: null }, { timezone: null }, { timezone: '' }, { timezone: 'Not/A_Zone' }]) {
+      await call('me', { method: 'PATCH', cookie: user, body, status: 400 });
+    }
+    const profile = (await call('me', { method: 'PATCH', cookie: user, body: { timezone: 'Europe/Madrid' } })).body;
+    assert.equal(profile.timezone, 'Europe/Madrid'); assert.equal(profile.locale, 'es');
     await call('requests', { status: 401 });
     await call('requests', { method: 'POST', cookie: user, csrf: false, body: { kind: 'event', identifier: event.id }, status: 403 });
     await call('requests', { method: 'POST', cookie: user, body: { kind: 'event', identifier: event.id, unexpected: true }, status: 400 });
