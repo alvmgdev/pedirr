@@ -37,13 +37,13 @@
 
 - Pre-request availability lookup recognizes existing requests and exact imported Sportarr content without writes. Submission rechecks availability and refuses uncertain configured-manager results. The UI shows availability or links/follows the existing request. Seven browser tests pass.
 
-- Real PostgreSQL/Redis worker integration verifies request creation and moderation through services, BullMQ dispatch, native Sportarr HTTP fixture writes, downloading/imported state changes, localized notification capture, replay deduplication and preservation of existing league monitoring. CI runs this test with isolated database and queue namespaces. HTTP authentication and SMTP transport are covered separately; a combined HTTP-to-SMTP flow remains pending.
+- Real PostgreSQL/Redis worker integration verifies request creation and moderation through services, BullMQ dispatch, native Sportarr HTTP fixture writes, downloading/imported state changes, localized notification capture, replay deduplication and preservation of existing league monitoring. CI runs this test with isolated database and queue namespaces. The extended test now exercises the production Nest module through HTTP: login, CSRF rejection, input validation, role enforcement, encrypted settings, request creation and approval, status reads, logout/session revocation, and real local SMTP delivery. Only upstream metadata and Sportarr are fixtures; no external mail is sent.
 
 - Development API and worker now use TypeScript decorator metadata through `ts-node` and Node watch mode. An isolated Docker development API smoke passed CSRF generation and unauthenticated-route rejection; the public instance was not restarted.
 
 ## Remaining MVP work
 
-1. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.
+1. Review remaining failure/recovery paths after the passing HTTP-to-SMTP workflow test. Real Sportarr validation is still unavailable without a real instance.
 2. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
 3. Complete response documentation, accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
 

@@ -1,3 +1,4 @@
+require('reflect-metadata');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
@@ -5,7 +6,17 @@ const http = require('node:http');
 const { PrismaClient } = require('@prisma/client');
 const Redis = require('ioredis');
 const { Queue, QueueEvents, Worker } = require('bullmq');
-const { RequestsService } = require('../../dist/requests/service');
+const { Test } = require('@nestjs/testing');
+const { ValidationPipe } = require('@nestjs/common');
+const cookieParser = require('cookie-parser');
+const argon2 = require('argon2');
+const { AppModule } = require('../../dist/app.module');
+const { Infrastructure } = require('../../dist/infrastructure');
+const { MetadataProvider } = require('../../dist/metadata/provider');
+const { SportarrSettings } = require('../../dist/settings/sportarr');
+const { NotificationSettings } = require('../../dist/settings/notifications');
+const { passwordOptions } = require('../../dist/auth');
+const { smtpFixture } = require('../fixtures/smtp.cjs');
 const { Fulfillment } = require('../../dist/jobs/fulfillment');
 const { Notifications } = require('../../dist/notifications/service');
 const { createProcessor } = require('../../dist/jobs/processor');
@@ -19,9 +30,9 @@ async function main() {
   const redis = new Redis(process.env.REDIS_URL, { keyPrefix: prefix + ':', maxRetriesPerRequest: 1 });
   const queue = new Queue('work', { connection, prefix });
   const events = new QueueEvents('work', { connection, prefix });
-  let worker;
+  let worker, app, smtp;
   let imported = false, downloading = false, searches = 0;
-  const writes = [], deliveries = [];
+  const writes = [];
   const league = { id: 'league', shortId: 'lg-100', name: 'Fixture League', sportName: 'Soccer' };
   const event = { id: 'event', shortId: 'ev-100', leagueId: 'league', name: 'Fixture Final', scheduledStart: '2020-01-01T12:00:00Z' };
   const managerLeague = { id: 8, externalId: 'lg-100', name: league.name, sport: 'Soccer', monitored: true, monitorType: 'All', monitoredTeamIds: [42] };
@@ -32,6 +43,8 @@ async function main() {
       const path = new URL(req.url, 'http://localhost').pathname;
       let result;
       if (req.method === 'GET' && path === '/api/system/status') result = { appName: 'Sportarr', version: '4.1.11' };
+      else if (req.method === 'GET' && path === '/api/rootfolder') result = [{ id: 1, path: '/sports' }];
+      else if (req.method === 'GET' && path === '/api/qualityprofile') result = [{ id: 2, name: 'Fixture profile' }];
       else if (req.method === 'GET' && path === '/api/leagues') result = [managerLeague];
       else if (req.method === 'GET' && path === '/api/leagues/8/events') {
         const records = managerEvent ? [{ ...managerEvent, hasFile: imported, files: imported ? [{ exists: true }] : [] }] : [];
@@ -56,12 +69,33 @@ async function main() {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     await events.waitUntilReady();
     process.env.APP_ORIGIN = 'http://localhost:3187';
+    process.env.SESSION_SECRET = randomUUID() + randomUUID();
+    process.env.SETTINGS_ENCRYPTION_KEY = require('node:crypto').randomBytes(32).toString('hex');
     const infrastructure = { db, redis };
     const metadata = { league: async () => league, event: async () => event };
-    const fulfillment = new Fulfillment(infrastructure, metadata, { configuration: async () => ({ url: `http://127.0.0.1:${server.address().port}`, apiKey: 'fixture-key', rootFolderId: 1, qualityProfileId: 2 }) });
-    const notifications = new Notifications(infrastructure, { configuration: async () => ({ emailEnabled: true, emailSince: '2020-01-01', discordEnabled: false }) }, {
-      send: async (_config, recipient, notice, id) => { deliveries.push({ recipient, notice, id }); },
-    });
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(Infrastructure).useValue(infrastructure)
+      .overrideProvider(MetadataProvider).useValue(metadata).compile();
+    app = module.createNestApplication({ logger: false });
+    app.use(cookieParser()); app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    await app.listen(0, '127.0.0.1');
+    const base = await app.getUrl();
+    async function call(path, { method = 'GET', body, cookie = '', csrf = true, status = 200 } = {}) {
+      const headers = { Cookie: cookie, Origin: process.env.APP_ORIGIN };
+      if (method !== 'GET' && csrf) {
+        const response = await fetch(base + '/api/v1/auth/csrf', { headers });
+        assert.equal(response.status, 200);
+        headers['x-csrf-token'] = (await response.json()).token;
+      }
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const response = await fetch(base + '/api/v1/' + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      assert.equal(response.status, status, `${method} ${path}`);
+      return { body: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
+    }
+    smtp = await smtpFixture();
+    const fulfillment = new Fulfillment(infrastructure, metadata, app.get(SportarrSettings));
+    const notifications = new Notifications(infrastructure, app.get(NotificationSettings));
     worker = new Worker('work', createProcessor(infrastructure, queue, fulfillment, notifications), { connection, prefix, concurrency: 1 });
     const failed = []; worker.on('failed', (_job, error) => failed.push(error));
     async function run(name, data = {}) {
@@ -76,14 +110,32 @@ async function main() {
       }
       assert.deepEqual(failed, []); assert.deepEqual(fixtureErrors, []);
     }
-    const admin = await db.user.create({ data: { email: 'admin@example.invalid', passwordHash: 'unused', role: 'ADMIN' } });
-    const user = await db.user.create({ data: { email: 'user@example.invalid', passwordHash: 'unused', locale: 'es' } });
-    const requests = new RequestsService(infrastructure, metadata, { check: async () => ({ state: 'missing' }) });
-    const created = await requests.create({ kind: 'event', identifier: event.id }, user);
+    const password = randomUUID();
+    const passwordHash = await argon2.hash(password, passwordOptions);
+    await db.user.create({ data: { email: 'admin@example.invalid', passwordHash, role: 'ADMIN' } });
+    await db.user.create({ data: { email: 'user@example.invalid', passwordHash, locale: 'es' } });
+    const admin = (await call('auth/login', { method: 'POST', body: { email: 'admin@example.invalid', password }, status: 201 })).cookie;
+    const user = (await call('auth/login', { method: 'POST', body: { email: 'user@example.invalid', password }, status: 201 })).cookie;
+    assert.ok(admin); assert.ok(user);
+    await call('requests', { status: 401 });
+    await call('requests', { method: 'POST', cookie: user, csrf: false, body: { kind: 'event', identifier: event.id }, status: 403 });
+    await call('requests', { method: 'POST', cookie: user, body: { kind: 'event', identifier: event.id, unexpected: true }, status: 400 });
+    const settings = { url: `http://127.0.0.1:${server.address().port}`, apiKey: 'fixture-key', rootFolderId: 1, qualityProfileId: 2 };
+    await call('admin/settings/sportarr', { method: 'PUT', cookie: user, body: settings, status: 403 });
+    const saved = await call('admin/settings/sportarr', { method: 'PUT', cookie: admin, body: settings });
+    assert.equal(saved.body.hasApiKey, true); assert.equal(saved.body.apiKey, undefined);
+    assert.ok(!(JSON.stringify((await db.setting.findUnique({ where: { key: 'sportarr' } })).value).includes('fixture-key')));
+    await call('admin/settings/notifications', { method: 'PUT', cookie: admin, body: {
+      emailEnabled: true, smtpHost: '127.0.0.1', smtpPort: smtp.port, smtpSecurity: 'plain', smtpUser: '',
+      emailFrom: 'pedirr@example.invalid', discordEnabled: false, discordLocale: 'en',
+    } });
+    const created = (await call('requests', { method: 'POST', cookie: user, body: { kind: 'event', identifier: event.id }, status: 201 })).body;
     assert.equal(created.request.status, 'PENDING');
     await run('dispatch'); await drain();
-    assert.equal(writes.length, 0); assert.equal(deliveries.length, 2);
-    const approved = await requests.moderate(created.request.id, { decision: 'approve', version: created.request.version }, admin);
+    assert.equal(writes.length, 0); assert.equal(smtp.messages.length, 2);
+    const review = { decision: 'approve', version: created.request.version };
+    await call(`requests/${created.request.id}/review`, { method: 'POST', cookie: user, body: review, status: 403 });
+    const approved = (await call(`requests/${created.request.id}/review`, { method: 'POST', cookie: admin, body: review, status: 201 })).body;
     assert.equal(approved.status, 'APPROVED');
     await run('dispatch'); await drain();
     assert.equal(writes.length, 1); assert.equal(searches, 1);
@@ -94,19 +146,27 @@ async function main() {
     await run('sync', { requestId: approved.id });
     await run('dispatch'); await drain();
     assert.equal((await db.request.findUnique({ where: { id: approved.id } })).status, 'AVAILABLE');
-    assert.equal(deliveries.length, 5);
-    assert.match(deliveries.at(-1).notice.text, /Disponible/);
+    assert.equal(smtp.messages.length, 5);
+    assert.match(smtp.messages.at(-1), /Disponible/);
+    const detail = (await call(`requests/${approved.id}`, { cookie: user })).body;
+    assert.equal(detail.status, 'AVAILABLE'); assert.equal(detail.events.length, 1);
+    assert.equal(detail.events[0].available, true); assert.equal(detail.subscribed, true);
+    assert.equal(await db.session.count(), 2);
     const outbox = await db.outboxEvent.findMany({ where: { type: { in: ['request.created', 'request.status'] } } });
     for (const record of outbox) await run('notify', { eventId: record.id });
     await run('dispatch'); await drain();
-    assert.equal(deliveries.length, 5); assert.equal(searches, 1); assert.equal(writes.length, 1);
+    assert.equal(smtp.messages.length, 5); assert.equal(searches, 1); assert.equal(writes.length, 1);
     assert.equal(await db.notificationDelivery.count({ where: { status: 'sent' } }), 5);
     assert.equal(managerLeague.monitorType, 'All'); assert.deepEqual(managerLeague.monitoredTeamIds, [42]);
-    const duplicate = await requests.create({ kind: 'event', identifier: event.id }, user);
+    const duplicate = (await call('requests', { method: 'POST', cookie: user, body: { kind: 'event', identifier: event.id }, status: 201 })).body;
     assert.equal(duplicate.created, false); assert.equal(duplicate.request.id, approved.id);
-    console.log('Worker integration passed: pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, localized delivery and replay deduplication.');
+    await call('auth/logout', { method: 'POST', cookie: user, status: 201 });
+    await call('auth/me', { cookie: user, status: 401 });
+    console.log('HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery and replay deduplication.');
   } finally {
     if (worker) await worker.close();
+    if (app) await app.close();
+    if (smtp) await smtp.close();
     await queue.obliterate({ force: true });
     await events.close(); await queue.close();
     const keys = await connection.keys(prefix + ':*');
