@@ -97,3 +97,87 @@ test('settings persist ciphertext, return no key and cannot reuse it for a diffe
   assert.equal((await settings.credentials({url: config.url})).apiKey, config.apiKey);
   await assert.rejects(settings.credentials({url: 'http://another-host'}), error => error.getResponse().code === 'API_KEY_REQUIRED');
 });
+test('existing league monitoring and quality settings are never rewritten', async () => {
+  const existing = { id: 8, externalId: 'lg-100', name: 'League', sport: 'Soccer', monitored: true, monitorType: 'Future', qualityProfileId: 9, monitoredTeams: [4] };
+  global.fetch = async (url, init) => {
+    assert.equal(init.method, 'GET');
+    assert.ok(url.endsWith('/leagues'));
+    return Response.json([existing]);
+  };
+  const result = await new SportarrClient(config).ensureLeague({ externalId: 'lg-100', name: 'League', sport: 'Soccer', rootFolderId: 1, qualityProfileId: 2 });
+  assert.deepEqual(result, existing);
+});
+test('new league is inert and a partial upstream commit is reconciled before retry', async () => {
+  let created = false, writes = 0;
+  global.fetch = async (url, init) => {
+    if (init.method === 'POST') {
+      const body = JSON.parse(init.body);
+      assert.equal(body.monitored, false); assert.equal(body.monitorType, 'None');
+      assert.deepEqual(body.monitoredTeamIds, []);
+      writes++; created = true;
+      return new Response('', { status: 500 });
+    }
+    return Response.json(created ? [{ id: 8, externalId: 'lg-100', name: 'League', sport: 'Soccer', monitored: false }] : []);
+  };
+  const client = new SportarrClient(config);
+  const input = { externalId: 'lg-100', name: 'League', sport: 'Soccer', rootFolderId: 1, qualityProfileId: 2 };
+  assert.equal((await client.ensureLeague(input)).id, 8);
+  assert.equal((await client.ensureLeague(input)).id, 8);
+  assert.equal(writes, 1);
+});
+const eventInput = { externalId: 'ev-1', title: 'Game', sport: 'Soccer', leagueId: 8, eventDate: '2026-11-10T12:00:00Z', season: '2026', seasonNumber: 2026, qualityProfileId: 2 };
+test('existing event monitoring uses only the explicitly requested field', async () => {
+  let monitored = false;
+  global.fetch = async (url, init) => {
+    assert.ok(url.endsWith('/events/1'));
+    if (init.method === 'PUT') { assert.deepEqual(JSON.parse(init.body), { monitored: true }); monitored = true; }
+    return Response.json({ ...entry(1), leagueId: 8, monitored, qualityProfileId: 9 });
+  };
+  const result = await new SportarrClient(config).ensureEvent(eventInput, [{ ...entry(1), leagueId: 8, monitored: false, qualityProfileId: 9 }]);
+  assert.equal(result.monitored, true);
+  assert.equal(result.qualityProfileId, 9);
+});
+test('a title/date duplicate with another external ID is not adopted or monitored', async () => {
+  let writes = 0;
+  global.fetch = async (url, init) => {
+    if (init.method === 'POST') { writes++; return Response.json({ event: { id: 44 }, alreadyAdded: true }); }
+    assert.equal(init.method, 'GET');
+    return Response.json({ ...entry(44), leagueId: 8, monitored: false });
+  };
+  await assert.rejects(new SportarrClient(config).ensureEvent(eventInput, []), error => error.getResponse().code === 'SPORTARR_IDENTITY_CONFLICT');
+  assert.equal(writes, 1);
+});
+test('an ambiguous event creation is reconciled through the complete league list', async () => {
+  let posts = 0;
+  global.fetch = async (url, init) => {
+    if (init.method === 'POST') { posts++; throw new Error('Connection lost after commit'); }
+    assert.ok(url.includes('/leagues/8/events?showAll=true'));
+    return Response.json({ page: 1, totalPages: 1, totalRecords: 1, records: [{ ...entry(1), leagueId: 8 }] });
+  };
+  assert.equal((await new SportarrClient(config).ensureEvent(eventInput, [])).id, 1);
+  assert.equal(posts, 1);
+});
+test('available events are not rewritten and automatic search uses the native singular route', async () => {
+  const client = new SportarrClient(config);
+  global.fetch = async () => assert.fail('Available content must not trigger writes');
+  await client.ensureEvent(eventInput, [{ ...entry(1), leagueId: 8, monitored: false, hasFile: true }]);
+  global.fetch = async (url, init) => {
+    assert.ok(url.endsWith('/api/event/1/automatic-search'));
+    assert.equal(init.method, 'POST');
+    return Response.json({ taskIds: [1] });
+  };
+  await client.search(1);
+});
+test('numeric queue enums are normalized using the source-defined order', async () => {
+  global.fetch = async () => Response.json([{ eventId: 1, status: 6, progress: 100 }]);
+  assert.deepEqual(await new SportarrClient(config).queue(), [{ eventId: 1, status: 'Importing', progress: 100 }]);
+});
+test('native write compatibility rejects unreviewed minor releases', async () => {
+  const client = new SportarrClient(config);
+  global.fetch = async () => Response.json({ appName: 'Sportarr', version: '4.1.11.0-local' });
+  await client.assertWriteCompatibility();
+  for (const version of ['4.1.10.0', '4.2.0.0', '5.0.0.0']) {
+    global.fetch = async () => Response.json({ appName: 'Sportarr', version });
+    await assert.rejects(client.assertWriteCompatibility(), error => error.getResponse().code === 'SPORTARR_UNSUPPORTED_VERSION');
+  }
+});

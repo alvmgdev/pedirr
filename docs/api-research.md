@@ -30,3 +30,13 @@ Native write endpoints are source-verified but are not all covered by the stable
 The public contract was rechecked during adapter implementation. There is no documented public popularity ranking; Pedirr ranks its own non-rejected league requests. Public season detail uses GET `/api/public/v1/seasons/{identifier}`.
 
 Sportarr connection implementation rechecked the pinned source: `src/Program.cs` defines native `/api/system/status` with `appName=Sportarr` and the full version. `src/Endpoints/TagAndQualityProfileEndpoints.cs` defines `/api/qualityprofile`. The compatibility `/api/v3/system/status` advertises `appName=Sonarr`, so it is intentionally not used for native identity detection.
+
+## Native write adapter verification
+
+The pinned `src/Version.cs` reports 4.1.11. Write compatibility currently admits 4.1 patch versions >= 11 and rejects other minor/major versions until their behavior is reviewed. This is a source-based compatibility gate, not a claim of live-instance testing.
+
+`LeagueAddService` may commit before failing later initialization. New Pedirr-owned league containers use `monitored=false`, `monitorType=None`, and no team selection. Existing leagues are returned without writes. Per-event monitoring uses only PUT `monitored=true`; existing profile, team, multipart, and season preferences remain untouched. Event creation uses `searchOnAdd=false`, allowing the worker to schedule searches separately and track retries.
+
+`CreateEventRequest` defines native event fields. POST `/api/events` can return a raw event or `{event,alreadyAdded}`; it also deduplicates by title/date. The adapter reads the clean event DTO afterward and requires exact external ID and league ID before accepting it. A timeout is reconciled using a complete event listing before retrying a write.
+
+`DownloadStatus` in `src/Sportarr.Data/Models/Download.cs` is an integer enum (Queued=0, Downloading=1, Paused=2, Completed=3, Failed=4, Warning=5, Importing=6, Imported=7, ImportPending=8, ImportWarning=9). Startup JSON options do not register a string enum converter. The adapter accepts those numeric values and their explicit names, and normalizes them to names. Imported file state, not these queue statuses, will determine availability.
