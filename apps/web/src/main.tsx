@@ -1,3 +1,4 @@
+import { Administration } from "./admin";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import {
@@ -70,7 +71,7 @@ function App() {
   return (
     <div className="app-shell">
       <a href="#main" className="skip-link">
-        {t("details")}
+        {t("skipContent")}
       </a>
       <aside className="app-nav">
         <NavLink to="/" aria-label="Pedirr">
@@ -82,6 +83,7 @@ function App() {
           </NavLink>
           <NavLink to="/requests">{t("requests")}</NavLink>
           <NavLink to="/account">{t("account")}</NavLink>
+          {user.role === "ADMIN" && <NavLink to="/admin">{t("admin")}</NavLink>}
         </nav>
         <div className="nav-bottom">
           <span>{user.email}</span>
@@ -109,6 +111,7 @@ function App() {
               element={<RequestDetail key={location.pathname} user={user} />}
             />
             <Route path="/account" element={<Account user={user} />} />
+            <Route path="/admin" element={<Administration user={user} />} />
             <Route path="*" element={<h1>{t("notFound")}</h1>} />
           </Routes>
         </main>

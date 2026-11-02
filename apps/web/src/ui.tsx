@@ -4,6 +4,15 @@ import { ApiError, type Item } from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
   const keys: Record<string, string> = {
+    SPORTARR_AUTH_FAILED: "managerAuthFailed",
+    SPORTARR_UNREACHABLE: "managerUnreachable",
+    INVALID_MANAGER_DEFAULTS: "managerDefaults",
+    API_KEY_REQUIRED: "secretRequired",
+    SMTP_PASSWORD_REQUIRED: "secretRequired",
+    INVALID_MANAGER_URL: "invalidUrl",
+    INVALID_DISCORD_WEBHOOK: "invalidDiscord",
+    DISCORD_WEBHOOK_REQUIRED: "invalidDiscord",
+    INVALID_SMTP_HOST: "invalidSmtp",
     REGISTRATION_CLOSED: "registrationClosed",
     INVALID_CREDENTIALS: "invalidCredentials",
     CSRF_INVALID: "csrf",

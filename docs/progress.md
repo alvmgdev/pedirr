@@ -29,18 +29,18 @@
 
 - SMTP and Discord settings, encrypted credentials, localized text templates, per-recipient delivery records and retries. Tests cover successful-delivery deduplication, Retry-After, mention suppression, historical-event exclusion and delivery to a local SMTP fixture.
 
-- React/Vite bilingual SPA with login/registration, locale/timezone profile, schedule-led discovery, league/season/team/event details, request creation, request lists, moderation and history. Two browser flows passed on desktop/mobile fixtures; screenshots reviewed. Administration/settings screens remain pending.
+- React/Vite bilingual SPA with login/registration, locale/timezone profile, schedule-led discovery, league/season/team/event details, request creation, request lists, moderation and history. Two browser flows passed on desktop/mobile fixtures; screenshots reviewed. Administrator screens now cover users, role policies, Sportarr connection/defaults and notification settings/deliveries.
 
 - Real Docker browser smoke passed login/CSRF profile update, authenticated direct-route reload and logout with no JavaScript errors; the temporary test user was removed.
 
+- Browser administration tests cover connection testing, default selection, secret retention, role-based UI access, approval policies and last-administrator errors.
+
 ## Remaining MVP work
 
-1. Administrator user/policy/settings UI.
-2. Catalog availability checks before requesting and remaining discovery refinements.
-3. Reconciliation of already available manager content before creating a new request.
-4. Sportarr settings UI, safe season/event fulfillment, compatibility checks and real-instance validation.
-5. Broader worker failure/recovery and real Sportarr end-to-end validation.
-6. Notification settings UI and final notification flow validation.
-7. Request and client mock tests, database concurrency tests, browser flows, accessible visual review, deployment validation.
+1. Catalog availability checks before requesting, including pre-existing Sportarr content.
+2. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.
+3. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
+4. Complete response documentation, accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
+
 
 A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.

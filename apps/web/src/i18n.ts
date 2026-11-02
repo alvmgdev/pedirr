@@ -1,6 +1,64 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  skipContent: "Skip to content",
+  policies: "Access and approval",
+  registrationEnabled: "Allow registration",
+  userAutoApprove: "Auto-approve user requests",
+  adminAutoApprove: "Auto-approve administrator requests",
+  autoApprove: "Automatic approval",
+  inherit: "Use role policy",
+  always: "Always approve",
+  never: "Require review",
+  active: "Active account",
+  createUser: "Create user",
+  url: "Server URL",
+  apiKey: "API key",
+  keepSecret: "Leave blank to keep the saved secret",
+  testConnection: "Test connection",
+  connected: "Connection successful",
+  rootFolder: "Library folder",
+  qualityProfile: "Quality profile",
+  selectOption: "Choose an option",
+  currentSelection: "Saved selection",
+  sportarrHelp:
+    "Test your connection to select a library folder and quality profile. Existing league settings are preserved.",
+  emailEnabled: "Enable email notifications",
+  smtpHost: "SMTP server",
+  smtpPort: "Port",
+  smtpSecurity: "Connection security",
+  smtpUser: "SMTP username",
+  smtpPassword: "SMTP password",
+  emailFrom: "Sender email",
+  discordEnabled: "Enable Discord notifications",
+  discordWebhook: "Discord webhook URL",
+  discordLocale: "Discord language",
+  tls: "TLS",
+  starttls: "Required STARTTLS",
+  plain: "Unencrypted local relay",
+  deliveryHistory: "Recent deliveries",
+  channel: "Channel",
+  recipient: "Recipient",
+  attempts: "Attempts",
+  sent: "Sent",
+  failed: "Failed",
+  sending: "Sending",
+  pending: "Pending",
+  notificationHelp:
+    "Only new notices are sent after you enable a channel. Email uses each user’s language.",
+  discordDestination: "Configured Discord channel",
+  credentialsHint: "Secrets are stored encrypted and are never shown again.",
+  managerAuthFailed:
+    "Sportarr rejected the API key. Check the saved credentials.",
+  managerUnreachable:
+    "Sportarr could not be reached. Check its URL and network connection.",
+  managerDefaults: "Choose an existing folder and quality profile.",
+  secretRequired: "Enter the secret again when changing the connection.",
+  invalidUrl:
+    "Enter a valid server URL without credentials or query parameters.",
+  invalidDiscord: "Enter a valid HTTPS Discord webhook URL.",
+  invalidSmtp: "Enter an SMTP hostname or IPv4 address.",
+
   discover: "Discover",
   requests: "Requests",
   account: "Account",
@@ -105,6 +163,62 @@ const en = {
   notifications: "Notifications",
 };
 const es: Record<keyof typeof en, string> = {
+  skipContent: "Saltar al contenido",
+  policies: "Acceso y aprobación",
+  registrationEnabled: "Permitir registro",
+  userAutoApprove: "Aprobar automáticamente las peticiones de usuarios",
+  adminAutoApprove: "Aprobar automáticamente las peticiones de administradores",
+  autoApprove: "Aprobación automática",
+  inherit: "Usar política del rol",
+  always: "Aprobar siempre",
+  never: "Requiere revisión",
+  active: "Cuenta activa",
+  createUser: "Crear usuario",
+  url: "URL del servidor",
+  apiKey: "Clave de API",
+  keepSecret: "Déjalo en blanco para conservar el secreto guardado",
+  testConnection: "Probar conexión",
+  connected: "Conexión correcta",
+  rootFolder: "Carpeta de biblioteca",
+  qualityProfile: "Perfil de calidad",
+  selectOption: "Elige una opción",
+  currentSelection: "Selección guardada",
+  sportarrHelp:
+    "Prueba la conexión para elegir carpeta y perfil de calidad. Se conservan los ajustes de las ligas existentes.",
+  emailEnabled: "Activar avisos por email",
+  smtpHost: "Servidor SMTP",
+  smtpPort: "Puerto",
+  smtpSecurity: "Seguridad de conexión",
+  smtpUser: "Usuario SMTP",
+  smtpPassword: "Contraseña SMTP",
+  emailFrom: "Correo del remitente",
+  discordEnabled: "Activar avisos en Discord",
+  discordWebhook: "URL del webhook de Discord",
+  discordLocale: "Idioma de Discord",
+  tls: "TLS",
+  starttls: "STARTTLS obligatorio",
+  plain: "Relay local sin cifrado",
+  deliveryHistory: "Envíos recientes",
+  channel: "Canal",
+  recipient: "Destinatario",
+  attempts: "Intentos",
+  sent: "Enviado",
+  failed: "Fallido",
+  sending: "Enviando",
+  pending: "Pendiente",
+  notificationHelp:
+    "Solo se envían avisos nuevos tras activar un canal. El email usa el idioma de cada usuario.",
+  discordDestination: "Canal de Discord configurado",
+  credentialsHint: "Los secretos se guardan cifrados y no vuelven a mostrarse.",
+  managerAuthFailed: "Sportarr ha rechazado la clave. Revisa las credenciales.",
+  managerUnreachable:
+    "No se puede conectar con Sportarr. Revisa la URL y la conexión de red.",
+  managerDefaults: "Elige una carpeta y un perfil de calidad existentes.",
+  secretRequired: "Introduce de nuevo el secreto al cambiar la conexión.",
+  invalidUrl: "Introduce una URL válida sin credenciales ni parámetros.",
+  invalidDiscord: "Introduce una URL HTTPS válida de webhook de Discord.",
+  invalidSmtp: "Introduce un nombre de servidor SMTP o una dirección IPv4.",
+
   discover: "Descubrir",
   requests: "Peticiones",
   account: "Mi cuenta",
@@ -214,16 +328,14 @@ const es: Record<keyof typeof en, string> = {
   sportarr: "Sportarr",
   notifications: "Notificaciones",
 };
-void i18n
-  .use(initReactI18next)
-  .init({
-    resources: { en: { translation: en }, es: { translation: es } },
-    lng:
-      localStorage.getItem("pedirr.locale") ??
-      (navigator.language.startsWith("es") ? "es" : "en"),
-    fallbackLng: "en",
-    interpolation: { escapeValue: false },
-  });
+void i18n.use(initReactI18next).init({
+  resources: { en: { translation: en }, es: { translation: es } },
+  lng:
+    localStorage.getItem("pedirr.locale") ??
+    (navigator.language.startsWith("es") ? "es" : "en"),
+  fallbackLng: "en",
+  interpolation: { escapeValue: false },
+});
 i18n.on("languageChanged", (locale) => {
   localStorage.setItem("pedirr.locale", locale);
   document.documentElement.lang = locale;
