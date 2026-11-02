@@ -41,6 +41,8 @@
 
 - Development API and worker now use TypeScript decorator metadata through `ts-node` and Node watch mode. An isolated Docker development API smoke passed CSRF generation and unauthenticated-route rejection; the public instance was not restarted.
 
+- Notification outbox records now distinguish publication from successful processing. The dispatcher recovers lost/exhausted jobs after 15 minutes while preserving live/delayed retries. The real HTTP-to-SMTP integration test passes lost-job recovery, transient SMTP failure recovery, delayed-job preservation and confirmed-delivery deduplication. Migration `202611020002_outbox_processing` adds processing timestamps and queue identifiers.
+
 ## Remaining MVP work
 
 1. Review remaining failure/recovery paths after the passing HTTP-to-SMTP workflow test. Real Sportarr validation is still unavailable without a real instance.

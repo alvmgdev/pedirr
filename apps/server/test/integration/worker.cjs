@@ -165,9 +165,39 @@ async function main() {
     assert.equal(managerLeague.monitorType, 'All'); assert.deepEqual(managerLeague.monitoredTeamIds, [42]);
     const duplicate = (await call('requests', { method: 'POST', cookie: user, body: { kind: 'event', identifier: event.id }, status: 201 })).body;
     assert.equal(duplicate.created, false); assert.equal(duplicate.request.id, approved.id);
+    assert.equal(await db.outboxEvent.count({ where: { type: { in: ['request.created', 'request.status'] }, processedAt: null } }), 0);
+    // A published notification with no surviving Redis job must be recovered from PostgreSQL.
+    const stale = new Date(Date.now() - 16 * 60000);
+    const lost = await db.outboxEvent.create({ data: { type: 'request.status', publishedAt: stale, payload: { requestId: approved.id, status: 'AVAILABLE' } } });
+    await run('dispatch'); await drain();
+    assert.equal(smtp.messages.length, 6);
+    assert.ok((await db.outboxEvent.findUnique({ where: { id: lost.id } })).processedAt);
+    // A delayed retry still in Redis must retain its delay instead of being recovered early.
+    const delayed = await db.outboxEvent.create({ data: { type: 'request.status', publishedAt: stale, payload: { requestId: approved.id, status: 'AVAILABLE' } } });
+    const delayedJob = await queue.add('notify', { eventId: delayed.id }, { jobId: `outbox-${delayed.id}`, delay: 3600000 });
+    await run('dispatch'); await drain();
+    assert.equal(smtp.messages.length, 6);
+    assert.equal(await delayedJob.getState(), 'delayed');
+    assert.equal((await db.outboxEvent.findUnique({ where: { id: delayed.id } })).processedAt, null);
+    await delayedJob.remove();
+    await db.outboxEvent.delete({ where: { id: delayed.id } });
+    // Exhaust the queue attempt, restore SMTP, then recover the unfinished outbox event.
+    const retry = await db.outboxEvent.create({ data: { type: 'request.status', publishedAt: new Date(), payload: { requestId: approved.id, status: 'AVAILABLE' } } });
+    smtp.failNext();
+    await assert.rejects(run('notify', { eventId: retry.id }));
+    assert.equal((await db.outboxEvent.findUnique({ where: { id: retry.id } })).processedAt, null);
+    assert.equal((await db.notificationDelivery.findFirst({ where: { eventId: retry.id } })).status, 'failed');
+    assert.equal(failed.length, 1); failed.length = 0;
+    await db.outboxEvent.update({ where: { id: retry.id }, data: { publishedAt: stale } });
+    await run('dispatch'); await drain();
+    assert.equal(smtp.messages.length, 7);
+    assert.ok((await db.outboxEvent.findUnique({ where: { id: retry.id } })).processedAt);
+    assert.equal((await db.notificationDelivery.findFirst({ where: { eventId: retry.id } })).attempts, 2);
+    await run('dispatch'); await drain();
+    assert.equal(smtp.messages.length, 7);
     await call('auth/logout', { method: 'POST', cookie: user, status: 201 });
     await call('auth/me', { cookie: user, status: 401 });
-    console.log('HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery and replay deduplication.');
+    console.log('HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery, replay deduplication, lost-job and failed-delivery recovery.');
   } finally {
     if (worker) await worker.close();
     if (app) await app.close();

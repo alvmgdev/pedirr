@@ -2,6 +2,7 @@ const net = require('node:net');
 
 async function smtpFixture() {
   const messages = [], sockets = new Set();
+  let failures = 0;
   const server = net.createServer(socket => {
     sockets.add(socket);
     socket.on('close', () => sockets.delete(socket));
@@ -20,7 +21,10 @@ async function smtpFixture() {
           continue;
         }
         if (line.startsWith('EHLO')) socket.write('250 fixture\r\n');
-        else if (line === 'DATA') { inData = true; socket.write('354 end with dot\r\n'); }
+        else if (line === 'DATA') {
+          if (failures > 0) { failures--; socket.write('451 temporary fixture failure\r\n'); }
+          else { inData = true; socket.write('354 end with dot\r\n'); }
+        }
         else if (line === 'QUIT') socket.end('221 bye\r\n');
         else socket.write('250 OK\r\n');
       }
@@ -29,6 +33,7 @@ async function smtpFixture() {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return {
     port: server.address().port, messages,
+    failNext() { failures++; },
     async close() {
       for (const socket of sockets) socket.destroy();
       await new Promise(resolve => server.close(resolve));

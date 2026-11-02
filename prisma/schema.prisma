@@ -137,7 +137,10 @@ model OutboxEvent {
   payload     Json
   createdAt   DateTime @default(now())
   publishedAt DateTime?
+  processedAt DateTime?
+  jobId       String?
   @@index([publishedAt, createdAt])
+  @@index([processedAt, publishedAt])
 }
 
 model NotificationDelivery {
