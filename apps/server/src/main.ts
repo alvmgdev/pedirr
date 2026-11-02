@@ -15,7 +15,7 @@ import { logger } from './infrastructure';
 async function bootstrap() {
   required('DATABASE_URL');
   required('REDIS_URL');
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
   app.use(helmet({ contentSecurityPolicy: { directives: { imgSrc: ["'self'", 'data:', 'https:', 'http:'], upgradeInsecureRequests: null } } }));
   app.use(cookieParser());
   app.setGlobalPrefix('api/v1');
@@ -39,4 +39,4 @@ async function bootstrap() {
   await app.listen(port(), '0.0.0.0');
   logger.info({ port: port() }, 'Pedirr API listening');
 }
-bootstrap().catch((error: unknown) => { logger.fatal({ err: error }, 'Startup failed'); process.exitCode = 1; });
+bootstrap().catch(() => { logger.fatal({ code: 'API_STARTUP_FAILED' }, 'Startup failed'); process.exit(1); });

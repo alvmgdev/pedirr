@@ -17,4 +17,4 @@ async function main() {
     console.log('Administrator created');
   } finally { await db.$disconnect(); }
 }
-main().catch((error: Error) => { console.error(error.message); process.exitCode = 1; });
+main().catch((error: Error) => { const expected = ['Missing environment variable: ADMIN_EMAIL', 'Missing environment variable: ADMIN_PASSWORD', 'Valid ADMIN_EMAIL and 12-128 character ADMIN_PASSWORD required', 'Administrator already exists; use user management']; console.error(expected.includes(error.message) ? error.message : 'Administrator provisioning failed; check database configuration and migrations'); process.exitCode = 1; });

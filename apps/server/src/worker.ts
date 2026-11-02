@@ -48,4 +48,4 @@ async function main() {
   process.on('SIGINT', () => { void shutdown(); });
   logger.info('Pedirr worker started');
 }
-void main().catch(() => { logger.fatal('Worker startup failed'); process.exitCode = 1; });
+void main().catch(() => { logger.fatal('Worker startup failed'); process.exit(1); });
