@@ -12,9 +12,12 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "dev:api": "npm run dev -w @pedirr/server",
-    "dev:worker": "npm run dev:worker -w @pedirr/server"
+    "dev:worker": "npm run dev:worker -w @pedirr/server",
+    "dev:web": "npm run dev -w @pedirr/web",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "prisma": "^6.19.0"
   },
   "overrides": {

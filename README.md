@@ -108,3 +108,11 @@ SMTP fields are `emailEnabled`, `smtpHost`, `smtpPort`, `smtpSecurity` (`tls`, `
 Subscribers receive status emails in their profile language. Administrators also receive newly created request emails. Discord receives one channel-wide message in its configured language. Enabling a channel does not send historical notices. Text-only emails avoid HTML injection and use stable Message-ID values. SMTP has connection/greeting/socket timeouts and cannot load files or URLs from message content.
 
 Each recipient/channel/outbox event has a unique delivery record. Successful deliveries are skipped on retry; failures record sanitized codes and retry through BullMQ. The latest attempts are visible to administrators. Delivery is at least once: a process crash after provider acceptance but before the database acknowledgement can cause a duplicate. SMTP/Discord do not provide a shared transactional boundary with Pedirr. Tests use mocked Discord and a local SMTP fixture; no external recipients are contacted during tests.
+
+## Web interface
+
+The Docker app serves the React SPA and API from the same origin. Open `http://localhost:3000` (or your configured `APP_PORT`). Direct routes such as `/requests/{id}` return the SPA; API paths retain JSON behavior. Fonts ship locally. English/Spanish selection is available before login, and authenticated profile timezone controls fixture times.
+
+Implemented screens cover authentication, discovery, league/season/team/event detail, scoped requests, request tracking/moderation and profile/password changes. Administrator settings and user management screens remain in development.
+
+For frontend development use `npm run dev:web`. Vite listens on port 5173 and proxies `/api` to localhost:3187. Configure the API's `APP_ORIGIN` to the exact frontend development origin to satisfy CSRF validation. Run `npm run test:browser` for fixture-backed browser flows; install Chromium with `npx playwright install chromium` or set `CHROMIUM_PATH`. CI installs Playwright's Chromium. Local browser tests default to `/usr/bin/chromium`.

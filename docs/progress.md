@@ -29,11 +29,15 @@
 
 - SMTP and Discord settings, encrypted credentials, localized text templates, per-recipient delivery records and retries. Tests cover successful-delivery deduplication, Retry-After, mention suppression, historical-event exclusion and delivery to a local SMTP fixture.
 
+- React/Vite bilingual SPA with login/registration, locale/timezone profile, schedule-led discovery, league/season/team/event details, request creation, request lists, moderation and history. Two browser flows passed on desktop/mobile fixtures; screenshots reviewed. Administration/settings screens remain pending.
+
+- Real Docker browser smoke passed login/CSRF profile update, authenticated direct-route reload and logout with no JavaScript errors; the temporary test user was removed.
+
 ## Remaining MVP work
 
-1. Authentication and administrator UI.
-2. Multilingual discovery interface and league/season/event detail views.
-3. Request/moderation UI and reconciliation of already available manager content.
+1. Administrator user/policy/settings UI.
+2. Catalog availability checks before requesting and remaining discovery refinements.
+3. Reconciliation of already available manager content before creating a new request.
 4. Sportarr settings UI, safe season/event fulfillment, compatibility checks and real-instance validation.
 5. Broader worker failure/recovery and real Sportarr end-to-end validation.
 6. Notification settings UI and final notification flow validation.
