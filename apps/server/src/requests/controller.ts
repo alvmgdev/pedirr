@@ -3,7 +3,7 @@ import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsInt, IsString, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RequestStatus } from '@prisma/client';
-import { Admin, AuthRequest } from '../auth';
+import { Admin, AuthRequest, AuthService } from '../auth';
 import { RequestsService } from './service';
 
 export class CreateRequest {
@@ -22,9 +22,10 @@ export class ReviewRequest {
 }
 @ApiTags('Requests') @Controller('requests')
 export class RequestsController {
-  constructor(private readonly requests: RequestsService) {}
+  constructor(private readonly requests: RequestsService, private readonly auth: AuthService) {}
   @Post() create(@Body() input: CreateRequest, @Req() req: AuthRequest) { return this.requests.create(input, req.viewer!); }
   @Get() list(@Query() query: RequestList, @Req() req: AuthRequest) { return this.requests.list(req.viewer!, query.page, query.status, query.mine === 'true'); }
+  @Get('lookup') async lookup(@Query() query: CreateRequest, @Req() req: AuthRequest) { await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60); return this.requests.lookup(query); }
   @Get(':id') detail(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) { return this.requests.detail(id, req.viewer!); }
   @Admin() @Post(':id/review') review(@Param('id', ParseUUIDPipe) id: string, @Body() input: ReviewRequest, @Req() req: AuthRequest) { return this.requests.moderate(id, input, req.viewer!); }
 }

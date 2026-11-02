@@ -59,7 +59,7 @@ POST `/api/v1/requests` accepts `kind` (`season` or `event`) and a Hub `identifi
 
 GET `/api/v1/requests` accepts `page`, `status`, and `mine=true`; GET `/api/v1/requests/{id}` includes history and the caller's subscription status. Users can see shared requests, but other subscribers' identities are omitted. POST `/api/v1/requests/{id}/review` requires an administrator, a `decision` (`approve` or `reject`), the current integer `version`, and a nonempty `reason` for rejection. Only pending requests can be reviewed. A stale or concurrent decision returns `REQUEST_CHANGED` with HTTP 409.
 
-Creation, subscription, history and outbox records commit atomically. Approval records durable integration work. The worker reconciles with Sportarr before creating anything and skips searches for imported events. Catalog availability checks before a new request are still being implemented.
+Creation, subscription, history and outbox records commit atomically. Approval records durable integration work. The worker reconciles with Sportarr before creating anything and skips searches for imported events. Before creating a new request, the API checks for an existing Pedirr request and for imported content in Sportarr.
 
 The database workflow test uses mocked upstream metadata with real PostgreSQL transactions:
 
@@ -116,3 +116,11 @@ The Docker app serves the React SPA and API from the same origin. Open `http://l
 Implemented screens cover authentication, discovery, league/season/team/event detail, scoped requests, request tracking/moderation and profile/password changes. Administrators can also manage users and approval policies, test/configure Sportarr, and configure notifications and inspect delivery attempts.
 
 For frontend development use `npm run dev:web`. Vite listens on port 5173 and proxies `/api` to localhost:3187. Configure the API's `APP_ORIGIN` to the exact frontend development origin to satisfy CSRF validation. Run `npm run test:browser` for fixture-backed browser flows; install Chromium with `npx playwright install chromium` or set `CHROMIUM_PATH`. CI installs Playwright's Chromium. Local browser tests default to `/usr/bin/chromium`.
+
+## Availability before requesting
+
+GET `/api/v1/requests/lookup?kind=event&identifier=...` (or `kind=season`) returns `requested` with the existing request ID/status, `available`, `missing`, or `unknown` with a reason. The detail screen links existing requests, offers subscription without duplication, and removes the request action for available content.
+
+POST `/api/v1/requests` repeats the availability check. Already imported content returns `{created:false,available:true,request:null}` without creating database records or background work. If a configured manager cannot be checked, the API returns HTTP 503 `AVAILABILITY_UNKNOWN`; an outage is never treated as evidence that content is missing. An unconfigured installation may still collect requests for an administrator.
+
+Availability inspection performs only GET requests. It matches exact Hub short IDs and local league IDs, checks complete manager pagination, and requires imported multipart-complete file state. A season must additionally be closed according to the same conservative metadata rules as worker reconciliation. The check is a point-in-time observation; a remote library can change immediately afterward.

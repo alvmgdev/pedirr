@@ -1,3 +1,4 @@
+import { Availability } from './requests/availability';
 import { NotificationSettings, NotificationSettingsController } from './settings/notifications';
 import { SportarrSettings, SportarrSettingsController } from './settings/sportarr';
 import { RequestsController } from './requests/controller';
@@ -12,5 +13,5 @@ import { Infrastructure } from './infrastructure';
 import { HealthController } from './health.controller';
 import { AuthController, AuthService, SecurityGuard } from './auth';
 
-@Module({ providers: [{ provide: MetadataProvider, useClass: HubProvider }, Infrastructure, AuthService, UsersService, SportarrSettings, NotificationSettings, RequestsService, { provide: APP_GUARD, useClass: SecurityGuard }], controllers: [NotificationSettingsController, SportarrSettingsController, RequestsController, CatalogController, HealthController, AuthController, UsersController] })
+@Module({ providers: [{ provide: MetadataProvider, useClass: HubProvider }, Infrastructure, AuthService, UsersService, SportarrSettings, NotificationSettings, RequestsService, Availability, { provide: APP_GUARD, useClass: SecurityGuard }], controllers: [NotificationSettingsController, SportarrSettingsController, RequestsController, CatalogController, HealthController, AuthController, UsersController] })
 export class AppModule {}

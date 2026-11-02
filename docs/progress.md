@@ -5,7 +5,7 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Forty-five tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
+- Fifty-three tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
@@ -35,12 +35,13 @@
 
 - Browser administration tests cover connection testing, default selection, secret retention, role-based UI access, approval policies and last-administrator errors.
 
+- Pre-request availability lookup recognizes existing requests and exact imported Sportarr content without writes. Submission rechecks availability and refuses uncertain configured-manager results. The UI shows availability or links/follows the existing request. Seven browser tests pass.
+
 ## Remaining MVP work
 
-1. Catalog availability checks before requesting, including pre-existing Sportarr content.
-2. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.
-3. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
-4. Complete response documentation, accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
+1. End-to-end approval/worker/notification flows against a controlled Sportarr fixture; real-instance validation if an instance is provided.
+2. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
+3. Complete response documentation, accessibility and translation review, deployment checks and requirement-by-requirement completion audit.
 
 
 A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.

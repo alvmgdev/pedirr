@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Availability, AvailabilityTarget } from './availability';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, RequestStatus } from '@prisma/client';
 import { Infrastructure } from '../infrastructure';
 import { MetadataItem, MetadataProvider } from '../metadata/provider';
@@ -11,7 +12,7 @@ const include = { entity: { include: { identifiers: true } }, _count: { select: 
 
 @Injectable()
 export class RequestsService {
-  constructor(private readonly infrastructure: Infrastructure, private readonly metadata: MetadataProvider) {}
+  constructor(private readonly infrastructure: Infrastructure, private readonly metadata: MetadataProvider, private readonly availability: Availability) {}
   private async target(input: RequestTarget) {
     if (input.kind === 'event') {
       const event = await this.metadata.event(input.identifier);
@@ -41,8 +42,23 @@ export class RequestsService {
     }
     return entity;
   }
+  private async existing(target: Awaited<ReturnType<RequestsService['target']>>) {
+    return this.infrastructure.db.request.findFirst({ where: { scopeKey: target.scopeKey, entity: { identifiers: { some: { provider: 'hub', namespace: `${target.kind.toLowerCase()}:uuid`, value: target.entity.id } } } }, include });
+  }
+  async lookup(input: RequestTarget) {
+    const target = await this.target(input);
+    const existing = await this.existing(target);
+    if (existing) return { state: 'requested' as const, request: { id: existing.id, status: existing.status } };
+    return this.availability.check(target.scope as AvailabilityTarget);
+  }
   async create(input: RequestTarget, viewer: Viewer) {
     const target = await this.target(input);
+    const existing = await this.existing(target);
+    if (!existing) {
+      const availability = await this.availability.check(target.scope as AvailabilityTarget);
+      if (availability.state === 'available') return { created: false, available: true, request: null };
+      if (availability.state === 'unknown' && availability.reason !== 'not_configured') throw new ServiceUnavailableException({ code: 'AVAILABILITY_UNKNOWN', message: 'Availability could not be verified. Try again before requesting this content.' });
+    }
     return this.infrastructure.db.$transaction(async tx => {
       // Canonical upstream identity serializes aliases and overlapping season requests.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`hub:${target.kind}:${target.entity.id}`}))`;

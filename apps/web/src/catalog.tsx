@@ -8,7 +8,7 @@ import {
 } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, type Item, type Page, type User } from "./api";
-import { ErrorMessage, Fixture, Loading, Pager } from "./ui";
+import { ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
 export function Discover({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -164,15 +164,32 @@ export function CatalogDetail({ user }: { user: User }) {
     queryFn: () => api<Page>(listPath),
     enabled: valid && kind !== "event",
   });
+  const availability = useQuery({
+    queryKey: ["availability", kind, id],
+    queryFn: () =>
+      api<{
+        state: "requested" | "available" | "missing" | "unknown";
+        reason?: string;
+        request?: { id: string; status: string };
+      }>(`/requests/lookup?kind=${kind}&identifier=${encodeURIComponent(id)}`),
+    enabled: valid && ["season", "event"].includes(kind),
+    staleTime: 15000,
+  });
   const request = useMutation({
     mutationFn: () =>
-      api<{ request: { id: string } }>("/requests", "POST", {
-        kind,
-        identifier: id,
-      }),
+      api<{ request: { id: string } | null; available?: boolean }>(
+        "/requests",
+        "POST",
+        {
+          kind,
+          identifier: id,
+        },
+      ),
     onSuccess: (result) => {
       void client.invalidateQueries({ queryKey: ["requests"] });
-      navigate("/requests/" + result.request.id);
+      if (result.request) navigate("/requests/" + result.request.id);
+      else if (result.available)
+        client.setQueryData(["availability", kind, id], { state: "available" });
     },
   });
   if (!valid) return <p>{t("notFound")}</p>;
@@ -200,19 +217,70 @@ export function CatalogDetail({ user }: { user: User }) {
         </div>
         {["season", "event"].includes(kind) && (
           <div className="request-box">
-            <button
-              disabled={request.isPending}
-              onClick={() => request.mutate()}
-            >
-              {t(
-                request.isPending
-                  ? "requestBusy"
-                  : kind === "season"
-                    ? "requestSeason"
-                    : "requestEvent",
-              )}
-            </button>
-            <p>{t(kind === "season" ? "scopeNote" : "requestHelp")}</p>
+            {availability.isPending ? (
+              <Loading />
+            ) : availability.error ? (
+              <>
+                <ErrorMessage error={availability.error} />
+                <button
+                  className="quiet"
+                  onClick={() => void availability.refetch()}
+                >
+                  {t("retry")}
+                </button>
+              </>
+            ) : availability.data?.state === "available" ? (
+              <>
+                <Status value="AVAILABLE" />
+                <p>{t("alreadyAvailable")}</p>
+              </>
+            ) : availability.data?.state === "requested" ? (
+              <>
+                <Status value={availability.data.request!.status} />
+                <Link to={"/requests/" + availability.data.request!.id}>
+                  {t("requested")}
+                </Link>
+                <button
+                  className="quiet"
+                  disabled={request.isPending}
+                  onClick={() => request.mutate()}
+                >
+                  {t("followRequest")}
+                </button>
+              </>
+            ) : availability.data?.state === "unknown" &&
+              availability.data.reason !== "not_configured" ? (
+              <>
+                <p role="status" className="notice">
+                  {t("availabilityUnknown")}
+                </p>
+                <button
+                  className="quiet"
+                  onClick={() => void availability.refetch()}
+                >
+                  {t("retry")}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  disabled={request.isPending}
+                  onClick={() => request.mutate()}
+                >
+                  {t(
+                    request.isPending
+                      ? "requestBusy"
+                      : kind === "season"
+                        ? "requestSeason"
+                        : "requestEvent",
+                  )}
+                </button>
+                <p>{t(kind === "season" ? "scopeNote" : "requestHelp")}</p>
+                {availability.data?.reason === "not_configured" && (
+                  <p>{t("managerNotConfigured")}</p>
+                )}
+              </>
+            )}
             <ErrorMessage error={request.error} />
           </div>
         )}

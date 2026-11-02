@@ -4,6 +4,7 @@ import { ApiError, type Item } from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
   const keys: Record<string, string> = {
+    AVAILABILITY_UNKNOWN: "availabilityUnknown",
     SPORTARR_AUTH_FAILED: "managerAuthFailed",
     SPORTARR_UNREACHABLE: "managerUnreachable",
     INVALID_MANAGER_DEFAULTS: "managerDefaults",

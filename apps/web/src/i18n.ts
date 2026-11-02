@@ -1,6 +1,14 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  alreadyAvailable:
+    "This content is already available in Sportarr. No request is needed.",
+  availabilityUnknown:
+    "Availability could not be checked. Try again before requesting this content.",
+  followRequest: "Follow this request",
+  managerNotConfigured:
+    "Sportarr has not been configured yet. Your request can be saved for the administrator.",
+
   skipContent: "Skip to content",
   policies: "Access and approval",
   registrationEnabled: "Allow registration",
@@ -163,6 +171,14 @@ const en = {
   notifications: "Notifications",
 };
 const es: Record<keyof typeof en, string> = {
+  alreadyAvailable:
+    "Este contenido ya está disponible en Sportarr. No hace falta pedirlo.",
+  availabilityUnknown:
+    "No se ha podido comprobar la disponibilidad. Reintenta antes de pedir este contenido.",
+  followRequest: "Seguir esta petición",
+  managerNotConfigured:
+    "Sportarr todavía no está configurado. Tu petición puede guardarse para el administrador.",
+
   skipContent: "Saltar al contenido",
   policies: "Acceso y aprobación",
   registrationEnabled: "Permitir registro",

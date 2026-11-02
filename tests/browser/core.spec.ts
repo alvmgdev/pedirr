@@ -49,6 +49,7 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
       body = { items: [event], page: 1, hasMore: false };
     else if (path.endsWith("/catalog/popular")) body = { items: [] };
     else if (path.endsWith("/catalog/events/event-1")) body = event;
+    else if (path.endsWith("/requests/lookup")) body = { state: "missing" };
     else if (
       path.endsWith("/requests") &&
       route.request().method() === "POST"
@@ -133,4 +134,20 @@ test("closed registration is explained in Spanish", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText(
     "El registro está deshabilitado",
   );
+});
+
+test('already available catalog content has no request action',async({page})=>{
+ let writes=0;
+ await page.route('**/api/v1/**',async route=>{
+  const path=new URL(route.request().url()).pathname;let body:unknown={};
+  if(route.request().method()!=='GET')writes++;
+  if(path.endsWith('/auth/me'))body={id:'user',email:'viewer@example.invalid',role:'USER',locale:'en',timezone:'UTC'};
+  else if(path.endsWith('/requests/lookup'))body={state:'available'};
+  else if(path.endsWith('/catalog/events/event-1'))body={id:'event-1',name:'Final',leagueId:'league-1',leagueName:'League'};
+  await route.fulfill({json:body});
+ });
+ await page.goto('/catalog/event/event-1');
+ await expect(page.getByText('This content is already available in Sportarr. No request is needed.')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Request this event'})).toHaveCount(0);
+ expect(writes).toBe(0);
 });

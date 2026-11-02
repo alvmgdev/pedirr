@@ -19,7 +19,7 @@ async function main() {
       season: async id => ({ id: id === 'alias' ? 'season-uuid' : id, name: '2026-2027', leagueId: league.id }),
       event: async id => ({ id, name: 'A vs B', leagueId: league.id, seasonId: 'season-uuid', scheduledStart: '2026-11-10T10:00:00Z' }),
     };
-    const service = new RequestsService({ db }, metadata);
+    const service = new RequestsService({ db }, metadata, { check: async () => ({ state: 'missing' }) });
     const results = await Promise.all([
       service.create({ kind: 'season', identifier: 'season-uuid' }, user),
       service.create({ kind: 'season', identifier: 'alias' }, other),
