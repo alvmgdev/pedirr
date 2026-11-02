@@ -5,7 +5,7 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Fifty-three tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
+- Fifty-four tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
@@ -47,11 +47,10 @@
 
 - Accessibility review covers login, discovery, event details, requests, moderation, account and all administration tabs. Axe checks WCAG 2 A/AA, WCAG 2.1 AA and best-practice rules in English desktop and Spanish mobile fixtures. Navigation landmarks and heading order were corrected; keyboard skip-to-content and horizontal overflow checks pass. This is automated coverage plus a focused keyboard check, not a claim of complete assistive-technology certification.
 
-## Remaining MVP work
+## MVP acceptance
 
-1. Review remaining failure/recovery paths after the passing HTTP-to-SMTP workflow test. Real Sportarr validation is still unavailable without a real instance.
-2. Review compatibility, failure/recovery behavior, pagination, scoped monitoring and development commands against the full requirements.
-3. Complete deployment checks and requirement-by-requirement completion audit.
+Implementation and required verification are complete; see [the requirement-by-requirement review](mvp-acceptance.md). Final checks passed: 54 server tests, four integration programs, nine browser tests, type checking, production builds and dependency audit (zero known vulnerabilities). The deployed API, PostgreSQL, Redis and worker report healthy readiness.
 
+A complete season is covered through HTTP approval, BullMQ and the native Sportarr HTTP adapter: all metadata pages are read, cancelled/inactive events are excluded, open seasons remain incomplete, closed imported seasons become available, and cross-season metadata is rejected before remote writes. Existing monitoring settings remain intact.
 
-A passing foundation build is not proof that the MVP is complete. The goal remains active until every requirement is implemented and verified.
+Known validation limits: no real Sportarr installation or external email/Discord destination has been exercised. Native writes remain gated to the source-reviewed Sportarr 4.1 release line starting at 4.1.11. Upstream metadata quotas, update cadence and broadcast completeness are not guaranteed. No production-load benchmark or full manual accessibility certification is claimed.

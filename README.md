@@ -1,6 +1,6 @@
 # Pedirr
 
-Sports content requests for Sportarr. Includes a bilingual web interface, authentication and user administration, sports discovery, season/event requests, approval policies, Sportarr synchronization, and email/Discord notifications. Final verification is tracked in [implementation status](docs/progress.md).
+Sports content requests for Sportarr. Includes a bilingual web interface, authentication and user administration, sports discovery, season/event requests, approval policies, Sportarr synchronization, and email/Discord notifications. Implementation and verification are recorded in the [MVP acceptance review](docs/mvp-acceptance.md).
 
 ## Development
 

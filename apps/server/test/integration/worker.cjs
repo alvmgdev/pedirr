@@ -40,7 +40,16 @@ async function main() {
   const league = { id: 'league', shortId: 'lg-100', name: 'Fixture League', sportName: 'Soccer' };
   const event = { id: 'event', shortId: 'ev-100', leagueId: 'league', name: 'Fixture Final', scheduledStart: '2020-01-01T12:00:00Z' };
   const managerLeague = { id: 8, externalId: 'lg-100', name: league.name, sport: 'Soccer', monitored: true, monitorType: 'All', monitoredTeamIds: [42] };
-  let managerEvent;
+  const managerEvents = new Map();
+  const season = { id: 'season', name: '2020', leagueId: league.id, isCurrent: true, endDate: '2020-12-31' };
+  const seasonEvents = [
+    { ...event, id: 'season-event-1', shortId: 'ev-101', seasonId: season.id, status: 'completed' },
+    { ...event, id: 'season-event-2', shortId: 'ev-102', seasonId: season.id, status: 'completed' },
+    { ...event, id: 'season-event-3', shortId: 'ev-103', seasonId: season.id, status: 'cancelled' },
+    { ...event, id: 'season-event-4', shortId: 'ev-104', seasonId: season.id, status: 'completed', isActive: false },
+  ];
+  let invalidSeasonPage = false;
+  const seasonPages = [];
   const server = http.createServer(async (req, res) => {
     try {
       assert.equal(req.headers['x-api-key'], 'fixture-key');
@@ -51,18 +60,19 @@ async function main() {
       else if (req.method === 'GET' && path === '/api/qualityprofile') result = [{ id: 2, name: 'Fixture profile' }];
       else if (req.method === 'GET' && path === '/api/leagues') result = [managerLeague];
       else if (req.method === 'GET' && path === '/api/leagues/8/events') {
-        const records = managerEvent ? [{ ...managerEvent, hasFile: imported, files: imported ? [{ exists: true }] : [] }] : [];
+        const records = [...managerEvents.values()].map(item => ({ ...item, hasFile: imported, files: imported ? [{ exists: true }] : [] }));
         result = { records, page: 1, totalPages: 1, totalRecords: records.length };
       } else if (req.method === 'GET' && path === '/api/queue') result = downloading ? [{ eventId: 9, status: 1, progress: 50 }] : [];
       else if (req.method === 'POST' && path === '/api/events') {
         let body = ''; for await (const chunk of req) body += chunk;
         const input = JSON.parse(body); writes.push(input);
-        assert.equal(input.externalId, 'ev-100'); assert.equal(input.leagueId, 8);
+        assert.ok(['ev-100', 'ev-101', 'ev-102'].includes(input.externalId)); assert.equal(input.leagueId, 8);
         assert.equal(input.monitored, true); assert.equal(input.searchOnAdd, false);
-        managerEvent = { ...input, id: 9, hasFile: false, files: [] };
-        result = { id: 9 };
-      } else if (req.method === 'GET' && path === '/api/events/9') result = managerEvent;
-      else if (req.method === 'POST' && path === '/api/event/9/automatic-search') { searches++; result = {}; }
+        const id = 9 + managerEvents.size;
+        managerEvents.set(id, { ...input, id, hasFile: false, files: [] });
+        result = { id };
+      } else if (req.method === 'GET' && /^\/api\/events\/\d+$/.test(path)) result = managerEvents.get(Number(path.split('/').at(-1)));
+      else if (req.method === 'POST' && /^\/api\/event\/\d+\/automatic-search$/.test(path)) { searches++; result = {}; }
       else throw new Error(`Unexpected fixture operation: ${req.method} ${path}`);
       res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result));
     } catch (error) { res.writeHead(500); res.end('{}'); fixtureErrors.push(error); }
@@ -76,7 +86,16 @@ async function main() {
     process.env.SESSION_SECRET = randomUUID() + randomUUID();
     process.env.SETTINGS_ENCRYPTION_KEY = require('node:crypto').randomBytes(32).toString('hex');
     const infrastructure = { db, redis };
-    const metadata = { league: async () => league, event: async () => event };
+    const metadata = {
+      league: async () => league, event: async () => event, season: async () => season,
+      events: async filters => {
+        assert.equal(filters.league, league.id); assert.equal(filters.season, season.id);
+        seasonPages.push(filters.page);
+        const items = seasonEvents.slice((filters.page - 1) * 2, filters.page * 2).map(item => ({ ...item }));
+        if (invalidSeasonPage && filters.page === 2) items[0].seasonId = 'another-season';
+        return { items, total: 4, page: filters.page, pageSize: 2, totalPages: 2 };
+      },
+    };
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(Infrastructure).useValue(infrastructure)
       .overrideProvider(MetadataProvider).useValue(metadata).compile();
@@ -123,6 +142,12 @@ async function main() {
     const notifications = new Notifications(infrastructure, app.get(NotificationSettings));
     worker = new Worker('work', createProcessor(infrastructure, queue, fulfillment, notifications), { connection, prefix, concurrency: 1 });
     const failed = []; worker.on('failed', (_job, error) => failed.push(error));
+    async function consumeFailure() {
+      const deadline = Date.now() + 5000;
+      while (!failed.length && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(failed.length, 1); failed.length = 0;
+    }
+
     async function run(name, data = {}) {
       const job = await queue.add(name, data);
       await job.waitUntilFinished(events, 15000);
@@ -219,7 +244,7 @@ async function main() {
     await assert.rejects(run('notify', { eventId: retry.id }));
     assert.equal((await db.outboxEvent.findUnique({ where: { id: retry.id } })).processedAt, null);
     assert.equal((await db.notificationDelivery.findFirst({ where: { eventId: retry.id } })).status, 'failed');
-    assert.equal(failed.length, 1); failed.length = 0;
+    await consumeFailure();
     await db.outboxEvent.update({ where: { id: retry.id }, data: { publishedAt: stale } });
     await run('dispatch'); await drain();
     assert.equal(smtp.messages.length, 7);
@@ -227,9 +252,37 @@ async function main() {
     assert.equal((await db.notificationDelivery.findFirst({ where: { eventId: retry.id } })).attempts, 2);
     await run('dispatch'); await drain();
     assert.equal(smtp.messages.length, 7);
+    // Exercise a complete season through the same authenticated API and native HTTP adapter.
+    imported = false;
+    const seasonRequest = (await call('requests', { method: 'POST', cookie: user, body: { kind: 'season', identifier: season.id }, status: 201 })).body.request;
+    assert.equal(seasonRequest.scope.kind, 'season'); assert.equal(seasonRequest.scope.season.id, season.id);
+    await call(`requests/${seasonRequest.id}/review`, { method: 'POST', cookie: admin, body: { decision: 'approve', version: seasonRequest.version }, status: 201 });
+    await run('dispatch'); await drain();
+    assert.ok(seasonPages.length >= 2 && seasonPages.length % 2 === 0);
+    for (let index = 0; index < seasonPages.length; index += 2) assert.deepEqual(seasonPages.slice(index, index + 2), [1, 2]);
+    assert.deepEqual(writes.map(item => item.externalId), ['ev-100', 'ev-101', 'ev-102']);
+    const scoped = await db.requestEvent.findMany({ where: { requestId: seasonRequest.id, active: true }, orderBy: { externalId: 'asc' } });
+    assert.deepEqual(scoped.map(item => item.externalId), ['season-event-1', 'season-event-2']);
+    imported = true;
+    await run('sync', { requestId: seasonRequest.id });
+    assert.equal((await call(`requests/${seasonRequest.id}`, { cookie: user })).body.status, 'APPROVED');
+    season.isCurrent = false;
+    await run('sync', { requestId: seasonRequest.id });
+    const completed = (await call(`requests/${seasonRequest.id}`, { cookie: user })).body;
+    assert.equal(completed.status, 'AVAILABLE'); assert.ok(completed.events.every(item => item.available));
+    invalidSeasonPage = true;
+    const before = writes.length;
+    await assert.rejects(run('sync', { requestId: seasonRequest.id }));
+    await consumeFailure();
+    assert.equal(writes.length, before);
+    assert.equal((await db.request.findUnique({ where: { id: seasonRequest.id } })).lastError, 'REQUEST_METADATA_CHANGED');
+    invalidSeasonPage = false;
+    await run('sync', { requestId: seasonRequest.id });
+    assert.equal((await db.request.findUnique({ where: { id: seasonRequest.id } })).lastError, null);
+    assert.equal(managerLeague.monitorType, 'All'); assert.deepEqual(managerLeague.monitoredTeamIds, [42]);
     await call('auth/logout', { method: 'POST', cookie: user, status: 201 });
     await call('auth/me', { cookie: user, status: 401 });
-    console.log('HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery, replay deduplication, lost-job and failed-delivery recovery.');
+    console.log('HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery, replay deduplication, lost-job/failed-delivery recovery, and paginated scoped-season completion.');
   } finally {
     if (worker) await worker.close();
     if (app) await app.close();
