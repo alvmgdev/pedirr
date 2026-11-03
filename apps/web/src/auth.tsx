@@ -123,7 +123,7 @@ export function Login() {
 export function LinkBrand() {
   return (
     <div className="brand">
-      pedirr<span aria-hidden="true">/</span>
+      <svg viewBox="0 0 30 34" fill="none" aria-hidden="true"><path d="M3 3h24v9a5 5 0 0 0 0 10v9H3v-9a5 5 0 0 0 0-10V3Z" stroke="currentColor" strokeWidth="2"/><path d="m12 11 9 6-9 6V11Z" fill="currentColor"/></svg>pedirr
     </div>
   );
 }

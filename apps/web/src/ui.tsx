@@ -135,6 +135,7 @@ export function Fixture({
               <span>
                 {new Intl.DateTimeFormat(i18n.language, {
                   month: "short",
+                  year: "numeric",
                   timeZone: timezone,
                 }).format(date)}
               </span>
@@ -157,9 +158,7 @@ export function Fixture({
             timeZone: timezone,
           }).format(date)}
         </time>
-      ) : (
-        <span className="fixture-kind">{t(kind)}</span>
-      )}
+      ) : null}
     </Link>
   );
 }

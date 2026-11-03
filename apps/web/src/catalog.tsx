@@ -116,7 +116,7 @@ export function Discover({ user }: { user: User }) {
               {(query ? ["league", "team", "event"] : [mode === "leagues" ? "league" : "event"]).map(kind => {
                 const group = query ? items.filter(item => item.entityType === kind) : items;
                 if (!group.length) return null;
-                return <section key={kind} className="catalog-shelf">
+                return <section key={kind} className={`catalog-shelf${query && !category && kind !== "event" && group.length <= 2 ? " shelf-compact" : ""}`}>
                   {query && <h2>{t(kind === "league" ? "leagues" : kind === "team" ? "teams" : "events")} <span className="result-count">{group.length}</span></h2>}
                   <div className="fixtures">{group.map(item => <Fixture headingLevel={query ? 3 : 2} key={kind + item.id} item={item} kind={kind} timezone={user.timezone} />)}</div>
                 </section>;
