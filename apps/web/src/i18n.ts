@@ -1,6 +1,12 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  metadataLocalLimit: "Pedirr has reached its catalog request limit. Wait a moment before trying again.",
+  metadataProviderLimit: "The catalog provider has asked us to wait. Try again shortly.",
+  metadataUnavailable: "The catalog provider is temporarily unavailable. Try again shortly.",
+  metadataLoading: "This catalog data is still being loaded. Try again shortly.",
+  moreEvents: "Show more events",
+  emptySchedulePage: "No upcoming events in this part of the schedule. Load more to continue.",
   resultType: "Filter returned results",
   allResults: "All",
   alreadyAvailable:
@@ -174,6 +180,12 @@ const en = {
   notifications: "Notifications",
 };
 const es: Record<keyof typeof en, string> = {
+  metadataLocalLimit: "Pedirr ha alcanzado su límite de consultas al catálogo. Espera un momento antes de reintentarlo.",
+  metadataProviderLimit: "El proveedor del catálogo nos ha pedido esperar. Reinténtalo en unos instantes.",
+  metadataUnavailable: "El proveedor del catálogo no está disponible temporalmente. Reinténtalo en unos instantes.",
+  metadataLoading: "Estos datos del catálogo todavía se están cargando. Reinténtalo en unos instantes.",
+  moreEvents: "Mostrar más eventos",
+  emptySchedulePage: "No hay próximos eventos en esta parte de la agenda. Carga más para continuar.",
   resultType: "Filtrar resultados recibidos",
   allResults: "Todos",
   alreadyAvailable:

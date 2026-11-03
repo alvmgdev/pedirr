@@ -43,8 +43,8 @@ export class HubProvider extends MetadataProvider {
     this.budget = Number(process.env.HUB_REQUESTS_PER_MINUTE ?? 20);
     if (!Number.isSafeInteger(this.budget) || this.budget < 1 || this.budget > 1000) throw new Error('Invalid HUB_REQUESTS_PER_MINUTE');
   }
-  private unavailable(seconds: number) {
-    return new ServiceUnavailableException({ code: 'METADATA_BUSY', message: 'Metadata is temporarily unavailable. Try again shortly.', retryAfterSeconds: Math.max(1, seconds) });
+  private unavailable(seconds: number, reason = "upstream") {
+    return new ServiceUnavailableException({ code: 'METADATA_BUSY', message: 'Metadata is temporarily unavailable. Try again shortly.', retryAfterSeconds: Math.max(1, seconds), reason });
   }
   private async read<T>(path: string, query: Record<string, string | number | undefined>, parse: (value: unknown) => T, ttl = 300): Promise<T> {
     const url = new URL(`https://sportarr.net/api/public/v1/${path}`);
@@ -57,13 +57,31 @@ export class HubProvider extends MetadataProvider {
       catch { await redis.del(key); }
     }
     const cooldown = await redis.ttl('pedirr:hub:cooldown');
-    if (cooldown > 0) throw this.unavailable(cooldown);
+    if (cooldown > 0) throw this.unavailable(cooldown, 'upstream_limit');
     const lock = key + ':lock';
     const owner = randomUUID();
-    if (!await redis.set(lock, owner, 'EX', 15, 'NX')) throw this.unavailable(1);
+    if (!await redis.set(lock, owner, 'EX', 15, 'NX')) {
+      // Share the completed result across API replicas instead of rejecting overlapping reads.
+      const deadline = Date.now() + 11000;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const shared = await redis.get(key);
+        if (shared) {
+          try { return parse(JSON.parse(shared)); } catch { await redis.del(key); }
+        }
+        const waitingCooldown = await redis.ttl('pedirr:hub:cooldown');
+        if (waitingCooldown > 0) throw this.unavailable(waitingCooldown, 'upstream_limit');
+        if (!await redis.get(lock)) return this.read(path, query, parse, ttl);
+      }
+      throw this.unavailable(1, 'in_flight');
+    }
     try {
+      const settled = await redis.get(key);
+      if (settled) {
+        try { return parse(JSON.parse(settled)); } catch { await redis.del(key); }
+      }
       const allowed = Number(await redis.eval(`local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n`, 1, 'pedirr:hub:budget'));
-      if (allowed > this.budget) throw this.unavailable(await redis.ttl('pedirr:hub:budget'));
+      if (allowed > this.budget) throw this.unavailable(await redis.ttl('pedirr:hub:budget'), 'local_limit');
       let response: Response;
       try {
         response = await fetch(url, { signal: AbortSignal.timeout(10000), redirect: 'error', headers: { Accept: 'application/json', 'User-Agent': 'Pedirr/0.1' } });
@@ -72,7 +90,7 @@ export class HubProvider extends MetadataProvider {
         const seconds = retrySeconds(response.headers.get('retry-after'));
         // A shorter concurrent response must not reduce an existing cooldown.
         await redis.eval(`local ttl=redis.call('TTL',KEYS[1]); if ttl<tonumber(ARGV[1]) then redis.call('SET',KEYS[1],'1','EX',ARGV[1]) end; return 1`, 1, 'pedirr:hub:cooldown', seconds);
-        throw this.unavailable(seconds);
+        throw this.unavailable(seconds, 'upstream_limit');
       }
       if (response.status === 404) throw new NotFoundException({ code: 'METADATA_NOT_FOUND', message: 'Content not found' });
       if (!response.ok) {
@@ -94,6 +112,6 @@ export class HubProvider extends MetadataProvider {
   seasons(league: string, page: number) { return this.read(`leagues/${encodeURIComponent(league)}/seasons`, { page, page_size: 50 }, parsePage); }
   season(id: string) { return this.read(`seasons/${encodeURIComponent(id)}`, {}, parseItem); }
   team(id: string) { return this.read(`teams/${encodeURIComponent(id)}`, {}, parseItem); }
-  events(filters: EventFilters) { return this.read('events', { ...filters, page_size: 50, order: 'asc' }, parsePage, filters.season ? 3600 : 120); }
+  events({ pageSize = 50, ...filters }: EventFilters) { return this.read('events', { ...filters, page_size: pageSize, order: 'asc' }, parsePage, filters.season ? 3600 : 120); }
   event(id: string) { return this.read(`events/${encodeURIComponent(id)}`, {}, parseItem, 120); }
 }

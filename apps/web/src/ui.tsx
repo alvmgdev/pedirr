@@ -26,9 +26,18 @@ export function ErrorMessage({ error }: { error: unknown }) {
     EMAIL_UNAVAILABLE: "emailUnavailable",
     CONNECTION_FAILED: "connectionError",
   };
+  const busyReasons: Record<string, string> = {
+    local_limit: "metadataLocalLimit",
+    upstream_limit: "metadataProviderLimit",
+    upstream: "metadataUnavailable",
+    in_flight: "metadataLoading",
+  };
+  const message = error instanceof ApiError
+    ? (error.code === "METADATA_BUSY" && error.reason ? busyReasons[error.reason] ?? "metadataBusy" : keys[error.code] ?? "error")
+    : "error";
   return error ? (
     <p role="alert" className="notice danger">
-      {t(error instanceof ApiError ? (keys[error.code] ?? "error") : "error")}
+      {t(message)}
     </p>
   ) : null;
 }

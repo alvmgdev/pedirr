@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
 import {
   Link,
   useNavigate,
@@ -19,17 +19,27 @@ export function Discover({ user }: { user: User }) {
   const path = query
     ? `/catalog/search?q=${encodeURIComponent(query)}`
     : `/catalog/${mode === "leagues" ? "leagues" : "upcoming"}?page=${page}`;
-  const result = useQuery({
+  const schedule = !query && mode !== "leagues";
+  const catalog = useQuery({
+    enabled: !schedule,
     queryKey: ["catalog", path],
     queryFn: () => api<Page & { results?: Item[] }>(path),
   });
+  const upcoming = useInfiniteQuery({
+    queryKey: ["upcoming"],
+    enabled: schedule,
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => api<Page>(`/catalog/upcoming?page=${pageParam}`),
+    getNextPageParam: last => last.hasMore ? (last.nextPage ?? last.page + 1) : undefined,
+  });
+  const result = schedule ? upcoming : catalog;
   const popular = useQuery({
     queryKey: ["popular"],
     queryFn: () =>
       api<{ items: { id: string; metadata: Item }[] }>("/catalog/popular"),
   });
   const category = params.get("type") ?? "";
-  const results = result.data?.results ?? result.data?.items ?? [];
+  const results = schedule ? [...new Map((upcoming.data?.pages.flatMap(part => part.items) ?? []).map(item => [item.id, item])).values()] : catalog.data?.results ?? catalog.data?.items ?? [];
   const items = query && category ? results.filter(item => item.entityType === category) : results;
   return (
     <>
@@ -98,8 +108,8 @@ export function Discover({ user }: { user: User }) {
             {t("scheduleNote", { timezone: user.timezone })}
           </p>
           {result.isPending ? (
-            <Loading />
-          ) : result.error ? (
+            <><Loading /><ErrorMessage error={result.failureReason} /></>
+          ) : result.error && !items.length ? (
             <ErrorMessage error={result.error} />
           ) : (
             <div className="fixtures">
@@ -116,16 +126,23 @@ export function Discover({ user }: { user: User }) {
               ))}
               {!items.length && (
                 <p className="empty">
-                  {t(mode === "upcoming" && !query ? "emptySchedule" : "empty")}
+                  {t(schedule ? (upcoming.hasNextPage ? "emptySchedulePage" : "emptySchedule") : "empty")}
                 </p>
               )}
             </div>
           )}
-          {!query && (
+          {schedule && upcoming.hasNextPage && !upcoming.isPending && (
+            <button className="quiet" disabled={upcoming.isFetching} onClick={() => void upcoming.fetchNextPage()}>
+              {t(upcoming.isFetching ? "loading" : "moreEvents")}
+            </button>
+          )}
+          {result.error && items.length > 0 && <ErrorMessage error={result.error} />}
+          {result.error && <button className="quiet" onClick={() => void result.refetch()}>{t("retry")}</button>}
+          {!query && !schedule && !catalog.isPending && !catalog.error && (
             <Pager
               page={page}
               more={
-                result.data?.hasMore ?? page < (result.data?.totalPages ?? 0)
+                catalog.data?.hasMore ?? page < (catalog.data?.totalPages ?? 0)
               }
               onChange={(page) => setParams({ view: mode, page: String(page) })}
             />
@@ -206,7 +223,7 @@ export function CatalogDetail({ user }: { user: User }) {
     },
   });
   if (!valid) return <p>{t("notFound")}</p>;
-  if (detail.isPending) return <Loading />;
+  if (detail.isPending) return <><Loading /><ErrorMessage error={detail.failureReason} /></>;
   if (detail.error) return <ErrorMessage error={detail.error} />;
   const item = detail.data!;
   return (

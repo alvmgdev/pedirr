@@ -58,14 +58,19 @@ export class CatalogController {
   @Get('upcoming') async upcoming(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
     const now = Date.now();
-    // Include a one-day margin because Hub date filters may use broadcast dates.
+    // Retain the broadcast-date margin while skipping past-only pages server-side.
     const from = new Date(now - 86400000).toISOString().slice(0, 10);
     const to = new Date(now + 7 * 86400000).toISOString().slice(0, 10);
-    const result = await this.metadata.events({ from, to, page: query.page });
-    return {
-      items: result.items.filter(item => item.scheduledStart && Date.parse(item.scheduledStart) >= now && Date.parse(item.scheduledStart) <= now + 7 * 86400000 && item.status !== 'cancelled' && item.isActive !== false),
-      page: result.page, hasMore: result.page < result.totalPages,
-    };
+    // Skip exhausted pages without claiming that a partially scanned schedule is empty.
+    for (let page = query.page; page < query.page + 5; page++) {
+      const result = await this.metadata.events({ from, to, page, pageSize: 100 });
+      const items = result.items.filter(item => item.scheduledStart && Date.parse(item.scheduledStart) >= now && Date.parse(item.scheduledStart) <= now + 7 * 86400000 && item.status !== 'cancelled' && item.isActive !== false);
+      const hasMore = result.page < result.totalPages;
+      if (items.length || !hasMore || page === query.page + 4) {
+        return { items, page: result.page, hasMore, nextPage: hasMore ? result.page + 1 : null };
+      }
+    }
+    throw new Error('Unreachable upcoming pagination');
   }
   @Get('popular') async popular(@Req() req: AuthRequest) {
     await this.limit(req);

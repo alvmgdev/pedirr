@@ -1,7 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
 export const client = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 60000, retry: false, refetchOnWindowFocus: false },
+    queries: {
+      staleTime: 60000,
+      retry: (attempt, error) => error instanceof ApiError && error.code === "METADATA_BUSY" && attempt < 2,
+      retryDelay: (_attempt, error) => error instanceof ApiError ? Math.max(1000, (error.retryAfterSeconds ?? 10) * 1000) : 1000,
+      refetchOnWindowFocus: false,
+    },
     mutations: { retry: false },
   },
 });
@@ -10,6 +15,7 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     public retryAfterSeconds?: number,
+    public reason?: string,
   ) {
     super(code);
   }
@@ -48,6 +54,7 @@ export async function api<T>(
       response.status,
       error.code ?? (response.status === 400 ? "INVALID_INPUT" : "UNKNOWN"),
       error.retryAfterSeconds,
+      error.reason,
     );
   }
   return response.json();
@@ -86,6 +93,7 @@ export type Page = {
   page: number;
   totalPages?: number;
   hasMore?: boolean;
+  nextPage?: number | null;
 };
 export type RequestRecord = {
   id: string;

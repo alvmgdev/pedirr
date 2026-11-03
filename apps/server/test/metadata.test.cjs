@@ -82,3 +82,39 @@ test('upcoming excludes past, cancelled, and undated entries while preserving pa
   assert.deepEqual(result.items.map(item => item.id), ['future']);
   assert.equal(result.hasMore, true);
 });
+
+test('overlapping metadata reads share the completed cache entry across replicas', async () => {
+  const { provider, redis } = fixture();
+  let calls = 0;
+  global.fetch = async () => {
+    calls++;
+    await new Promise(resolve => setTimeout(resolve, 150));
+    return Response.json({ id: 'league', name: 'League' });
+  };
+  const second = new HubProvider({ redis });
+  const [a, b] = await Promise.all([provider.league('league'), second.league('league')]);
+  assert.deepEqual(a, b);
+  assert.equal(calls, 1);
+});
+
+test('upcoming preserves the broadcast-date margin and skips past-only pages with an explicit next cursor', async () => {
+  const calls = [];
+  const future = new Date(Date.now() + 3600000).toISOString();
+  const controller = new CatalogController({ events: async filters => {
+    calls.push(filters);
+    return { page: filters.page, totalPages: 4, items: filters.page === 1 ? [{ id: 'past', scheduledStart: '2000-01-01T00:00:00Z' }] : [{ id: 'future', scheduledStart: future }] };
+  } }, { rate: async () => {} }, {});
+  const result = await controller.upcoming({ page: 1 }, { viewer: { id: 'viewer' } });
+  assert.equal(calls[0].from, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+  assert.equal(calls[0].pageSize, 100);
+  assert.deepEqual(calls.map(item => item.page), [1, 2]);
+  assert.deepEqual(result.items.map(item => item.id), ['future']);
+  assert.equal(result.nextPage, 3);
+});
+
+test('empty upcoming scans are bounded and do not report false exhaustion', async () => {
+  let calls = 0;
+  const controller = new CatalogController({ events: async ({ page }) => { calls++; return { page, totalPages: 20, items: [] }; } }, { rate: async () => {} }, {});
+  const result = await controller.upcoming({ page: 1 }, { viewer: { id: 'viewer' } });
+  assert.equal(calls, 5); assert.equal(result.hasMore, true); assert.equal(result.nextPage, 6);
+});
