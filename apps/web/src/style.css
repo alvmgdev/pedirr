@@ -328,7 +328,6 @@ main {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  border: 1px solid #cdd7e5;
   background: #e9eef5;
 }
 .artwork img {
@@ -338,12 +337,12 @@ main {
   display: block;
 }
 .artwork-logo {
-  padding: 9px;
+  background: #a8b4c4;
 }
 .artwork-logo img {
-  padding: 5px;
+  padding: 0;
   background: #a8b4c4;
-  border-radius: 4px;
+  border-radius: 8px;
   object-fit: contain;
 }
 .artwork-photo img {

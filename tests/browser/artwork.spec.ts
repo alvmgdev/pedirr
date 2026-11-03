@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('catalog artwork frames white logos and uses the default photograph after image failures', async ({ page }) => {
+test('catalog artwork uses borderless logos and a neutral missing-image icon', async ({ page }) => {
   const items = [
     { id: 'league-1', entityType: 'league', name: 'Premier League', sportName: 'Soccer', logoUrl: 'https://artwork.invalid/logo.svg' },
     { id: 'event-1', entityType: 'event', name: 'Arsenal vs Liverpool', leagueName: 'Premier League', scheduledStart: '2026-11-07T17:30:00Z', thumbUrl: 'https://artwork.invalid/photo.svg' },
@@ -23,12 +23,14 @@ test('catalog artwork frames white logos and uses the default photograph after i
   await expect(page.getByRole('heading', { name: 'Premier League', exact: true })).toBeVisible();
   const logo = page.locator('.fixture-league').first().locator('.artwork');
   await expect(logo.locator('img')).toHaveCSS('object-fit', 'contain');
-  await expect(logo).toHaveCSS('background-color', 'rgb(233, 238, 245)');
+  await expect(logo).toHaveCSS('background-color', 'rgb(168, 180, 196)');
+  await expect(logo).toHaveCSS('border-width', '0px');
+  await expect(logo.locator('img')).toHaveCSS('padding', '0px');
   await expect(page.locator('.fixture-event img')).toHaveCSS('object-fit', 'cover');
-  await expect(page.locator('.fixture-league').last().locator('.artwork-default img')).toHaveAttribute('src', '/images/sports-default.webp');
-  await expect(page.locator('.fixture-team .artwork-default img')).toHaveAttribute('src', '/images/sports-default.webp');
+  await expect(page.locator('.fixture-league').last().locator('.artwork-default img')).toHaveAttribute('src', '/images/artwork-default.svg');
+  await expect(page.locator('.fixture-team .artwork-default img')).toHaveAttribute('src', '/images/artwork-default.svg');
   await expect(logo.locator('img')).toHaveCSS('background-color', 'rgb(168, 180, 196)');
-  await expect(page.locator('.artwork-default img').first()).toHaveJSProperty('naturalWidth', 512);
+  await expect(page.locator('.artwork-default img').first()).toHaveJSProperty('naturalWidth', 96);
   await page.screenshot({ path: 'test-results/artwork-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: 'Arsenal vs Liverpool' })).toBeVisible();

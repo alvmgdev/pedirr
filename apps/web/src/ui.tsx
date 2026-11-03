@@ -86,7 +86,7 @@ export function Artwork({ item, kind = "league" }: { item: Item; kind?: string }
   return (
     <span className={`artwork ${photo ? "artwork-photo" : "artwork-logo"}${image ? "" : " artwork-default"}`} aria-hidden="true">
       <img
-        src={image ?? "/images/sports-default.webp"}
+        src={image ?? "/images/artwork-default.svg"}
         alt=""
         loading="lazy"
         decoding="async"
