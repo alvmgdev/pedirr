@@ -110,7 +110,13 @@ export function RequestDetail({ user }: { user: User }) {
         {t("back")}
       </Link>
       <header className="detail-heading">
-        <div>
+        <div className="detail-artwork">
+          <Artwork
+            item={request.scope.event ?? request.scope.league ?? { id: request.id, name: request.entity.title }}
+            kind={request.scope.kind === "event" ? "event" : "league"}
+          />
+        </div>
+        <div className="detail-copy">
           <Status value={request.status} />
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
