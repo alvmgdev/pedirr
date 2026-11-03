@@ -8,9 +8,10 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm run dev -w @pedirr/web",
+    command: "npm run build -w @pedirr/web && npm run preview -w @pedirr/web",
     url: "http://127.0.0.1:5173",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
+    timeout: 120000,
   },
   reporter: "list",
 });

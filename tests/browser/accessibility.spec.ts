@@ -35,8 +35,9 @@ for (const locale of ['en', 'es']) {
     async function inspect(path: string) {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
-      await expect(page.locator('html')).toHaveAttribute('lang', locale);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      expect(errors, path).toEqual([]);
+      await expect(page.locator('html'), path).toHaveAttribute('lang', locale);
+      await expect(page.getByRole('heading', { level: 1 }), path).toBeVisible();
       const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice']).analyze();
       expect(results.violations.map(item => ({ id: item.id, nodes: item.nodes.map(node => ({ target: node.target, summary: node.failureSummary })) })), path).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), path).toBe(true);

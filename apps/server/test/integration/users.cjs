@@ -20,6 +20,10 @@ async function main() {
       userId: user.id, tokenHash: randomUUID(), expiresAt: new Date(Date.now() + 60000),
     })) });
     const service = new UsersService({ db });
+    const detail = await service.detail(users[0].id);
+    assert.equal(detail.email, users[0].email);
+    assert.equal(Object.hasOwn(detail, 'passwordHash'), false);
+    await assert.rejects(service.detail(randomUUID()), error => error.getResponse().code === 'USER_NOT_FOUND');
     const results = await Promise.allSettled(users.map(user => service.update(user.id, { active: false })));
     assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
     const rejected = results.find(result => result.status === 'rejected');
