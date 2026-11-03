@@ -125,7 +125,7 @@ export function Discover({ user }: { user: User }) {
             </div>
           )}
           {schedule && upcoming.hasNextPage && !upcoming.isPending && (
-            <button className="quiet" disabled={upcoming.isFetching} onClick={() => void upcoming.fetchNextPage()}>
+            <button className="quiet load-more" disabled={upcoming.isFetching} onClick={() => void upcoming.fetchNextPage()}>
               {t(upcoming.isFetching ? "loading" : "moreEvents")}
             </button>
           )}
