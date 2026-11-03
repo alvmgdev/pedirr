@@ -51,7 +51,7 @@ const responses: Record<string, Schema> = {
   'GET health/ready': object({ status: enumeration('ok'), database: enumeration('ok'), queue: enumeration('ok'), worker: enumeration('ok') }),
   'GET auth/csrf': ref('CsrfToken'), 'POST auth/register': ref('PublicUser'), 'POST auth/login': ref('PublicUser'),
   'POST auth/logout': ref('Ok'), 'GET auth/me': ref('PublicUser'), 'PATCH me': ref('PublicUser'), 'POST me/password': ref('Ok'),
-  'GET admin/users': page(ref('PublicUser'), 50), 'POST admin/users': ref('PublicUser'), 'PATCH admin/users/{id}': ref('PublicUser'),
+  'GET admin/users/{id}': ref('PublicUser'), 'GET admin/users': page(ref('PublicUser'), 50), 'POST admin/users': ref('PublicUser'), 'PATCH admin/users/{id}': ref('PublicUser'),
   'GET admin/policies': ref('AccessPolicy'), 'PATCH admin/policies': ref('AccessPolicy'),
   'GET catalog/search': ref('MetadataSearch'), 'GET catalog/leagues': ref('MetadataPage'), 'GET catalog/leagues/{id}': ref('MetadataItem'),
   'GET catalog/leagues/{id}/seasons': ref('MetadataPage'), 'GET catalog/seasons/{id}': ref('MetadataItem'), 'GET catalog/teams/{id}': ref('MetadataItem'),

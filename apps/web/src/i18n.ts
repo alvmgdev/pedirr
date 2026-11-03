@@ -1,6 +1,11 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  eventOrder: "Event date",
+  newestFirst: "Newest first",
+  oldestFirst: "Oldest first",
+  editUser: "Edit user",
+  inactive: "Inactive",
   metadataLocalLimit: "Pedirr has reached its catalog request limit. Wait a moment before trying again.",
   metadataProviderLimit: "The catalog provider has asked us to wait. Try again shortly.",
   metadataUnavailable: "The catalog provider is temporarily unavailable. Try again shortly.",
@@ -180,6 +185,11 @@ const en = {
   notifications: "Notifications",
 };
 const es: Record<keyof typeof en, string> = {
+  eventOrder: "Fecha del evento",
+  newestFirst: "Más recientes primero",
+  oldestFirst: "Más antiguos primero",
+  editUser: "Editar usuario",
+  inactive: "Inactivo",
   metadataLocalLimit: "Pedirr ha alcanzado su límite de consultas al catálogo. Espera un momento antes de reintentarlo.",
   metadataProviderLimit: "El proveedor del catálogo nos ha pedido esperar. Reinténtalo en unos instantes.",
   metadataUnavailable: "El proveedor del catálogo no está disponible temporalmente. Reinténtalo en unos instantes.",

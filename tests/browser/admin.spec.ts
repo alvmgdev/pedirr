@@ -90,8 +90,8 @@ test("administrator can set policies and sees protection for the last administra
     } else if (path.endsWith("/admin/users"))
       body = { items: [admin], total: 1 };
     else if (path.endsWith("/admin/users/admin-1")) {
-      status = 409;
-      body = { code: "LAST_ADMIN" };
+      status = route.request().method() === "GET" ? 200 : 409;
+      body = status === 200 ? admin : { code: "LAST_ADMIN" };
     }
     await route.fulfill({ status, json: body });
   });
@@ -106,6 +106,9 @@ test("administrator can set policies and sees protection for the last administra
     adminAutoApprove: false,
   });
   await page.getByRole("button", { name: "Users", exact: true }).click();
+  await expect(page.locator(".user-list input, .user-list select")).toHaveCount(0);
+  await page.getByRole("link", { name: /admin@example.invalid/ }).click();
+  await expect(page).toHaveURL(/admin\/users\/admin-1/);
   await page.getByLabel("Active account").uncheck();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("alert")).toHaveText(

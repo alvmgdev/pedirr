@@ -33,6 +33,11 @@ export class UsersService {
     ]);
     return { items, total, page, pageSize: 50 };
   }
+  async detail(id: string) {
+    const user = await this.infrastructure.db.user.findUnique({ where: { id }, select: publicUserSelect });
+    if (!user) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'User not found' });
+    return user;
+  }
   async create(input: Credentials) {
     const passwordHash = await argon2.hash(input.password, passwordOptions);
     try {
@@ -81,6 +86,7 @@ export class UsersService {
 export class UsersController {
   constructor(private readonly users: UsersService) {}
   @Get('users') list(@Query() query: UserPage) { return this.users.list(query.page); }
+  @Get('users/:id') detail(@Param('id', ParseUUIDPipe) id: string) { return this.users.detail(id); }
   @Post('users') create(@Body() input: Credentials) { return this.users.create(input); }
   @Patch('users/:id') update(@Param('id', ParseUUIDPipe) id: string, @Body() input: UserUpdate) { return this.users.update(id, input); }
   @Get('policies') policy() { return this.users.policy(); }

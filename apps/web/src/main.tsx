@@ -1,4 +1,4 @@
-import { Administration } from "./admin";
+import { Administration, UserDetail } from "./admin";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import {
@@ -111,6 +111,7 @@ function App() {
               element={<RequestDetail key={location.pathname} user={user} />}
             />
             <Route path="/account" element={<Account user={user} />} />
+            <Route path="/admin/users/:id" element={<UserDetail key={location.pathname} user={user} />} />
             <Route path="/admin" element={<Administration user={user} />} />
             <Route path="*" element={<h1>{t("notFound")}</h1>} />
           </Routes>

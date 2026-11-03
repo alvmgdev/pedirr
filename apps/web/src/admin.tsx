@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
@@ -103,56 +103,16 @@ export function Administration({ user }: { user: User }) {
 function Users() {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
-  const [creating, setCreating] = useState(false);
   const users = useQuery({
     queryKey: ["users", page],
-    queryFn: () =>
-      api<{ items: User[]; total: number }>(`/admin/users?page=${page}`),
-  });
-  const create = useMutation({
-    mutationFn: (body: unknown) => api("/admin/users", "POST", body),
-    onSuccess: () => {
-      setCreating(false);
-      void client.invalidateQueries({ queryKey: ["users"] });
-    },
+    queryFn: () => api<{ items: User[]; total: number }>(`/admin/users?page=${page}`),
   });
   return (
     <>
       <div className="section-actions">
         <h2>{t("users")}</h2>
-        <button onClick={() => setCreating(!creating)}>
-          {t(creating ? "cancel" : "createUser")}
-        </button>
+        <Link className="button-link" to="/admin/users/new">{t("createUser")}</Link>
       </div>
-      {creating && (
-        <form
-          className="panel compact-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            create.mutate({
-              email: data.get("email"),
-              password: data.get("password"),
-            });
-          }}
-        >
-          <Field name="email" type="email" required />
-          <label>
-            {t("password")}
-            <input
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={12}
-              maxLength={128}
-              required
-            />
-          </label>
-          <p className="muted">{t("passwordHint")}</p>
-          <ErrorMessage error={create.error} />
-          <button disabled={create.isPending}>{t("createUser")}</button>
-        </form>
-      )}
       {users.isPending ? (
         <Loading />
       ) : users.error ? (
@@ -160,12 +120,12 @@ function Users() {
       ) : (
         <div className="user-list">
           {users.data?.items.map((user) => (
-            <UserRow
-              key={[user.id, user.active, user.role, user.autoApprove].join(
-                ":",
-              )}
-              user={user}
-            />
+            <Link className="user-row" key={user.id} to={`/admin/users/${user.id}`}>
+              <strong>{user.email}</strong>
+              <span>{t(user.role)}</span>
+              <span>{t(user.active ? "active" : "inactive")}</span>
+              <span>{t("editUser")}</span>
+            </Link>
           ))}
         </div>
       )}
@@ -177,7 +137,7 @@ function Users() {
     </>
   );
 }
-function UserRow({ user }: { user: User }) {
+function UserEditor({ user }: { user: User }) {
   const { t } = useTranslation();
   const update = useMutation({
     mutationFn: (body: unknown) =>
@@ -185,11 +145,12 @@ function UserRow({ user }: { user: User }) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["users"] });
       void client.invalidateQueries({ queryKey: ["me"] });
+      void client.invalidateQueries({ queryKey: ["user", user.id] });
     },
   });
   return (
     <form
-      className="user-row"
+      className="panel compact-form"
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
@@ -201,7 +162,7 @@ function UserRow({ user }: { user: User }) {
         });
       }}
     >
-      <h3>{user.email}</h3>
+      <p>{user.email}</p>
       <div className="user-controls">
         <label>
           {t("role")}
@@ -227,8 +188,43 @@ function UserRow({ user }: { user: User }) {
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
       <ErrorMessage error={update.error} />
+      {update.isSuccess && <p className="notice" role="status">{t("saved")}</p>}
     </form>
   );
+}
+export function UserDetail({ user }: { user: User }) {
+  const { id } = useParams();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const creating = id === "new";
+  const detail = useQuery({
+    queryKey: ["user", id],
+    queryFn: () => api<User>(`/admin/users/${id}`),
+    enabled: user.role === "ADMIN" && !creating,
+  });
+  const create = useMutation({
+    mutationFn: (body: unknown) => api<User>("/admin/users", "POST", body),
+    onSuccess: (value) => {
+      void client.invalidateQueries({ queryKey: ["users"] });
+      navigate(`/admin/users/${value.id}`, { replace: true });
+    },
+  });
+  if (user.role !== "ADMIN") return <p role="alert">{t("unauthorized")}</p>;
+  return <>
+    <Link className="back" to="/admin?tab=users">{t("users")}</Link>
+    <header className="page-heading"><h1>{t(creating ? "createUser" : "editUser")}</h1></header>
+    {creating ? <form className="panel compact-form" onSubmit={event => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget);
+      create.mutate({ email: data.get("email"), password: data.get("password") });
+    }}>
+      <Field name="email" type="email" required />
+      <label>{t("password")}<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required /></label>
+      <p className="muted">{t("passwordHint")}</p>
+      <ErrorMessage error={create.error} />
+      <button disabled={create.isPending}>{t("createUser")}</button>
+    </form> : detail.isPending ? <Loading /> : detail.error ? <ErrorMessage error={detail.error} /> : <UserEditor key={id} user={detail.data!} />}
+  </>;
 }
 type Policy = {
   registrationEnabled: boolean;

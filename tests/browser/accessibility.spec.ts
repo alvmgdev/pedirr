@@ -22,6 +22,7 @@ for (const locale of ['en', 'es']) {
       else if (path.endsWith('/requests/request-1')) body = request;
       else if (path.endsWith('/requests')) body = { items: [request], total: 1, page: 1, pageSize: 30 };
       else if (path.endsWith('/admin/users')) body = { items: [user], total: 1, page: 1, pageSize: 50 };
+      else if (path.endsWith('/admin/users/admin-1')) body = user;
       else if (path.endsWith('/admin/policies')) body = { registrationEnabled: false, userAutoApprove: false, adminAutoApprove: false };
       else if (path.endsWith('/settings/sportarr')) body = { configured: false, url: '', hasApiKey: false, rootFolderId: null, qualityProfileId: null };
       else if (path.endsWith('/settings/notifications/deliveries')) body = [];
@@ -43,7 +44,7 @@ for (const locale of ['en', 'es']) {
     await inspect('/');
     signedIn = true;
     if (locale === 'es') await page.setViewportSize({ width: 390, height: 844 });
-    for (const path of ['/', '/catalog/event/event-1', '/requests', '/requests/request-1', '/account', '/admin', '/admin?tab=policies', '/admin?tab=sportarr', '/admin?tab=notifications']) await inspect(path);
+    for (const path of ['/', '/catalog/event/event-1', '/requests', '/requests/request-1', '/account', '/admin', '/admin/users/admin-1', '/admin/users/new', '/admin?tab=policies', '/admin?tab=sportarr', '/admin?tab=notifications']) await inspect(path);
     await page.goto('/');
     await expect(page.locator('#main')).toBeVisible();
     await page.keyboard.press('Tab');
