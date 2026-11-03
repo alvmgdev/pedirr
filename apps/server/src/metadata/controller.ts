@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Param, Query, Req } from '@nestjs/common';
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsDateString, IsInt, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 import { AuthRequest, AuthService } from '../auth';
 import { Infrastructure } from '../infrastructure';
 import { MetadataProvider } from './provider';
@@ -18,6 +18,7 @@ export class CatalogIdentifier {
   @ApiProperty() @Matches(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/) id!: string;
 }
 export class EventsQuery extends CatalogPage {
+  @ApiProperty({ required: false, enum: ['asc', 'desc'], default: 'asc' }) @ValidateIf((_, v) => v !== undefined) @IsIn(['asc', 'desc']) order?: 'asc' | 'desc';
   @ApiProperty({ required: false }) @ValidateIf((_, v) => v !== undefined) @Matches(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/) league?: string;
   @ApiProperty({ required: false }) @ValidateIf((_, v) => v !== undefined) @Matches(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/) season?: string;
   @ApiProperty({ required: false }) @ValidateIf((_, v) => v !== undefined) @Matches(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/) team?: string;

@@ -63,9 +63,10 @@ test('event filters preserve explicit season and provider identifiers', async ()
     assert.equal(url.searchParams.get('season'), 'sn-123');
     assert.equal(url.searchParams.get('page'), '2');
     assert.equal(url.searchParams.get('page_size'), '50');
+    assert.equal(url.searchParams.get('order'), 'desc');
     return Response.json({ items: [{ id: 'event-uuid', shortId: 'ev-123', tsdbId: '987', name: 'Final' }], total: 51, page: 2, pageSize: 50, totalPages: 2 });
   };
-  const page = await provider.events({ league: 'league-uuid', season: 'sn-123', page: 2 });
+  const page = await provider.events({ league: 'league-uuid', season: 'sn-123', page: 2, order: 'desc' });
   assert.equal(page.items[0].tsdbId, '987');
   assert.equal(page.items[0].shortId, 'ev-123');
 });

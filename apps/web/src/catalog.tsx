@@ -112,23 +112,16 @@ export function Discover({ user }: { user: User }) {
           ) : result.error && !items.length ? (
             <ErrorMessage error={result.error} />
           ) : (
-            <div className="fixtures">
-              {items.map((item) => (
-                <Fixture
-                  headingLevel={2}
-                  key={(item.entityType ?? mode) + item.id}
-                  item={item}
-                  kind={
-                    item.entityType ?? (mode === "leagues" ? "league" : "event")
-                  }
-                  timezone={user.timezone}
-                />
-              ))}
-              {!items.length && (
-                <p className="empty">
-                  {t(schedule ? (upcoming.hasNextPage ? "emptySchedulePage" : "emptySchedule") : "empty")}
-                </p>
-              )}
+            <div className="catalog-shelves">
+              {(query ? ["league", "team", "event"] : [mode === "leagues" ? "league" : "event"]).map(kind => {
+                const group = query ? items.filter(item => item.entityType === kind) : items;
+                if (!group.length) return null;
+                return <section key={kind} className="catalog-shelf">
+                  {query && <h2>{t(kind === "league" ? "leagues" : kind === "team" ? "teams" : "events")} <span className="result-count">{group.length}</span></h2>}
+                  <div className="fixtures">{group.map(item => <Fixture headingLevel={query ? 3 : 2} key={kind + item.id} item={item} kind={kind} timezone={user.timezone} />)}</div>
+                </section>;
+              })}
+              {!items.length && <p className="empty">{t(schedule ? (upcoming.hasNextPage ? "emptySchedulePage" : "emptySchedule") : "empty")}</p>}
             </div>
           )}
           {schedule && upcoming.hasNextPage && !upcoming.isPending && (
@@ -179,6 +172,7 @@ export function CatalogDetail({ user }: { user: User }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [order, setOrder] = useState("desc");
   const valid = ["league", "season", "event", "team"].includes(kind);
   const detail = useQuery({
     queryKey: ["detail", kind, id],
@@ -188,7 +182,7 @@ export function CatalogDetail({ user }: { user: User }) {
   const listPath =
     kind === "league"
       ? `/catalog/leagues/${encodeURIComponent(id)}/seasons?page=${page}`
-      : `/catalog/events?${kind === "season" ? "season" : "team"}=${encodeURIComponent(id)}&page=${page}`;
+      : `/catalog/events?${kind === "season" ? "season" : "team"}=${encodeURIComponent(id)}&page=${page}&order=${order}`;
   const list = useQuery({
     queryKey: ["detail-list", listPath],
     queryFn: () => api<Page>(listPath),
@@ -331,7 +325,10 @@ export function CatalogDetail({ user }: { user: User }) {
         </section>
       ) : (
         <section>
-          <h2>{t(kind === "league" ? "seasons" : "events")}</h2>
+          <div className="section-actions">
+            <h2>{t(kind === "league" ? "seasons" : "events")}</h2>
+            {kind !== "league" && <label className="sort-control">{t("eventOrder")}<select value={order} onChange={event => { setOrder(event.target.value); setPage(1); }}><option value="desc">{t("newestFirst")}</option><option value="asc">{t("oldestFirst")}</option></select></label>}
+          </div>
           {kind === "season" && <p className="muted">{t("openSeason")}</p>}
           {list.isPending ? (
             <Loading />
