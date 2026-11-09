@@ -229,6 +229,7 @@ const responses: Record<string, Schema> = {
     worker: enumeration("ok"),
   }),
   "GET auth/csrf": ref("CsrfToken"),
+  "GET auth/config": object({ registrationEnabled: boolean }),
   "POST auth/register": ref("PublicUser"),
   "POST auth/login": ref("PublicUser"),
   "POST auth/logout": ref("Ok"),
@@ -298,7 +299,8 @@ export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAP
         throw new Error(`Missing OpenAPI response contract: ${method} ${path}`);
       }
       const publicRoute =
-        route.startsWith("health/") || ["auth/csrf", "auth/login", "auth/register"].includes(route);
+        route.startsWith("health/") ||
+        ["auth/csrf", "auth/config", "auth/login", "auth/register"].includes(route);
       operation.security = publicRoute ? [] : [{ Session: [] }];
       const code = method === "post" ? "201" : "200";
       operation.responses[code] = {

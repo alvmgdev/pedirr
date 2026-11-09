@@ -39,7 +39,9 @@ for (const locale of ["en", "es"]) {
         await route.fulfill({ status: signedIn ? 200 : 401, json: signedIn ? user : {} });
         return;
       }
-      if (path.endsWith("/catalog/upcoming")) {
+      if (path.endsWith("/auth/config")) {
+        body = { registrationEnabled: false };
+      } else if (path.endsWith("/catalog/upcoming")) {
         body = { items: [event], page: 1, hasMore: false };
       } else if (path.endsWith("/catalog/popular")) {
         body = { items: [] };

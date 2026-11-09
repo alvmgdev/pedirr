@@ -11,6 +11,7 @@ const { AuthController, AuthService, SecurityGuard, passwordOptions } = require(
 const { UsersController, UsersService } = require("../dist/users");
 const { Infrastructure } = require("../dist/infrastructure");
 let app, base, user;
+let registrationSetting = null;
 const sessions = new Map();
 const counters = new Map();
 const infrastructure = {
@@ -22,7 +23,11 @@ const infrastructure = {
     },
   },
   db: {
-    user: { findUnique: async () => user, findUniqueOrThrow: async () => publicUser() },
+    user: {
+      findUnique: async () => user,
+      findUniqueOrThrow: async () => publicUser(),
+      create: async ({ data }) => ({ ...publicUser(), id: "user-2", email: data.email }),
+    },
     session: {
       create: async ({ data }) => sessions.set(data.tokenHash, { ...data, user: publicUser() }),
       findUnique: async ({ where }) => {
@@ -31,7 +36,7 @@ const infrastructure = {
       },
       deleteMany: async ({ where }) => sessions.delete(where.tokenHash),
     },
-    setting: { findUnique: async () => null },
+    setting: { findUnique: async () => registrationSetting },
   },
 };
 function publicUser() {
@@ -132,6 +137,33 @@ test("registration stays closed until explicitly enabled", async () => {
     body: JSON.stringify({ email: "new@example.com", password: "a-strong-test-password" }),
   });
   assert.equal(response.status, 403);
+});
+test("public configuration reports closed registration by default", async () => {
+  const response = await fetch(base + "/auth/config");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { registrationEnabled: false });
+});
+test("enabled registration is reported publicly and accepts new accounts", async () => {
+  registrationSetting = { key: "registration", value: true };
+  try {
+    assert.deepEqual(await (await fetch(base + "/auth/config")).json(), {
+      registrationEnabled: true,
+    });
+    const response = await fetch(base + "/auth/register", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: process.env.APP_ORIGIN,
+        "x-csrf-token": await csrf(),
+      },
+      body: JSON.stringify({ email: "New@Example.com", password: "a-strong-test-password" }),
+    });
+    assert.equal(response.status, 201);
+    assert.equal((await response.json()).email, "new@example.com");
+  } finally {
+    registrationSetting = null;
+  }
 });
 test("shared login rate limiter rejects excessive attempts", async () => {
   let response;

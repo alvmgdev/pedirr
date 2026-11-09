@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { api, client, setSession, type User } from "./api";
+import { api, ApiError, client, setSession, type User } from "./api";
 import { ErrorMessage } from "./ui";
 export function Language({ user }: { user?: User | null }) {
   const { t, i18n } = useTranslation();
@@ -32,7 +32,14 @@ export function Language({ user }: { user?: User | null }) {
 }
 export function Login() {
   const { t, i18n } = useTranslation();
-  const [register, setRegister] = useState(false);
+  const [registerSelected, setRegister] = useState(false);
+  // The server enforces the policy; this only hides an option that would be refused.
+  const config = useQuery({
+    queryKey: ["auth-config"],
+    queryFn: () => api<{ registrationEnabled: boolean }>("/auth/config"),
+  });
+  const registrationOpen = config.data?.registrationEnabled === true;
+  const register = registerSelected && registrationOpen;
   const action = useMutation({
     mutationFn: async (body: { email: string; password: string }) => {
       if (register) {
@@ -46,6 +53,12 @@ export function Login() {
     },
     onSuccess: (user) => {
       setSession(user);
+    },
+    onError: (error) => {
+      // An administrator may have closed registration after this page loaded.
+      if (error instanceof ApiError && error.code === "REGISTRATION_CLOSED") {
+        void config.refetch();
+      }
     },
   });
   return (
@@ -91,25 +104,23 @@ export function Login() {
                 maxLength={128}
               />
             </label>
-            {register && (
-              <p className="muted">
-                {t("passwordHint")} {t("registerHelp")}
-              </p>
-            )}
+            {register && <p className="muted">{t("passwordHint")}</p>}
             <ErrorMessage error={action.error} />
             <button disabled={action.isPending}>
               {t(action.isPending ? "loading" : register ? "register" : "login")}
             </button>
           </form>
-          <button
-            className="text-button"
-            onClick={() => {
-              setRegister(!register);
-              action.reset();
-            }}
-          >
-            {t(register ? "login" : "register")}
-          </button>
+          {registrationOpen && (
+            <button
+              className="text-button"
+              onClick={() => {
+                setRegister(!register);
+                action.reset();
+              }}
+            >
+              {t(register ? "login" : "register")}
+            </button>
+          )}
         </div>
       </div>
     </main>

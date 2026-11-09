@@ -101,17 +101,39 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
     fullPage: true,
   });
 });
-test("closed registration is explained in Spanish", async ({ page }) => {
+test("closed registration hides the account creation option", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("pedirr.locale", "es"));
   await page.route("**/api/v1/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     await route.fulfill(
-      path.endsWith("/auth/csrf")
-        ? { json: { token: "fixture-token" } }
-        : path.endsWith("/auth/register")
-          ? { status: 403, json: { code: "REGISTRATION_CLOSED" } }
-          : { status: 401, json: {} },
+      path.endsWith("/auth/config")
+        ? { json: { registrationEnabled: false } }
+        : { status: 401, json: {} },
     );
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Iniciar sesión", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear cuenta", exact: true })).toHaveCount(0);
+});
+
+test("registration closed after the page loaded is explained in Spanish", async ({ page }) => {
+  let open = true;
+  let attempts = 0;
+  await page.addInitScript(() => localStorage.setItem("pedirr.locale", "es"));
+  await page.route("**/api/v1/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/config")) {
+      return route.fulfill({ json: { registrationEnabled: open } });
+    }
+    if (path.endsWith("/auth/csrf")) {
+      return route.fulfill({ json: { token: "fixture-token" } });
+    }
+    if (path.endsWith("/auth/register")) {
+      attempts += 1;
+      open = false;
+      return route.fulfill({ status: 403, json: { code: "REGISTRATION_CLOSED" } });
+    }
+    return route.fulfill({ status: 401, json: {} });
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
@@ -119,6 +141,9 @@ test("closed registration is explained in Spanish", async ({ page }) => {
   await page.getByLabel("Contraseña", { exact: true }).fill("fixture-long-password");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("El registro está deshabilitado");
+  expect(attempts).toBe(1);
+  await expect(page.getByRole("button", { name: "Crear cuenta", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
 });
 
 test("already available catalog content has no request action", async ({ page }) => {

@@ -105,6 +105,13 @@ export class AuthService {
       Buffer.from(this.sign(nonce, sessionHash), "hex"),
     );
   }
+  // Registration stays closed until an administrator enables it in the access policy.
+  async registrationEnabled(): Promise<boolean> {
+    const setting = await this.infrastructure.db.setting.findUnique({
+      where: { key: "registration" },
+    });
+    return setting?.value === true;
+  }
   async rate(key: string, limit: number, seconds: number) {
     const value = await this.infrastructure.redis.eval(
       `local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n`,
@@ -216,13 +223,16 @@ export class AuthController {
     return { token: this.auth.csrf(req.sessionHash) };
   }
   @Public()
+  @Get("auth/config")
+  async config(@Res({ passthrough: true }) res: Response) {
+    res.setHeader("Cache-Control", "no-store");
+    return { registrationEnabled: await this.auth.registrationEnabled() };
+  }
+  @Public()
   @Post("auth/register")
   async register(@Body() input: Credentials, @Req() req: AuthRequest) {
     await this.auth.rate(`register:${req.ip}`, 5, 3600);
-    const enabled = await this.auth.infrastructure.db.setting.findUnique({
-      where: { key: "registration" },
-    });
-    if (enabled?.value !== true) {
+    if (!(await this.auth.registrationEnabled())) {
       throw new ForbiddenException({
         code: "REGISTRATION_CLOSED",
         message: "Registration is disabled",
