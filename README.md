@@ -21,7 +21,7 @@ Copy `.env.example` to `.env`, replace the database password with a long random 
 
 Use a TLS reverse proxy before exposing the finished application publicly. Persistent data lives in the Compose volumes. Do not use `docker compose down -v` unless you intend to delete it.
 
-See [API research](docs/api-research.md), [architecture](docs/architecture.md), and [implementation status](docs/progress.md).
+See [API research](docs/api-research.md), [architecture](docs/architecture.md), [implementation status](docs/progress.md), and the [roadmap](ROADMAP.md).
 
 ## Initial administrator
 
