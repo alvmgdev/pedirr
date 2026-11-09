@@ -58,3 +58,4 @@ Known validation limits: no real Sportarr installation or external email/Discord
 ## Maintenance
 
 - 2026-11-09: Source is formatted with Prettier (`npm run format`, checked in CI with `npm run format:check`); the reformat commit is listed in `.git-blame-ignore-revs`. The app header is one banner landmark, and the web client reuses the session-bound CSRF token across writes, refreshing it once on `CSRF_INVALID`. Verified with 57 server tests, 16 browser tests, type checks and production builds; the PostgreSQL integration programs were not rerun for this formatting-only change.
+- 2026-11-09: ESLint (`npm run lint`) runs in CI with the recommended JavaScript and typescript-eslint rules, React hooks rules, `eqeqeq` and `curly`. The brace autofix commit is also listed in `.git-blame-ignore-revs`.
