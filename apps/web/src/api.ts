@@ -20,15 +20,43 @@ export class ApiError extends Error {
     super(code);
   }
 }
-export async function api<T>(
-  path: string,
-  method = "GET",
-  body?: unknown,
-): Promise<T> {
+// CSRF tokens are bound to the current session, so one token serves every write
+// until the session changes (login, logout, password change or expiry).
+let csrfToken: Promise<string> | null = null;
+const sessionChangingPaths = ["/auth/login", "/auth/logout", "/auth/register", "/me/password"];
+
+export function resetCsrfToken() {
+  csrfToken = null;
+}
+
+function currentCsrfToken(): Promise<string> {
+  csrfToken ??= api<{ token: string }>("/auth/csrf").then(
+    (result) => result.token,
+    (error: unknown) => {
+      csrfToken = null;
+      throw error;
+    },
+  );
+  return csrfToken;
+}
+
+export async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
+  try {
+    return await send<T>(path, method, body);
+  } catch (error) {
+    // A cached token goes stale when the server revokes the session; refresh it once.
+    if (method === "GET" || !(error instanceof ApiError) || error.code !== "CSRF_INVALID") throw error;
+    resetCsrfToken();
+    return send<T>(path, method, body);
+  } finally {
+    if (sessionChangingPaths.includes(path)) resetCsrfToken();
+  }
+}
+
+async function send<T>(path: string, method: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (method !== "GET") {
-    const token = await api<{ token: string }>("/auth/csrf");
-    headers["x-csrf-token"] = token.token;
+    headers["x-csrf-token"] = await currentCsrfToken();
     headers["content-type"] = "application/json";
   }
   let response: Response;
@@ -126,6 +154,7 @@ export type RequestRecord = {
 };
 
 export function setSession(user: User | null) {
+  resetCsrfToken();
   void client.cancelQueries();
   client.removeQueries({ predicate: (query) => query.queryKey[0] !== "me" });
   client.setQueryData(["me"], user);
