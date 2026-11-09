@@ -73,7 +73,8 @@ function App() {
       <a href="#main" className="skip-link">
         {t("skipContent")}
       </a>
-      <aside className="app-nav" aria-label={t("mainNavigation")}>
+      <header className="app-header">
+      <div className="app-nav">
         <NavLink to="/" aria-label="Pedirr">
           <LinkBrand />
         </NavLink>
@@ -92,12 +93,13 @@ function App() {
           </button>
           <ErrorMessage error={logout.error} />
         </div>
-      </aside>
+      </div>
+      <div className="topbar">
+        <span>{t("scheduleNote", { timezone: user.timezone })}</span>
+        <Language user={user} />
+      </div>
+      </header>
       <div className="app-content">
-        <header className="topbar">
-          <span>{t("scheduleNote", { timezone: user.timezone })}</span>
-          <Language user={user} />
-        </header>
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Discover user={user} />} />
