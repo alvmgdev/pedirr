@@ -34,7 +34,7 @@ for (const locale of ["en", "es"]) {
     await page.addInitScript((value) => localStorage.setItem("pedirr.locale", value), locale);
     await page.route("**/api/v1/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
-      let body: unknown = {};
+      let body: unknown;
       if (path.endsWith("/auth/me")) {
         await route.fulfill({ status: signedIn ? 200 : 401, json: signedIn ? user : {} });
         return;
