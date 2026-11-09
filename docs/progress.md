@@ -5,7 +5,7 @@
 - Upstream research and architecture decisions recorded.
 - Node workspace, NestJS API, OpenAPI, PostgreSQL schema and initial migration, Redis worker foundation, Docker Compose.
 - Argon2id authentication, revocable sessions, session-bound CSRF tokens and Origin validation, distributed login/write rate limits, profile and password endpoints, protected administrator bootstrap.
-- Fifty-four tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
+- Server unit tests cover authentication, administration, policy precedence, metadata contracts, shared cache/cooldown, pagination and upcoming event filtering.
 - PostgreSQL integration test verifies concurrent administrator changes in an isolated schema and session revocation.
 - Administrator user creation, paginated listing, role/active status changes, registration and auto-approval policies, last-administrator protection and session revocation.
 - Verified foundation container readiness against PostgreSQL, Redis, and worker heartbeat.
@@ -54,3 +54,7 @@ Implementation and required verification are complete; see [the requirement-by-r
 A complete season is covered through HTTP approval, BullMQ and the native Sportarr HTTP adapter: all metadata pages are read, cancelled/inactive events are excluded, open seasons remain incomplete, closed imported seasons become available, and cross-season metadata is rejected before remote writes. Existing monitoring settings remain intact.
 
 Known validation limits: no real Sportarr installation or external email/Discord destination has been exercised. Native writes remain gated to the source-reviewed Sportarr 4.1 release line starting at 4.1.11. Upstream metadata quotas, update cadence and broadcast completeness are not guaranteed. No production-load benchmark or full manual accessibility certification is claimed.
+
+## Maintenance
+
+- 2026-11-09: Source is formatted with Prettier (`npm run format`, checked in CI with `npm run format:check`); the reformat commit is listed in `.git-blame-ignore-revs`. The app header is one banner landmark, and the web client reuses the session-bound CSRF token across writes, refreshing it once on `CSRF_INVALID`. Verified with 57 server tests, 16 browser tests, type checks and production builds; the PostgreSQL integration programs were not rerun for this formatting-only change.

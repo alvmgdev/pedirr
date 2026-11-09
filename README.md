@@ -4,7 +4,7 @@ Sports content requests for Sportarr. Includes a bilingual web interface, authen
 
 ## Development
 
-Requires Node.js 22 and Docker Compose. Run `npm ci`, `npm run db:generate`, `npm run check`, `npm run build`, and `npm test`.
+Requires Node.js 22 and Docker Compose. Run `npm ci`, `npm run db:generate`, `npm run check`, `npm run build`, and `npm test`. Format code with `npm run format` (Prettier and `prisma format`); CI rejects unformatted files via `npm run format:check`. Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once to hide the bulk reformat from `git blame`.
 
 For source development, export `DATABASE_URL` and `REDIS_URL` pointing to development services reachable from your shell, plus `APP_ORIGIN`, `SESSION_SECRET`, and `SETTINGS_ENCRYPTION_KEY` as described below. Shell commands do not automatically load the Compose `.env` file. The default Compose database and Redis ports are private; use Docker for the standard installation, or provide separate reachable development services.
 
