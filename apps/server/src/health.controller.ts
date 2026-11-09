@@ -22,8 +22,9 @@ export class HealthController {
         this.infrastructure.redis.ping(),
       ]);
       const heartbeat = await this.infrastructure.redis.get("pedirr:worker:heartbeat");
-      if (!heartbeat || Date.now() - Number(heartbeat) > 60000)
+      if (!heartbeat || Date.now() - Number(heartbeat) > 60000) {
         throw new Error("Worker unavailable");
+      }
       return { status: "ok", database: "ok", queue: "ok", worker: "ok" };
     } catch {
       throw new ServiceUnavailableException({ status: "unavailable" });

@@ -74,20 +74,22 @@ export class SportarrSettings {
     const url = managerUrl(input.url);
     const saved = await this.stored();
     const apiKey = input.apiKey ?? (saved?.url === url ? this.unlock(saved) : undefined);
-    if (!apiKey || /[\r\n]/.test(apiKey))
+    if (!apiKey || /[\r\n]/.test(apiKey)) {
       throw new BadRequestException({
         code: "API_KEY_REQUIRED",
         message: "Provide an API key for this Sportarr URL",
       });
+    }
     return { url, apiKey };
   }
   async configuration(): Promise<ManagerConfig> {
     const config = await this.stored();
-    if (!config)
+    if (!config) {
       throw new ServiceUnavailableException({
         code: "SPORTARR_NOT_CONFIGURED",
         message: "Configure Sportarr before processing requests",
       });
+    }
     return {
       url: config.url,
       rootFolderId: config.rootFolderId,
@@ -104,11 +106,12 @@ export class SportarrSettings {
     if (
       !connection.rootFolders.some((root) => root.id === input.rootFolderId) ||
       !connection.qualityProfiles.some((profile) => profile.id === input.qualityProfileId)
-    )
+    ) {
       throw new BadRequestException({
         code: "INVALID_MANAGER_DEFAULTS",
         message: "Select an existing root folder and quality profile",
       });
+    }
     const value = {
       url: credentials.url,
       rootFolderId: input.rootFolderId,

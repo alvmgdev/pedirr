@@ -35,15 +35,21 @@ async function main() {
     const values = new Map();
     const redis = {
       set: async (key, value, _, __, nx) => {
-        if (nx && values.has(key)) return null;
+        if (nx && values.has(key)) {
+          return null;
+        }
         values.set(key, value);
         return "OK";
       },
       get: async (key) => values.get(key),
       expire: async () => 1,
       eval: async (script, _, key, owner) => {
-        if (values.get(key) !== owner) return 0;
-        if (script.includes("'DEL'")) values.delete(key);
+        if (values.get(key) !== owner) {
+          return 0;
+        }
+        if (script.includes("'DEL'")) {
+          values.delete(key);
+        }
         return 1;
       },
     };

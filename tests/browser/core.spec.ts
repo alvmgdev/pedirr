@@ -38,25 +38,31 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
     if (path.endsWith("/auth/me")) {
       body = signedIn ? user : {};
       status = signedIn ? 200 : 401;
-    } else if (path.endsWith("/auth/csrf")) body = { token: "fixture-token" };
-    else if (path.endsWith("/auth/login")) {
+    } else if (path.endsWith("/auth/csrf")) {
+      body = { token: "fixture-token" };
+    } else if (path.endsWith("/auth/login")) {
       signedIn = true;
       body = user;
     } else if (path.endsWith("/me")) {
       Object.assign(user, route.request().postDataJSON());
       body = user;
-    } else if (path.endsWith("/catalog/upcoming"))
+    } else if (path.endsWith("/catalog/upcoming")) {
       body = { items: [event], page: 1, hasMore: false };
-    else if (path.endsWith("/catalog/popular")) body = { items: [] };
-    else if (path.endsWith("/catalog/events/event-1")) body = event;
-    else if (path.endsWith("/requests/lookup")) body = { state: "missing" };
-    else if (path.endsWith("/requests") && route.request().method() === "POST") {
+    } else if (path.endsWith("/catalog/popular")) {
+      body = { items: [] };
+    } else if (path.endsWith("/catalog/events/event-1")) {
+      body = event;
+    } else if (path.endsWith("/requests/lookup")) {
+      body = { state: "missing" };
+    } else if (path.endsWith("/requests") && route.request().method() === "POST") {
       expect(route.request().postDataJSON()).toEqual({
         kind: "event",
         identifier: "event-1",
       });
       body = { created: true, request };
-    } else if (path.endsWith("/requests/request-1")) body = request;
+    } else if (path.endsWith("/requests/request-1")) {
+      body = request;
+    }
     await route.fulfill({ status, json: body });
   });
   await page.goto("/");
@@ -120,8 +126,10 @@ test("already available catalog content has no request action", async ({ page })
   await page.route("**/api/v1/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     let body: unknown = {};
-    if (route.request().method() !== "GET") writes++;
-    if (path.endsWith("/auth/me"))
+    if (route.request().method() !== "GET") {
+      writes++;
+    }
+    if (path.endsWith("/auth/me")) {
       body = {
         id: "user",
         email: "viewer@example.invalid",
@@ -129,9 +137,11 @@ test("already available catalog content has no request action", async ({ page })
         locale: "en",
         timezone: "UTC",
       };
-    else if (path.endsWith("/requests/lookup")) body = { state: "available" };
-    else if (path.endsWith("/catalog/events/event-1"))
+    } else if (path.endsWith("/requests/lookup")) {
+      body = { state: "available" };
+    } else if (path.endsWith("/catalog/events/event-1")) {
       body = { id: "event-1", name: "Final", leagueId: "league-1", leagueName: "League" };
+    }
     await route.fulfill({ json: body });
   });
   await page.goto("/catalog/event/event-1");

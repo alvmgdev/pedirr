@@ -22,8 +22,9 @@ export function errorCode(error: unknown): string {
       "code" in body &&
       typeof body.code === "string" &&
       /^[A-Z_]+$/.test(body.code)
-    )
+    ) {
       return body.code;
+    }
   }
   return "INTEGRATION_FAILED";
 }
@@ -34,7 +35,9 @@ export function aggregateStatus(
   events: { available: boolean; downloading: boolean }[],
   closed: boolean,
 ): RequestStatus {
-  if (closed && events.length > 0 && events.every((event) => event.available)) return "AVAILABLE";
+  if (closed && events.length > 0 && events.every((event) => event.available)) {
+    return "AVAILABLE";
+  }
   return events.some((event) => event.downloading) ? "DOWNLOADING" : "APPROVED";
 }
 export class Fulfillment {
@@ -48,36 +51,47 @@ export class Fulfillment {
   ) {}
   private async plan(scopeValue: Prisma.JsonValue) {
     const scope = scopeValue as Record<string, unknown>;
-    if (!scope || scope.provider !== "hub" || !["event", "season"].includes(String(scope.kind)))
+    if (!scope || scope.provider !== "hub" || !["event", "season"].includes(String(scope.kind))) {
       throw conflict();
+    }
     const savedLeague = parseItem(scope.league);
     const league = await this.metadata.league(savedLeague.id);
-    if (league.id !== savedLeague.id || !league.shortId || typeof league.sportName !== "string")
+    if (league.id !== savedLeague.id || !league.shortId || typeof league.sportName !== "string") {
       throw conflict();
+    }
     if (scope.kind === "event") {
       const saved = parseItem(scope.event);
       const event = await this.metadata.event(saved.id);
-      if (event.id !== saved.id || event.leagueId !== league.id) throw conflict();
+      if (event.id !== saved.id || event.leagueId !== league.id) {
+        throw conflict();
+      }
       return { league, events: [event], closed: true };
     }
     const savedSeason = parseItem(scope.season);
     const season = await this.metadata.season(savedSeason.id);
-    if (season.id !== savedSeason.id || season.leagueId !== league.id) throw conflict();
+    if (season.id !== savedSeason.id || season.leagueId !== league.id) {
+      throw conflict();
+    }
     const events: MetadataItem[] = [];
     const seen = new Set<string>();
     let expectedTotal: number | undefined;
     for (let page = 1; page <= 10000; page++) {
       const result = await this.metadata.events({ league: league.id, season: season.id, page });
       expectedTotal ??= result.total;
-      if (result.total !== expectedTotal || result.page !== page) throw conflict();
+      if (result.total !== expectedTotal || result.page !== page) {
+        throw conflict();
+      }
       for (const item of result.items) {
-        if (item.leagueId !== league.id || item.seasonId !== season.id || seen.has(item.id))
+        if (item.leagueId !== league.id || item.seasonId !== season.id || seen.has(item.id)) {
           throw conflict();
+        }
         seen.add(item.id);
         events.push(item);
       }
       if (page >= result.totalPages) {
-        if (events.length !== expectedTotal) throw conflict();
+        if (events.length !== expectedTotal) {
+          throw conflict();
+        }
         const ended =
           typeof season.endDate === "string" &&
           Date.parse(season.endDate + "T23:59:59Z") < Date.now();
@@ -87,14 +101,18 @@ export class Fulfillment {
           events.every((event) => event.status === "completed" || event.status === "cancelled");
         return { league, events, closed };
       }
-      if (!result.items.length) throw conflict();
+      if (!result.items.length) {
+        throw conflict();
+      }
     }
     throw conflict();
   }
   async run(requestId: string) {
     const { db, redis } = this.infrastructure;
     const request = await db.request.findUnique({ where: { id: requestId } });
-    if (!request || !["APPROVED", "DOWNLOADING", "AVAILABLE"].includes(request.status)) return;
+    if (!request || !["APPROVED", "DOWNLOADING", "AVAILABLE"].includes(request.status)) {
+      return;
+    }
     let lock: string | undefined;
     const owner = randomUUID();
     let renewal: NodeJS.Timeout | undefined;
@@ -103,10 +121,13 @@ export class Fulfillment {
       const config = await this.settings.configuration();
       const managerKey = createHash("sha256").update(config.url).digest("hex");
       lock = `pedirr:manager:${managerKey}:lock`;
-      if (!(await redis.set(lock, owner, "EX", 45, "NX")))
+      if (!(await redis.set(lock, owner, "EX", 45, "NX"))) {
         throw new HttpException({ code: "MANAGER_BUSY", retryAfterSeconds: 45 }, 503);
+      }
       const check = async () => {
-        if (lost || (await redis.get(lock!)) !== owner) throw new Error("Manager lease lost");
+        if (lost || (await redis.get(lock!)) !== owner) {
+          throw new Error("Manager lease lost");
+        }
       };
       renewal = setInterval(() => {
         void redis
@@ -117,7 +138,9 @@ export class Fulfillment {
             owner,
           )
           .then((result) => {
-            if (!result) lost = true;
+            if (!result) {
+              lost = true;
+            }
           })
           .catch(() => {
             lost = true;
@@ -128,14 +151,16 @@ export class Fulfillment {
         (event) => event.isActive !== false && event.status !== "cancelled",
       );
       // Validate every identity before allowing any remote write.
-      for (const event of events)
+      for (const event of events) {
         if (
           !event.shortId ||
           !/^ev-\d+$/.test(event.shortId) ||
           !event.scheduledStart ||
           !Number.isFinite(Date.parse(event.scheduledStart))
-        )
+        ) {
           throw conflict();
+        }
+      }
       const manager = this.managerFactory(config);
       await manager.assertWriteCompatibility();
       await check();
@@ -226,7 +251,9 @@ export class Fulfillment {
           where: { id: requestId, version: request.version },
           data: { status, integrationState: "synced", lastError: null, version: { increment: 1 } },
         });
-        if (!updated.count) throw new Error("Request changed during synchronization");
+        if (!updated.count) {
+          throw new Error("Request changed during synchronization");
+        }
         if (status !== request.status) {
           await tx.requestHistory.create({
             data: { requestId, action: "synchronized", details: { status } },
@@ -243,14 +270,17 @@ export class Fulfillment {
       });
       throw error;
     } finally {
-      if (renewal) clearInterval(renewal);
-      if (lock)
+      if (renewal) {
+        clearInterval(renewal);
+      }
+      if (lock) {
         await redis.eval(
           `if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end; return 0`,
           1,
           lock,
           owner,
         );
+      }
     }
   }
 }

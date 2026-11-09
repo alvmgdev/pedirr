@@ -87,25 +87,28 @@ async function main() {
       assert.equal(req.headers["x-api-key"], "fixture-key");
       const path = new URL(req.url, "http://localhost").pathname;
       let result;
-      if (req.method === "GET" && path === "/api/system/status")
+      if (req.method === "GET" && path === "/api/system/status") {
         result = { appName: "Sportarr", version: "4.1.11" };
-      else if (req.method === "GET" && path === "/api/rootfolder")
+      } else if (req.method === "GET" && path === "/api/rootfolder") {
         result = [{ id: 1, path: "/sports" }];
-      else if (req.method === "GET" && path === "/api/qualityprofile")
+      } else if (req.method === "GET" && path === "/api/qualityprofile") {
         result = [{ id: 2, name: "Fixture profile" }];
-      else if (req.method === "GET" && path === "/api/leagues") result = [managerLeague];
-      else if (req.method === "GET" && path === "/api/leagues/8/events") {
+      } else if (req.method === "GET" && path === "/api/leagues") {
+        result = [managerLeague];
+      } else if (req.method === "GET" && path === "/api/leagues/8/events") {
         const records = [...managerEvents.values()].map((item) => ({
           ...item,
           hasFile: imported,
           files: imported ? [{ exists: true }] : [],
         }));
         result = { records, page: 1, totalPages: 1, totalRecords: records.length };
-      } else if (req.method === "GET" && path === "/api/queue")
+      } else if (req.method === "GET" && path === "/api/queue") {
         result = downloading ? [{ eventId: 9, status: 1, progress: 50 }] : [];
-      else if (req.method === "POST" && path === "/api/events") {
+      } else if (req.method === "POST" && path === "/api/events") {
         let body = "";
-        for await (const chunk of req) body += chunk;
+        for await (const chunk of req) {
+          body += chunk;
+        }
         const input = JSON.parse(body);
         writes.push(input);
         assert.ok(["ev-100", "ev-101", "ev-102"].includes(input.externalId));
@@ -115,12 +118,14 @@ async function main() {
         const id = 9 + managerEvents.size;
         managerEvents.set(id, { ...input, id, hasFile: false, files: [] });
         result = { id };
-      } else if (req.method === "GET" && /^\/api\/events\/\d+$/.test(path))
+      } else if (req.method === "GET" && /^\/api\/events\/\d+$/.test(path)) {
         result = managerEvents.get(Number(path.split("/").at(-1)));
-      else if (req.method === "POST" && /^\/api\/event\/\d+\/automatic-search$/.test(path)) {
+      } else if (req.method === "POST" && /^\/api\/event\/\d+\/automatic-search$/.test(path)) {
         searches++;
         result = {};
-      } else throw new Error(`Unexpected fixture operation: ${req.method} ${path}`);
+      } else {
+        throw new Error(`Unexpected fixture operation: ${req.method} ${path}`);
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(result));
     } catch (error) {
@@ -152,7 +157,9 @@ async function main() {
         const items = seasonEvents
           .slice((filters.page - 1) * 2, filters.page * 2)
           .map((item) => ({ ...item }));
-        if (invalidSeasonPage && filters.page === 2) items[0].seasonId = "another-season";
+        if (invalidSeasonPage && filters.page === 2) {
+          items[0].seasonId = "another-season";
+        }
         return { items, total: 4, page: filters.page, pageSize: 2, totalPages: 2 };
       },
     };
@@ -187,7 +194,9 @@ async function main() {
     for (const [path, item] of Object.entries(specification.paths)) {
       for (const method of ["get", "post", "put", "patch"]) {
         const operation = item[method];
-        if (!operation) continue;
+        if (!operation) {
+          continue;
+        }
         const success = operation.responses[method === "post" ? "201" : "200"];
         const validate = ajv.compile({
           components: specification.components,
@@ -198,8 +207,9 @@ async function main() {
           pattern: new RegExp("^" + path.replace(/\{[^}]+\}/g, "[^/]+") + "$"),
           validate,
         });
-        if (path.startsWith("/api/v1/admin/"))
+        if (path.startsWith("/api/v1/admin/")) {
           assert.deepEqual(operation.security, [{ Session: [] }]);
+        }
       }
     }
     assert.equal(specification.components.securitySchemes.Session.name, "pedirr_session");
@@ -215,7 +225,9 @@ async function main() {
         assert.equal(response.status, 200);
         headers["x-csrf-token"] = (await response.json()).token;
       }
-      if (body !== undefined) headers["Content-Type"] = "application/json";
+      if (body !== undefined) {
+        headers["Content-Type"] = "application/json";
+      }
       const response = await fetch(base + "/api/v1/" + path, {
         method,
         headers,
@@ -247,8 +259,9 @@ async function main() {
     worker.on("failed", (_job, error) => failed.push(error));
     async function consumeFailure() {
       const deadline = Date.now() + 5000;
-      while (!failed.length && Date.now() < deadline)
+      while (!failed.length && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 10));
+      }
       assert.equal(failed.length, 1);
       failed.length = 0;
     }
@@ -260,7 +273,9 @@ async function main() {
     async function drain() {
       const deadline = Date.now() + 15000;
       while ((await queue.getWaitingCount()) || (await queue.getActiveCount())) {
-        if (Date.now() > deadline) throw new Error("Queue did not drain");
+        if (Date.now() > deadline) {
+          throw new Error("Queue did not drain");
+        }
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
       assert.deepEqual(failed, []);
@@ -414,7 +429,9 @@ async function main() {
     const outbox = await db.outboxEvent.findMany({
       where: { type: { in: ["request.created", "request.status"] } },
     });
-    for (const record of outbox) await run("notify", { eventId: record.id });
+    for (const record of outbox) {
+      await run("notify", { eventId: record.id });
+    }
     await run("dispatch");
     await drain();
     assert.equal(smtp.messages.length, 5);
@@ -524,8 +541,9 @@ async function main() {
     await run("dispatch");
     await drain();
     assert.ok(seasonPages.length >= 2 && seasonPages.length % 2 === 0);
-    for (let index = 0; index < seasonPages.length; index += 2)
+    for (let index = 0; index < seasonPages.length; index += 2) {
       assert.deepEqual(seasonPages.slice(index, index + 2), [1, 2]);
+    }
     assert.deepEqual(
       writes.map((item) => item.externalId),
       ["ev-100", "ev-101", "ev-102"],
@@ -572,14 +590,22 @@ async function main() {
       "HTTP-to-SMTP integration passed: login/CSRF/roles, encrypted settings, pending/approval, real queue dispatch, native HTTP writes, downloading/imported states, local SMTP delivery, replay deduplication, lost-job/failed-delivery recovery, and paginated scoped-season completion.",
     );
   } finally {
-    if (worker) await worker.close();
-    if (app) await app.close();
-    if (smtp) await smtp.close();
+    if (worker) {
+      await worker.close();
+    }
+    if (app) {
+      await app.close();
+    }
+    if (smtp) {
+      await smtp.close();
+    }
     await queue.obliterate({ force: true });
     await events.close();
     await queue.close();
     const keys = await connection.keys(prefix + ":*");
-    if (keys.length) await connection.del(...keys);
+    if (keys.length) {
+      await connection.del(...keys);
+    }
     await redis.quit();
     await connection.quit();
     server.closeAllConnections();

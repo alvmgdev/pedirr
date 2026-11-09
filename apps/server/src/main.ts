@@ -49,7 +49,9 @@ async function bootstrap() {
       if (req.method === "GET" && !req.path.startsWith("/api") && req.accepts("html")) {
         res.setHeader("Cache-Control", "no-store");
         res.sendFile(resolve(webRoot, "index.html"));
-      } else next();
+      } else {
+        next();
+      }
     });
   }
   await app.listen(port(), "0.0.0.0");

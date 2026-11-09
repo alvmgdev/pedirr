@@ -23,7 +23,9 @@ function App() {
       try {
         return await api<User>("/auth/me");
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) return null;
+        if (error instanceof ApiError && error.status === 401) {
+          return null;
+        }
         throw error;
       }
     },
@@ -43,20 +45,27 @@ function App() {
     return () => window.removeEventListener("pedirr:session-expired", expired);
   }, []);
   useEffect(() => {
-    if (me.data?.locale) void i18n.changeLanguage(me.data.locale);
+    if (me.data?.locale) {
+      void i18n.changeLanguage(me.data.locale);
+    }
   }, [me.data?.locale, i18n]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
-  if (me.isPending) return <Loading />;
-  if (me.error)
+  if (me.isPending) {
+    return <Loading />;
+  }
+  if (me.error) {
     return (
       <main className="panel">
         <ErrorMessage error={me.error} />
         <button onClick={() => void me.refetch()}>{t("retry")}</button>
       </main>
     );
-  if (!me.data) return <Login />;
+  }
+  if (!me.data) {
+    return <Login />;
+  }
   const user = me.data;
   return (
     <div className="app-shell">

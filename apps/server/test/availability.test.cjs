@@ -30,10 +30,11 @@ const remote = {
 function upstream(records = [remote]) {
   global.fetch = async (url, options) => {
     assert.equal(options.method, "GET");
-    if (url.endsWith("/leagues"))
+    if (url.endsWith("/leagues")) {
       return Response.json([
         { id: 8, externalId: "lg-100", name: "League", sport: "Soccer", monitored: false },
       ]);
+    }
     assert.ok(url.includes("/leagues/8/events?showAll=true"));
     return Response.json({ page: 1, totalPages: 1, totalRecords: records.length, records });
   };

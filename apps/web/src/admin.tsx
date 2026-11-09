@@ -61,7 +61,9 @@ export function Administration({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const tab = params.get("tab") ?? "users";
-  if (user.role !== "ADMIN") return <p role="alert">{t("unauthorized")}</p>;
+  if (user.role !== "ADMIN") {
+    return <p role="alert">{t("unauthorized")}</p>;
+  }
   return (
     <>
       <header className="page-heading">
@@ -200,7 +202,9 @@ export function UserDetail({ user }: { user: User }) {
       navigate(`/admin/users/${value.id}`, { replace: true });
     },
   });
-  if (user.role !== "ADMIN") return <p role="alert">{t("unauthorized")}</p>;
+  if (user.role !== "ADMIN") {
+    return <p role="alert">{t("unauthorized")}</p>;
+  }
   return (
     <>
       <Link className="back" to="/admin?tab=users">
@@ -259,8 +263,12 @@ function Policies() {
     mutationFn: (body: unknown) => api<Policy>("/admin/policies", "PATCH", body),
     onSuccess: (value) => client.setQueryData(["policies"], value),
   });
-  if (policy.isPending) return <Loading />;
-  if (policy.error) return <ErrorMessage error={policy.error} />;
+  if (policy.isPending) {
+    return <Loading />;
+  }
+  if (policy.error) {
+    return <ErrorMessage error={policy.error} />;
+  }
   return (
     <section className="panel compact-form">
       <h2>{t("policies")}</h2>
@@ -321,8 +329,12 @@ function SportarrSettings() {
       ...(data.get("apiKey") ? { apiKey: String(data.get("apiKey")) } : {}),
     };
   };
-  if (settings.isPending) return <Loading />;
-  if (settings.error) return <ErrorMessage error={settings.error} />;
+  if (settings.isPending) {
+    return <Loading />;
+  }
+  if (settings.error) {
+    return <ErrorMessage error={settings.error} />;
+  }
   return (
     <section className="panel compact-form">
       <h2>{t("sportarr")}</h2>
@@ -433,8 +445,12 @@ function NotificationSettings() {
       api<NotificationsConfig>("/admin/settings/notifications", "PUT", body),
     onSuccess: (value) => client.setQueryData(["notification-settings"], value),
   });
-  if (settings.isPending) return <Loading />;
-  if (settings.error) return <ErrorMessage error={settings.error} />;
+  if (settings.isPending) {
+    return <Loading />;
+  }
+  if (settings.error) {
+    return <ErrorMessage error={settings.error} />;
+  }
   const value = settings.data!;
   return (
     <>
@@ -448,12 +464,17 @@ function NotificationSettings() {
           body.emailEnabled = data.has("emailEnabled");
           body.discordEnabled = data.has("discordEnabled");
           body.smtpPort = Number(data.get("smtpPort"));
-          if (!body.smtpPassword) delete body.smtpPassword;
-          if (!body.discordWebhook) delete body.discordWebhook;
+          if (!body.smtpPassword) {
+            delete body.smtpPassword;
+          }
+          if (!body.discordWebhook) {
+            delete body.discordWebhook;
+          }
           save.mutate(body, {
             onSuccess: () => {
-              for (const name of ["smtpPassword", "discordWebhook"])
+              for (const name of ["smtpPassword", "discordWebhook"]) {
                 (form.elements.namedItem(name) as HTMLInputElement).value = "";
+              }
             },
           });
         }}

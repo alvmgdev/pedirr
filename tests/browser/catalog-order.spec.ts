@@ -7,7 +7,7 @@ test("season event ordering is delegated to the catalog API and resets paginatio
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
     let body: unknown = {};
-    if (url.pathname.endsWith("/auth/me"))
+    if (url.pathname.endsWith("/auth/me")) {
       body = {
         id: "user",
         role: "USER",
@@ -15,10 +15,11 @@ test("season event ordering is delegated to the catalog API and resets paginatio
         locale: "en",
         timezone: "UTC",
       };
-    else if (url.pathname.endsWith("/seasons/season-1"))
+    } else if (url.pathname.endsWith("/seasons/season-1")) {
       body = { id: "season-1", name: "2026 season" };
-    else if (url.pathname.endsWith("/requests/lookup")) body = { state: "missing" };
-    else if (url.pathname.endsWith("/catalog/events")) {
+    } else if (url.pathname.endsWith("/requests/lookup")) {
+      body = { state: "missing" };
+    } else if (url.pathname.endsWith("/catalog/events")) {
       orders.push(url.search);
       body = { items: [], page: Number(url.searchParams.get("page")), totalPages: 3 };
     }

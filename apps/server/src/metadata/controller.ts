@@ -106,11 +106,12 @@ export class CatalogController {
   }
   @Get("events") async events(@Query() query: EventsQuery, @Req() req: AuthRequest) {
     await this.limit(req);
-    if (query.from && query.to && query.from > query.to)
+    if (query.from && query.to && query.from > query.to) {
       throw new BadRequestException({
         code: "INVALID_DATE_RANGE",
         message: "Start date must precede end date",
       });
+    }
     return this.metadata.events(query);
   }
   @Get("events/:id") async event(@Param() params: CatalogIdentifier, @Req() req: AuthRequest) {

@@ -16,7 +16,9 @@ export class Notifications {
   async run(eventId: string) {
     const { db, redis } = this.infrastructure;
     const event = await db.outboxEvent.findUnique({ where: { id: eventId } });
-    if (!event || !["request.created", "request.status"].includes(event.type)) return;
+    if (!event || !["request.created", "request.status"].includes(event.type)) {
+      return;
+    }
     const payload = event.payload as { requestId: string; status: string };
     const request = await db.request.findUnique({
       where: { id: payload.requestId },
@@ -28,7 +30,9 @@ export class Notifications {
         },
       },
     });
-    if (!request) return;
+    if (!request) {
+      return;
+    }
     const config = await this.settings.configuration();
     const scope = request.scope as { kind: string; season?: { name: string } };
     const title =
@@ -37,23 +41,26 @@ export class Notifications {
     const deliveries: { channel: "email" | "discord"; recipient: string; locale: string }[] = [];
     if (config.emailEnabled && event.createdAt >= new Date(config.emailSince)) {
       const users = request.subscribers.map((subscription) => subscription.user);
-      if (event.type === "request.created")
+      if (event.type === "request.created") {
         users.push(
           ...(await db.user.findMany({
             where: { active: true, role: "ADMIN" },
             select: { email: true, locale: true },
           })),
         );
+      }
       const recipients = new Map(users.map((user) => [user.email, user.locale]));
-      for (const [recipient, locale] of recipients)
+      for (const [recipient, locale] of recipients) {
         deliveries.push({ channel: "email", recipient, locale });
+      }
     }
-    if (config.discordEnabled && event.createdAt >= new Date(config.discordSince))
+    if (config.discordEnabled && event.createdAt >= new Date(config.discordSince)) {
       deliveries.push({
         channel: "discord",
         recipient: createHash("sha256").update(config.discordWebhook).digest("hex"),
         locale: config.discordLocale,
       });
+    }
     let failure: unknown;
     for (const target of deliveries) {
       const record = await db.notificationDelivery.upsert({
@@ -67,7 +74,9 @@ export class Notifications {
         create: { eventId, channel: target.channel, recipient: target.recipient },
         update: {},
       });
-      if (record.status === "sent") continue;
+      if (record.status === "sent") {
+        continue;
+      }
       const key = `pedirr:delivery:${record.id}`;
       const owner = randomUUID();
       if (!(await redis.set(key, owner, "EX", 90, "NX"))) {
@@ -79,8 +88,9 @@ export class Notifications {
         if (
           (await db.notificationDelivery.findUnique({ where: { id: record.id } }))?.status ===
           "sent"
-        )
+        ) {
           continue;
+        }
         await db.notificationDelivery.update({
           where: { id: record.id },
           data: { status: "sending", attempts: { increment: 1 }, lastError: null },
@@ -110,6 +120,8 @@ export class Notifications {
         );
       }
     }
-    if (failure) throw failure;
+    if (failure) {
+      throw failure;
+    }
   }
 }

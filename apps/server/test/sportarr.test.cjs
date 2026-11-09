@@ -30,11 +30,18 @@ test("Sportarr connection preserves URL base and sends credentials only as a hea
     const path = new URL(url).pathname;
     paths.push(path);
     assert.ok(path.startsWith("/sports/api/"));
-    if (path.endsWith("system/status"))
+    if (path.endsWith("system/status")) {
       return Response.json({ appName: "Sportarr", version: "4.1.0.1110" });
-    if (path.endsWith("leagues")) return Response.json([]);
-    if (path.endsWith("rootfolder")) return Response.json([{ id: 1, path: "/sports" }]);
-    if (path.endsWith("qualityprofile")) return Response.json([{ id: 2, name: "HD" }]);
+    }
+    if (path.endsWith("leagues")) {
+      return Response.json([]);
+    }
+    if (path.endsWith("rootfolder")) {
+      return Response.json([{ id: 1, path: "/sports" }]);
+    }
+    if (path.endsWith("qualityprofile")) {
+      return Response.json([{ id: 2, name: "HD" }]);
+    }
     assert.fail("Unexpected endpoint");
   };
   const result = await new SportarrClient(config).testConnection();
@@ -110,8 +117,9 @@ test("URLs reject credential/query tricks while allowing private network install
     "http://key:secret@localhost",
     "http://localhost?apikey=secret",
     "http://localhost/#token",
-  ])
+  ]) {
     assert.throws(() => managerUrl(url));
+  }
 });
 test("encrypted settings authenticate the key, context and ciphertext", () => {
   const box = new SecretBox("ab".repeat(32));
@@ -142,10 +150,15 @@ test("settings persist ciphertext, return no key and cannot reuse it for a diffe
     },
   });
   global.fetch = async (url) => {
-    if (url.endsWith("system/status"))
+    if (url.endsWith("system/status")) {
       return Response.json({ appName: "Sportarr", version: "4.1" });
-    if (url.endsWith("leagues")) return Response.json([]);
-    if (url.endsWith("rootfolder")) return Response.json([{ id: 1, path: "/sports" }]);
+    }
+    if (url.endsWith("leagues")) {
+      return Response.json([]);
+    }
+    if (url.endsWith("rootfolder")) {
+      return Response.json([{ id: 1, path: "/sports" }]);
+    }
     return Response.json([{ id: 2, name: "HD" }]);
   };
   const result = await settings.save(config);

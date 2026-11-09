@@ -52,7 +52,9 @@ export function Discover({ user }: { user: User }) {
         className="search-bar"
         onSubmit={(event) => {
           event.preventDefault();
-          if (text.trim().length >= 2) setParams({ q: text.trim() });
+          if (text.trim().length >= 2) {
+            setParams({ q: text.trim() });
+          }
         }}
       >
         <label className="sr-only" htmlFor="search">
@@ -129,7 +131,9 @@ export function Discover({ user }: { user: User }) {
                 : [mode === "leagues" ? "league" : "event"]
               ).map((kind) => {
                 const group = query ? items.filter((item) => item.entityType === kind) : items;
-                if (!group.length) return null;
+                if (!group.length) {
+                  return null;
+                }
                 return (
                   <section
                     key={kind}
@@ -257,20 +261,27 @@ export function CatalogDetail({ user }: { user: User }) {
       }),
     onSuccess: (result) => {
       void client.invalidateQueries({ queryKey: ["requests"] });
-      if (result.request) navigate("/requests/" + result.request.id);
-      else if (result.available)
+      if (result.request) {
+        navigate("/requests/" + result.request.id);
+      } else if (result.available) {
         client.setQueryData(["availability", kind, id], { state: "available" });
+      }
     },
   });
-  if (!valid) return <p>{t("notFound")}</p>;
-  if (detail.isPending)
+  if (!valid) {
+    return <p>{t("notFound")}</p>;
+  }
+  if (detail.isPending) {
     return (
       <>
         <Loading />
         <ErrorMessage error={detail.failureReason} />
       </>
     );
-  if (detail.error) return <ErrorMessage error={detail.error} />;
+  }
+  if (detail.error) {
+    return <ErrorMessage error={detail.error} />;
+  }
   const item = detail.data!;
   return (
     <>

@@ -18,7 +18,9 @@ export function Language({ user }: { user?: User | null }) {
         onChange={(event) => {
           const locale = event.target.value;
           void i18n.changeLanguage(locale);
-          if (user) change.mutate(locale);
+          if (user) {
+            change.mutate(locale);
+          }
         }}
       >
         <option value="en">English</option>
@@ -33,7 +35,9 @@ export function Login() {
   const [register, setRegister] = useState(false);
   const action = useMutation({
     mutationFn: async (body: { email: string; password: string }) => {
-      if (register) await api("/auth/register", "POST", body);
+      if (register) {
+        await api("/auth/register", "POST", body);
+      }
       const user = await api<User>("/auth/login", "POST", body);
       return api<User>("/me", "PATCH", {
         locale: i18n.language.startsWith("es") ? "es" : "en",

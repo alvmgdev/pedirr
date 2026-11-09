@@ -135,7 +135,9 @@ test("registration stays closed until explicitly enabled", async () => {
 });
 test("shared login rate limiter rejects excessive attempts", async () => {
   let response;
-  for (let i = 0; i < 16; i++) response = await login(await csrf());
+  for (let i = 0; i < 16; i++) {
+    response = await login(await csrf());
+  }
   assert.equal(response.status, 429);
 });
 

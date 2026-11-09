@@ -11,7 +11,9 @@ export function Requests() {
   const status = params.get("status") ?? "";
   const mine = params.get("mine") === "true";
   const query = new URLSearchParams({ page: String(page), mine: String(mine) });
-  if (status) query.set("status", status);
+  if (status) {
+    query.set("status", status);
+  }
   const result = useQuery({
     queryKey: ["requests", query.toString()],
     queryFn: () => api<{ items: RequestRecord[]; total: number }>("/requests?" + query),
@@ -95,8 +97,12 @@ export function RequestDetail({ user }: { user: User }) {
       void client.invalidateQueries({ queryKey: ["requests"] });
     },
   });
-  if (result.isPending) return <Loading />;
-  if (result.error) return <ErrorMessage error={result.error} />;
+  if (result.isPending) {
+    return <Loading />;
+  }
+  if (result.error) {
+    return <ErrorMessage error={result.error} />;
+  }
   const request = result.data!;
   const format = (date: string) =>
     new Intl.DateTimeFormat(i18n.language, {

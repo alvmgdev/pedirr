@@ -14,17 +14,23 @@ function fixture() {
     del: async (key) => data.delete(key),
     ttl: async (key) => (key.endsWith("cooldown") ? Number(data.get(key) ?? -2) : 60),
     set: async (key, value, _, __, nx) => {
-      if (nx && data.has(key)) return null;
+      if (nx && data.has(key)) {
+        return null;
+      }
       data.set(key, value);
       return "OK";
     },
     eval: async (script, _, key, value) => {
-      if (key.endsWith(":budget")) return ++count;
+      if (key.endsWith(":budget")) {
+        return ++count;
+      }
       if (key.endsWith(":cooldown")) {
         data.set(key, value);
         return 1;
       }
-      if (data.get(key) === value) data.delete(key);
+      if (data.get(key) === value) {
+        data.delete(key);
+      }
       return 1;
     },
   };

@@ -28,7 +28,9 @@ test("outbox publication is idempotent across a crash before acknowledgement", a
         findMany: async () =>
           acknowledged ? [] : [{ id: "event-1", payload: { requestId: "request-1" } }],
         update: async () => {
-          if (fail) throw new Error("Database connection lost");
+          if (fail) {
+            throw new Error("Database connection lost");
+          }
           acknowledged = true;
         },
       },

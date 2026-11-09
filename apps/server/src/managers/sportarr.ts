@@ -30,25 +30,30 @@ export function managerUrl(value: string): string {
     url.password ||
     url.search ||
     url.hash
-  )
+  ) {
     throw new BadRequestException({
       code: "INVALID_MANAGER_URL",
       message: "URL must not contain credentials, query parameters or a fragment",
     });
+  }
   return url.href.replace(/\/+$/, "");
 }
 function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Invalid object");
+  }
   return value as Record<string, unknown>;
 }
 function positiveId(value: unknown): number {
-  if (!Number.isSafeInteger(value) || Number(value) < 1)
+  if (!Number.isSafeInteger(value) || Number(value) < 1) {
     throw new Error("Invalid manager identifier");
+  }
   return Number(value);
 }
 function text(value: unknown): string {
-  if (typeof value !== "string") throw new Error("Invalid text");
+  if (typeof value !== "string") {
+    throw new Error("Invalid text");
+  }
   return value;
 }
 function league(value: unknown): ManagerLeague {
@@ -56,8 +61,9 @@ function league(value: unknown): ManagerLeague {
   if (
     typeof row.monitored !== "boolean" ||
     (row.externalId !== null && typeof row.externalId !== "string")
-  )
+  ) {
     throw new Error("Invalid league");
+  }
   return {
     ...row,
     id: positiveId(row.id),
@@ -74,8 +80,9 @@ function event(value: unknown): ManagerEvent {
     typeof row.monitored !== "boolean" ||
     !Array.isArray(row.files) ||
     (row.externalId !== null && typeof row.externalId !== "string")
-  )
+  ) {
     throw new Error("Invalid event");
+  }
   return {
     ...row,
     id: positiveId(row.id),
@@ -87,7 +94,9 @@ function event(value: unknown): ManagerEvent {
   };
 }
 function array<T>(value: unknown, parse: (row: unknown) => T): T[] {
-  if (!Array.isArray(value)) throw new Error("Invalid array");
+  if (!Array.isArray(value)) {
+    throw new Error("Invalid array");
+  }
   return value.map(parse);
 }
 export class SportarrClient extends ContentManager {
@@ -127,7 +136,7 @@ export class SportarrClient extends ContentManager {
         message: "Could not connect to Sportarr",
       });
     }
-    if (!response.ok)
+    if (!response.ok) {
       throw new BadGatewayException({
         code:
           response.status === 401 || response.status === 403
@@ -136,6 +145,7 @@ export class SportarrClient extends ContentManager {
         message: "Sportarr rejected the request",
         upstreamStatus: response.status,
       });
+    }
     try {
       return parse(await response.json());
     } catch {
@@ -145,30 +155,38 @@ export class SportarrClient extends ContentManager {
   async assertWriteCompatibility() {
     const version = await this.read("system/status", (value) => {
       const data = object(value);
-      if (data.appName !== "Sportarr") throw new Error("Unexpected application");
+      if (data.appName !== "Sportarr") {
+        throw new Error("Unexpected application");
+      }
       return text(data.version);
     });
     // Native write behavior was inspected at Sportarr 4.1.11. Recheck new minor versions.
     const match = /^4\.1\.(\d+)(?:[.-]|$)/.exec(version);
-    if (!match || Number(match[1]) < 11)
+    if (!match || Number(match[1]) < 11) {
       throw new BadGatewayException({
         code: "SPORTARR_UNSUPPORTED_VERSION",
         message: "Native writes require Sportarr 4.1.11 or a later 4.1 patch release",
       });
+    }
   }
   async ensureLeague(input: LeagueInput): Promise<ManagerLeague> {
-    if (!/^lg-\d+$/.test(input.externalId))
+    if (!/^lg-\d+$/.test(input.externalId)) {
       throw new BadRequestException({
         code: "MISSING_MANAGER_ID",
         message: "League requires a Hub short identifier",
       });
+    }
     const find = (items: ManagerLeague[]) => {
       const matches = items.filter((item) => item.externalId === input.externalId);
-      if (matches.length > 1) throw this.invalid();
+      if (matches.length > 1) {
+        throw this.invalid();
+      }
       return matches[0];
     };
     const existing = find(await this.leagues());
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
     try {
       // Create an inert container; individual requested events control monitoring.
       await this.read("leagues", (value) => value, "POST", {
@@ -180,21 +198,28 @@ export class SportarrClient extends ContentManager {
     } catch (error) {
       // Sportarr may commit a league before reporting a later initialization error.
       const recovered = find(await this.leagues());
-      if (recovered) return recovered;
+      if (recovered) {
+        return recovered;
+      }
       throw error;
     }
     const created = find(await this.leagues());
-    if (!created) throw this.invalid();
+    if (!created) {
+      throw this.invalid();
+    }
     return created;
   }
   async ensureEvent(input: EventInput, existing: ManagerEvent[]): Promise<ManagerEvent> {
-    if (!/^ev-\d+$/.test(input.externalId) || !Number.isFinite(Date.parse(input.eventDate)))
+    if (!/^ev-\d+$/.test(input.externalId) || !Number.isFinite(Date.parse(input.eventDate))) {
       throw new BadRequestException({
         code: "INVALID_EVENT_METADATA",
         message: "Event requires a Hub short identifier and scheduled date",
       });
+    }
     const matches = existing.filter((item) => item.externalId === input.externalId);
-    if (matches.length > 1) throw this.invalid();
+    if (matches.length > 1) {
+      throw this.invalid();
+    }
     let current = matches[0];
     if (!current) {
       try {
@@ -213,16 +238,19 @@ export class SportarrClient extends ContentManager {
         const recovered = (await this.events(input.leagueId)).filter(
           (item) => item.externalId === input.externalId,
         );
-        if (recovered.length !== 1) throw error;
+        if (recovered.length !== 1) {
+          throw error;
+        }
         current = recovered[0];
       }
     }
     // Sportarr also deduplicates by title/date. Never adopt that match without identity proof.
-    if (current.externalId !== input.externalId || current.leagueId !== input.leagueId)
+    if (current.externalId !== input.externalId || current.leagueId !== input.leagueId) {
       throw new BadGatewayException({
         code: "SPORTARR_IDENTITY_CONFLICT",
         message: "Sportarr returned a different event identity or league",
       });
+    }
     if (!current.hasFile && !current.monitored) {
       await this.read(`events/${current.id}`, (value) => value, "PUT", { monitored: true });
       current = await this.event(current.id);
@@ -254,8 +282,9 @@ export class SportarrClient extends ContentManager {
           !statuses.includes(status) ||
           typeof data.progress !== "number" ||
           !Number.isFinite(data.progress)
-        )
+        ) {
           throw new Error("Invalid queue");
+        }
         return { eventId: positiveId(data.eventId), status, progress: data.progress };
       }),
     );
@@ -281,8 +310,9 @@ export class SportarrClient extends ContentManager {
             Number(data.totalPages) < 0 ||
             !Number.isSafeInteger(data.totalRecords) ||
             Number(data.totalRecords) < 0
-          )
+          ) {
             throw new Error("Invalid pagination");
+          }
           return {
             records: array(data.records, event),
             totalPages: Number(data.totalPages),
@@ -291,24 +321,34 @@ export class SportarrClient extends ContentManager {
         },
       );
       expectedTotal ??= result.totalRecords;
-      if (expectedTotal !== result.totalRecords) throw this.invalid();
+      if (expectedTotal !== result.totalRecords) {
+        throw this.invalid();
+      }
       for (const record of result.records) {
-        if (seen.has(record.id)) throw this.invalid();
+        if (seen.has(record.id)) {
+          throw this.invalid();
+        }
         seen.add(record.id);
         records.push(record);
       }
       if (page >= result.totalPages) {
-        if (records.length !== expectedTotal) throw this.invalid();
+        if (records.length !== expectedTotal) {
+          throw this.invalid();
+        }
         return records;
       }
-      if (result.records.length === 0) throw this.invalid();
+      if (result.records.length === 0) {
+        throw this.invalid();
+      }
     }
     throw this.invalid();
   }
   async testConnection(): Promise<ConnectionResult> {
     const status = await this.read("system/status", (value) => {
       const data = object(value);
-      if (data.appName !== "Sportarr") throw new Error("Unexpected application");
+      if (data.appName !== "Sportarr") {
+        throw new Error("Unexpected application");
+      }
       return { appName: data.appName, version: text(data.version) };
     });
     const leagues = await this.leagues();

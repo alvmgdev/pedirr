@@ -23,11 +23,14 @@ async function smtpFixture() {
             body = [];
             inData = false;
             socket.write("250 accepted\r\n");
-          } else body.push(line);
+          } else {
+            body.push(line);
+          }
           continue;
         }
-        if (line.startsWith("EHLO")) socket.write("250 fixture\r\n");
-        else if (line === "DATA") {
+        if (line.startsWith("EHLO")) {
+          socket.write("250 fixture\r\n");
+        } else if (line === "DATA") {
           if (failures > 0) {
             failures--;
             socket.write("451 temporary fixture failure\r\n");
@@ -35,8 +38,11 @@ async function smtpFixture() {
             inData = true;
             socket.write("354 end with dot\r\n");
           }
-        } else if (line === "QUIT") socket.end("221 bye\r\n");
-        else socket.write("250 OK\r\n");
+        } else if (line === "QUIT") {
+          socket.end("221 bye\r\n");
+        } else {
+          socket.write("250 OK\r\n");
+        }
       }
     });
   });
@@ -48,7 +54,9 @@ async function smtpFixture() {
       failures++;
     },
     async close() {
-      for (const socket of sockets) socket.destroy();
+      for (const socket of sockets) {
+        socket.destroy();
+      }
       await new Promise((resolve) => server.close(resolve));
     },
   };

@@ -84,8 +84,9 @@ export class AuthService {
   readonly secure = this.origin.startsWith("https:");
   readonly cookieName = this.secure ? "__Host-pedirr_session" : "pedirr_session";
   constructor(readonly infrastructure: Infrastructure) {
-    if (this.secret.length < 32)
+    if (this.secret.length < 32) {
       throw new Error("SESSION_SECRET must contain at least 32 characters");
+    }
   }
   csrf(sessionHash = "") {
     const nonce = randomBytes(24).toString("hex");
@@ -95,7 +96,9 @@ export class AuthService {
     return createHmac("sha256", this.secret).update(`${nonce}:${sessionHash}`).digest("hex");
   }
   verifyCsrf(token: unknown, sessionHash = "") {
-    if (typeof token !== "string" || !/^[a-f0-9]{48}\.[a-f0-9]{64}$/.test(token)) return false;
+    if (typeof token !== "string" || !/^[a-f0-9]{48}\.[a-f0-9]{64}$/.test(token)) {
+      return false;
+    }
     const [nonce, signature] = token.split(".");
     return timingSafeEqual(
       Buffer.from(signature, "hex"),
@@ -109,21 +112,26 @@ export class AuthService {
       `pedirr:rate:${key}`,
       seconds,
     );
-    if (Number(value) > limit)
+    if (Number(value) > limit) {
       throw new HttpException(
         { code: "RATE_LIMITED", message: "Too many requests. Try again later." },
         429,
       );
+    }
   }
   async resolve(req: AuthRequest) {
     const token: unknown = req.cookies?.[this.cookieName];
-    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return;
+    if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+      return;
+    }
     const sessionHash = digest(token);
     const session = await this.infrastructure.db.session.findUnique({
       where: { tokenHash: sessionHash },
       include: { user: { select: publicUserSelect } },
     });
-    if (!session || session.expiresAt < new Date() || !session.user.active) return;
+    if (!session || session.expiresAt < new Date() || !session.user.active) {
+      return;
+    }
     req.viewer = session.user;
     req.sessionHash = sessionHash;
   }
@@ -135,11 +143,12 @@ export class AuthService {
     const valid = user
       ? await argon2.verify(user.passwordHash, password)
       : await argon2.verify(await this.dummyHash, password);
-    if (!valid || !user?.active)
+    if (!valid || !user?.active) {
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
         message: "Invalid email or password",
       });
+    }
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 86400000);
     await this.infrastructure.db.session.create({
@@ -171,18 +180,25 @@ export class SecurityGuard implements CanActivate {
     await this.auth.resolve(req);
     const targets = [context.getHandler(), context.getClass()];
     const isPublic = this.reflector.getAllAndOverride<boolean>("public", targets);
-    if (!isPublic && !req.viewer) throw new UnauthorizedException();
-    if (this.reflector.getAllAndOverride<boolean>("admin", targets) && req.viewer?.role !== "ADMIN")
+    if (!isPublic && !req.viewer) {
+      throw new UnauthorizedException();
+    }
+    if (
+      this.reflector.getAllAndOverride<boolean>("admin", targets) &&
+      req.viewer?.role !== "ADMIN"
+    ) {
       throw new ForbiddenException();
+    }
     if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
       if (
         req.headers.origin !== this.auth.origin ||
         !this.auth.verifyCsrf(req.headers["x-csrf-token"], req.sessionHash)
-      )
+      ) {
         throw new ForbiddenException({
           code: "CSRF_INVALID",
           message: "Refresh the page and try again",
         });
+      }
       await this.auth.rate(`write:${req.viewer?.id ?? req.ip}`, 120, 60);
     }
     return true;
@@ -206,11 +222,12 @@ export class AuthController {
     const enabled = await this.auth.infrastructure.db.setting.findUnique({
       where: { key: "registration" },
     });
-    if (enabled?.value !== true)
+    if (enabled?.value !== true) {
       throw new ForbiddenException({
         code: "REGISTRATION_CLOSED",
         message: "Registration is disabled",
       });
+    }
     const passwordHash = await argon2.hash(input.password, passwordOptions);
     try {
       return await this.auth.infrastructure.db.user.create({
@@ -218,11 +235,12 @@ export class AuthController {
         select: publicUserSelect,
       });
     } catch (error) {
-      if ((error as { code?: string }).code === "P2002")
+      if ((error as { code?: string }).code === "P2002") {
         throw new HttpException(
           { code: "EMAIL_UNAVAILABLE", message: "Email cannot be registered" },
           409,
         );
+      }
       throw error;
     }
   }
@@ -271,8 +289,9 @@ export class AuthController {
     const user = await this.auth.infrastructure.db.user.findUniqueOrThrow({
       where: { id: req.viewer!.id },
     });
-    if (!(await argon2.verify(user.passwordHash, input.currentPassword)))
+    if (!(await argon2.verify(user.passwordHash, input.currentPassword))) {
       throw new UnauthorizedException();
+    }
     const passwordHash = await argon2.hash(input.newPassword, passwordOptions);
     await this.auth.infrastructure.db.$transaction([
       this.auth.infrastructure.db.user.update({ where: { id: user.id }, data: { passwordHash } }),

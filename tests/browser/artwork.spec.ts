@@ -26,7 +26,9 @@ test("catalog artwork uses borderless logos and a neutral missing-image icon", a
     { id: "team-1", entityType: "team", name: "Athletic Club", logoUrl: "javascript:invalid" },
   ];
   await page.route("https://artwork.invalid/**", (route) => {
-    if (route.request().url().endsWith("missing.png")) return route.fulfill({ status: 404 });
+    if (route.request().url().endsWith("missing.png")) {
+      return route.fulfill({ status: 404 });
+    }
     const logo = route.request().url().endsWith("logo.svg");
     return route.fulfill({
       contentType: "image/svg+xml",
@@ -86,7 +88,9 @@ test("request status tabs preserve personal filtering and reset pagination", asy
   const queries: string[] = [];
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.endsWith("/requests")) queries.push(url.search);
+    if (url.pathname.endsWith("/requests")) {
+      queries.push(url.search);
+    }
     return route.fulfill({
       json: url.pathname.endsWith("/auth/me")
         ? {

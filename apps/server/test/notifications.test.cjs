@@ -80,8 +80,9 @@ test("Discord waits for confirmation, disables mentions, and honors fractional R
     "http://discord.com/api/webhooks/123/token",
     "https://evil.example/api/webhooks/123/token",
     "https://discord.com/api/webhooks/123/token?other=1",
-  ])
+  ]) {
     assert.throws(() => discordUrl(url));
+  }
 });
 test("successful deliveries are skipped on retry while failed recipients are retried", async () => {
   process.env.APP_ORIGIN = "https://pedirr.example.invalid";
@@ -109,8 +110,9 @@ test("successful deliveries are skipped on retry while failed recipients are ret
     notificationDelivery: {
       upsert: async ({ create }) => {
         const key = create.channel;
-        if (!records.has(key))
+        if (!records.has(key)) {
           records.set(key, { ...create, id: key, status: "pending", attempts: 0 });
+        }
         return records.get(key);
       },
       findUnique: async ({ where }) => records.get(where.id),
@@ -137,7 +139,9 @@ test("successful deliveries are skipped on retry while failed recipients are ret
     {
       send: async () => {
         discordCount++;
-        if (fail) throw new Error("secret webhook URL");
+        if (fail) {
+          throw new Error("secret webhook URL");
+        }
       },
     },
   );
@@ -205,15 +209,21 @@ test("email transport delivers a localized message to a local SMTP fixture", asy
             body = [];
             inData = false;
             socket.write("250 accepted\r\n");
-          } else body.push(line);
+          } else {
+            body.push(line);
+          }
           continue;
         }
-        if (line.startsWith("EHLO")) socket.write("250 local-fixture\r\n");
-        else if (line === "DATA") {
+        if (line.startsWith("EHLO")) {
+          socket.write("250 local-fixture\r\n");
+        } else if (line === "DATA") {
           inData = true;
           socket.write("354 end with dot\r\n");
-        } else if (line === "QUIT") socket.end("221 bye\r\n");
-        else socket.write("250 OK\r\n");
+        } else if (line === "QUIT") {
+          socket.end("221 bye\r\n");
+        } else {
+          socket.write("250 OK\r\n");
+        }
       }
     });
   });
@@ -235,7 +245,9 @@ test("email transport delivers a localized message to a local SMTP fixture", asy
     assert.match(messages[0], /Disponible/);
     assert.match(messages[0], /Message-ID: <smtp-fixture@pedirr.local>/i);
   } finally {
-    for (const socket of sockets) socket.destroy();
+    for (const socket of sockets) {
+      socket.destroy();
+    }
     await new Promise((resolve) => server.close(resolve));
   }
 });

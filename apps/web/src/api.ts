@@ -47,12 +47,15 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     return await send<T>(path, method, body);
   } catch (error) {
     // A cached token goes stale when the server revokes the session; refresh it once.
-    if (method === "GET" || !(error instanceof ApiError) || error.code !== "CSRF_INVALID")
+    if (method === "GET" || !(error instanceof ApiError) || error.code !== "CSRF_INVALID") {
       throw error;
+    }
     resetCsrfToken();
     return send<T>(path, method, body);
   } finally {
-    if (sessionChangingPaths.includes(path)) resetCsrfToken();
+    if (sessionChangingPaths.includes(path)) {
+      resetCsrfToken();
+    }
   }
 }
 
@@ -75,8 +78,9 @@ async function send<T>(path: string, method: string, body?: unknown): Promise<T>
   }
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    if (response.status === 401 && path !== "/auth/login" && path !== "/auth/me")
+    if (response.status === 401 && path !== "/auth/login" && path !== "/auth/me") {
       window.dispatchEvent(new Event("pedirr:session-expired"));
+    }
     throw new ApiError(
       response.status,
       error.code ?? (response.status === 400 ? "INVALID_INPUT" : "UNKNOWN"),

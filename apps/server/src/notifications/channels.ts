@@ -58,8 +58,9 @@ export class EmailChannel implements NotificationChannel {
         text: notice.text,
         messageId: `<${deliveryId}@pedirr.local>`,
       });
-      if (!result.accepted.length || result.rejected.length)
+      if (!result.accepted.length || result.rejected.length) {
         throw new Error("SMTP rejected recipient");
+      }
     } catch {
       throw new ServiceUnavailableException({
         code: "EMAIL_DELIVERY_FAILED",
@@ -104,10 +105,11 @@ export class DiscordChannel implements NotificationChannel {
         retryAfterSeconds: seconds,
       });
     }
-    if (!response.ok)
+    if (!response.ok) {
       throw new ServiceUnavailableException({
         code: "DISCORD_DELIVERY_FAILED",
         message: "Discord delivery failed",
       });
+    }
   }
 }

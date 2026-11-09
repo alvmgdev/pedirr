@@ -43,8 +43,9 @@ async function main() {
               typeof body === "object" &&
               "retryAfterSeconds" in body &&
               typeof body.retryAfterSeconds === "number"
-            )
+            ) {
               return Math.max(1000, body.retryAfterSeconds * 1000);
+            }
           }
           return Math.min(3600000, 30000 * 2 ** (attempts - 1));
         },
@@ -67,7 +68,9 @@ async function main() {
   worker.on("error", () => logger.error("Worker connection error"));
   let stopping = false;
   async function shutdown() {
-    if (stopping) return;
+    if (stopping) {
+      return;
+    }
     stopping = true;
     clearInterval(heartbeat);
     await worker.close();

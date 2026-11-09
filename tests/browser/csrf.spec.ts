@@ -20,7 +20,9 @@ test("writes reuse one session CSRF token and refresh it once when it goes stale
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
-    if (path.endsWith("/auth/me")) return route.fulfill({ json: admin });
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: admin });
+    }
     if (path.endsWith("/auth/csrf")) {
       issued += 1;
       return route.fulfill({ json: { token: `token-${issued}` } });

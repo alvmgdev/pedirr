@@ -29,11 +29,14 @@ test("schedule loads the next upstream cursor and keeps visible events after a f
   const pages: string[] = [];
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.endsWith("/auth/me")) return route.fulfill({ json: user });
+    if (url.pathname.endsWith("/auth/me")) {
+      return route.fulfill({ json: user });
+    }
     if (url.pathname.endsWith("/catalog/upcoming")) {
       pages.push(url.searchParams.get("page")!);
-      if (url.searchParams.get("page") === "1")
+      if (url.searchParams.get("page") === "1") {
         return route.fulfill({ json: { items: [event], page: 3, hasMore: true, nextPage: 4 } });
+      }
       return route.fulfill({ status: 502, json: { code: "METADATA_INVALID" } });
     }
     return route.fulfill({ json: { items: [] } });
@@ -52,14 +55,17 @@ test("temporary catalog contention retries automatically after the supplied dela
   const calls: number[] = [];
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/auth/me")) return route.fulfill({ json: user });
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: user });
+    }
     if (path.endsWith("/catalog/upcoming")) {
       calls.push(Date.now());
-      if (calls.length === 1)
+      if (calls.length === 1) {
         return route.fulfill({
           status: 503,
           json: { code: "METADATA_BUSY", reason: "local_limit", retryAfterSeconds: 1 },
         });
+      }
       return route.fulfill({ json: { items: [event], page: 1, hasMore: false, nextPage: null } });
     }
     return route.fulfill({ json: { items: [] } });

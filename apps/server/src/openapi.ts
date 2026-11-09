@@ -289,10 +289,14 @@ export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAP
   for (const [path, item] of Object.entries(document.paths)) {
     for (const method of ["get", "post", "put", "patch", "delete"] as const) {
       const operation: OperationObject | undefined = item?.[method];
-      if (!operation) continue;
+      if (!operation) {
+        continue;
+      }
       const route = path.replace(/^\/api\/v1\//, "");
       const schema = responses[`${method.toUpperCase()} ${route}`];
-      if (!schema) throw new Error(`Missing OpenAPI response contract: ${method} ${path}`);
+      if (!schema) {
+        throw new Error(`Missing OpenAPI response contract: ${method} ${path}`);
+      }
       const publicRoute =
         route.startsWith("health/") || ["auth/csrf", "auth/login", "auth/register"].includes(route);
       operation.security = publicRoute ? [] : [{ Session: [] }];
@@ -306,8 +310,9 @@ export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAP
           "Error. Authentication: 401; CSRF/permissions: 403; invalid input: 400; stale review/identity conflict: 409; rate limit: 429; upstream failure: 502/503. Retry delays, when supplied, are in retryAfterSeconds.",
         content: { "application/json": { schema: ref("ApiError") } },
       };
-      if (route.startsWith("admin/") || route.endsWith("/review"))
+      if (route.startsWith("admin/") || route.endsWith("/review")) {
         operation.description = `${operation.description ?? ""}\nRequires the ADMIN role.`.trim();
+      }
       if (!["get"].includes(method)) {
         operation.parameters ??= [];
         operation.parameters.push(

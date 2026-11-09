@@ -15,9 +15,11 @@ test("administrator tests Sportarr, selects defaults and saves without redisplay
   await page.route("**/api/v1/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     let body: unknown = {};
-    if (path.endsWith("/auth/me")) body = admin;
-    else if (path.endsWith("/auth/csrf")) body = { token: "test-token" };
-    else if (path.endsWith("/sportarr/test")) {
+    if (path.endsWith("/auth/me")) {
+      body = admin;
+    } else if (path.endsWith("/auth/csrf")) {
+      body = { token: "test-token" };
+    } else if (path.endsWith("/sportarr/test")) {
       expect(route.request().postDataJSON()).toEqual({
         url: "http://sportarr:8989/sports",
         apiKey: "fixture-key",
@@ -79,13 +81,18 @@ test("administrator can set policies and sees protection for the last administra
     const path = new URL(route.request().url()).pathname;
     let body: unknown = {};
     let status = 200;
-    if (path.endsWith("/auth/me")) body = admin;
-    else if (path.endsWith("/auth/csrf")) body = { token: "test-token" };
-    else if (path.endsWith("/admin/policies")) {
-      if (route.request().method() === "PATCH") policy = route.request().postDataJSON();
+    if (path.endsWith("/auth/me")) {
+      body = admin;
+    } else if (path.endsWith("/auth/csrf")) {
+      body = { token: "test-token" };
+    } else if (path.endsWith("/admin/policies")) {
+      if (route.request().method() === "PATCH") {
+        policy = route.request().postDataJSON();
+      }
       body = policy;
-    } else if (path.endsWith("/admin/users")) body = { items: [admin], total: 1 };
-    else if (path.endsWith("/admin/users/admin-1")) {
+    } else if (path.endsWith("/admin/users")) {
+      body = { items: [admin], total: 1 };
+    } else if (path.endsWith("/admin/users/admin-1")) {
       status = route.request().method() === "GET" ? 200 : 409;
       body = status === 200 ? admin : { code: "LAST_ADMIN" };
     }
@@ -135,10 +142,13 @@ test("notification form preserves saved secrets when fields are left blank", asy
   await page.route("**/api/v1/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     let body: unknown = {};
-    if (path.endsWith("/auth/me")) body = admin;
-    else if (path.endsWith("/auth/csrf")) body = { token: "test-token" };
-    else if (path.endsWith("/notifications/deliveries")) body = [];
-    else if (path.endsWith("/settings/notifications")) {
+    if (path.endsWith("/auth/me")) {
+      body = admin;
+    } else if (path.endsWith("/auth/csrf")) {
+      body = { token: "test-token" };
+    } else if (path.endsWith("/notifications/deliveries")) {
+      body = [];
+    } else if (path.endsWith("/settings/notifications")) {
       if (route.request().method() === "PUT") {
         const input = route.request().postDataJSON();
         expect(input.smtpPassword).toBeUndefined();

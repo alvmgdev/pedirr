@@ -18,22 +18,32 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 export function parseItem(value: unknown): MetadataItem {
-  if (!record(value) || typeof value.id !== "string" || !value.id || typeof value.name !== "string")
+  if (
+    !record(value) ||
+    typeof value.id !== "string" ||
+    !value.id ||
+    typeof value.name !== "string"
+  ) {
     throw new Error("Invalid metadata entity");
+  }
   for (const key of ["shortId", "tsdbId", "leagueId", "seasonId", "scheduledStart"]) {
-    if (value[key] !== undefined && value[key] !== null && typeof value[key] !== "string")
+    if (value[key] !== undefined && value[key] !== null && typeof value[key] !== "string") {
       throw new Error("Invalid metadata field");
+    }
   }
   return value as MetadataItem;
 }
 export function parsePage(value: unknown): MetadataPage {
-  if (!record(value) || !Array.isArray(value.items)) throw new Error("Invalid metadata page");
+  if (!record(value) || !Array.isArray(value.items)) {
+    throw new Error("Invalid metadata page");
+  }
   for (const key of ["total", "page", "pageSize", "totalPages"]) {
     if (
       !Number.isSafeInteger(value[key]) ||
       Number(value[key]) < (key === "page" || key === "pageSize" ? 1 : 0)
-    )
+    ) {
       throw new Error("Invalid metadata pagination");
+    }
   }
   return { ...value, items: value.items.map(parseItem) } as MetadataPage;
 }
@@ -44,18 +54,22 @@ export function parseSearch(value: unknown): MetadataSearch {
     typeof value.query !== "string" ||
     !Number.isSafeInteger(value.total) ||
     Number(value.total) < 0
-  )
+  ) {
     throw new Error("Invalid metadata search");
+  }
   const results = value.results.map((item) => {
     const parsed = parseItem(item);
-    if (!["league", "team", "event"].includes(String(parsed.entityType)))
+    if (!["league", "team", "event"].includes(String(parsed.entityType))) {
       throw new Error("Invalid metadata result type");
+    }
     return parsed as MetadataSearch["results"][number];
   });
   return { query: value.query, total: Number(value.total), results };
 }
 export function retrySeconds(value: string | null): number {
-  if (value === null) return 60;
+  if (value === null) {
+    return 60;
+  }
   const delay = /^\d+$/.test(value)
     ? Number(value)
     : Math.ceil((Date.parse(value) - Date.now()) / 1000);
@@ -68,8 +82,9 @@ export class HubProvider extends MetadataProvider {
   constructor(private readonly infrastructure: Infrastructure) {
     super();
     this.budget = Number(process.env.HUB_REQUESTS_PER_MINUTE ?? 20);
-    if (!Number.isSafeInteger(this.budget) || this.budget < 1 || this.budget > 1000)
+    if (!Number.isSafeInteger(this.budget) || this.budget < 1 || this.budget > 1000) {
       throw new Error("Invalid HUB_REQUESTS_PER_MINUTE");
+    }
   }
   private unavailable(seconds: number, reason = "upstream") {
     return new ServiceUnavailableException({
@@ -86,8 +101,11 @@ export class HubProvider extends MetadataProvider {
     ttl = 300,
   ): Promise<T> {
     const url = new URL(`https://sportarr.net/api/public/v1/${path}`);
-    for (const [key, value] of Object.entries(query).sort(([a], [b]) => a.localeCompare(b)))
-      if (value !== undefined) url.searchParams.set(key, String(value));
+    for (const [key, value] of Object.entries(query).sort(([a], [b]) => a.localeCompare(b))) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
     const key = `pedirr:hub:v1:${createHash("sha256").update(url.href).digest("hex")}`;
     const redis = this.infrastructure.redis;
     const cached = await redis.get(key);
@@ -99,7 +117,9 @@ export class HubProvider extends MetadataProvider {
       }
     }
     const cooldown = await redis.ttl("pedirr:hub:cooldown");
-    if (cooldown > 0) throw this.unavailable(cooldown, "upstream_limit");
+    if (cooldown > 0) {
+      throw this.unavailable(cooldown, "upstream_limit");
+    }
     const lock = key + ":lock";
     const owner = randomUUID();
     if (!(await redis.set(lock, owner, "EX", 15, "NX"))) {
@@ -116,8 +136,12 @@ export class HubProvider extends MetadataProvider {
           }
         }
         const waitingCooldown = await redis.ttl("pedirr:hub:cooldown");
-        if (waitingCooldown > 0) throw this.unavailable(waitingCooldown, "upstream_limit");
-        if (!(await redis.get(lock))) return this.read(path, query, parse, ttl);
+        if (waitingCooldown > 0) {
+          throw this.unavailable(waitingCooldown, "upstream_limit");
+        }
+        if (!(await redis.get(lock))) {
+          return this.read(path, query, parse, ttl);
+        }
       }
       throw this.unavailable(1, "in_flight");
     }
@@ -137,8 +161,9 @@ export class HubProvider extends MetadataProvider {
           "pedirr:hub:budget",
         ),
       );
-      if (allowed > this.budget)
+      if (allowed > this.budget) {
         throw this.unavailable(await redis.ttl("pedirr:hub:budget"), "local_limit");
+      }
       let response: Response;
       try {
         response = await fetch(url, {
@@ -160,8 +185,9 @@ export class HubProvider extends MetadataProvider {
         );
         throw this.unavailable(seconds, "upstream_limit");
       }
-      if (response.status === 404)
+      if (response.status === 404) {
         throw new NotFoundException({ code: "METADATA_NOT_FOUND", message: "Content not found" });
+      }
       if (!response.ok) {
         logger.warn({ upstream: "hub", status: response.status }, "Metadata request failed");
         throw this.unavailable(10);

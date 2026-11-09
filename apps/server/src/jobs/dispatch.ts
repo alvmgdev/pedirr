@@ -55,9 +55,12 @@ export async function dispatch(infrastructure: Infrastructure, queue: Queue) {
       take: 100,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
-    for (const request of requests)
+    for (const request of requests) {
       await queue.add("sync", { requestId: request.id }, { jobId: `sync-${request.id}-${bucket}` });
-    if (requests.length < 100) break;
+    }
+    if (requests.length < 100) {
+      break;
+    }
     cursor = requests[requests.length - 1].id;
   }
 }

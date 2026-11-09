@@ -39,19 +39,25 @@ for (const locale of ["en", "es"]) {
         await route.fulfill({ status: signedIn ? 200 : 401, json: signedIn ? user : {} });
         return;
       }
-      if (path.endsWith("/catalog/upcoming")) body = { items: [event], page: 1, hasMore: false };
-      else if (path.endsWith("/catalog/popular")) body = { items: [] };
-      else if (path.endsWith("/catalog/events/event-1")) body = event;
-      else if (path.endsWith("/requests/lookup")) body = { state: "missing" };
-      else if (path.endsWith("/requests/request-1")) body = request;
-      else if (path.endsWith("/requests"))
+      if (path.endsWith("/catalog/upcoming")) {
+        body = { items: [event], page: 1, hasMore: false };
+      } else if (path.endsWith("/catalog/popular")) {
+        body = { items: [] };
+      } else if (path.endsWith("/catalog/events/event-1")) {
+        body = event;
+      } else if (path.endsWith("/requests/lookup")) {
+        body = { state: "missing" };
+      } else if (path.endsWith("/requests/request-1")) {
+        body = request;
+      } else if (path.endsWith("/requests")) {
         body = { items: [request], total: 1, page: 1, pageSize: 30 };
-      else if (path.endsWith("/admin/users"))
+      } else if (path.endsWith("/admin/users")) {
         body = { items: [user], total: 1, page: 1, pageSize: 50 };
-      else if (path.endsWith("/admin/users/admin-1")) body = user;
-      else if (path.endsWith("/admin/policies"))
+      } else if (path.endsWith("/admin/users/admin-1")) {
+        body = user;
+      } else if (path.endsWith("/admin/policies")) {
         body = { registrationEnabled: false, userAutoApprove: false, adminAutoApprove: false };
-      else if (path.endsWith("/settings/sportarr"))
+      } else if (path.endsWith("/settings/sportarr")) {
         body = {
           configured: false,
           url: "",
@@ -59,8 +65,9 @@ for (const locale of ["en", "es"]) {
           rootFolderId: null,
           qualityProfileId: null,
         };
-      else if (path.endsWith("/settings/notifications/deliveries")) body = [];
-      else if (path.endsWith("/settings/notifications"))
+      } else if (path.endsWith("/settings/notifications/deliveries")) {
+        body = [];
+      } else if (path.endsWith("/settings/notifications")) {
         body = {
           emailEnabled: false,
           smtpHost: "",
@@ -73,7 +80,9 @@ for (const locale of ["en", "es"]) {
           hasSmtpPassword: false,
           hasDiscordWebhook: false,
         };
-      else throw new Error(`Unexpected accessibility fixture route: ${path}`);
+      } else {
+        throw new Error(`Unexpected accessibility fixture route: ${path}`);
+      }
       await route.fulfill({ json: body });
     });
     const errors: string[] = [];
@@ -101,7 +110,9 @@ for (const locale of ["en", "es"]) {
     }
     await inspect("/");
     signedIn = true;
-    if (locale === "es") await page.setViewportSize({ width: 390, height: 844 });
+    if (locale === "es") {
+      await page.setViewportSize({ width: 390, height: 844 });
+    }
     for (const path of [
       "/",
       "/catalog/event/event-1",
@@ -114,8 +125,9 @@ for (const locale of ["en", "es"]) {
       "/admin?tab=policies",
       "/admin?tab=sportarr",
       "/admin?tab=notifications",
-    ])
+    ]) {
       await inspect(path);
+    }
     await page.goto("/");
     await expect(page.locator("#main")).toBeVisible();
     await page.keyboard.press("Tab");

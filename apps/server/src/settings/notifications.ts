@@ -63,8 +63,9 @@ export function discordUrl(value: string): string {
       url.search ||
       url.hash ||
       !/^\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+$/.test(url.pathname)
-    )
+    ) {
       throw new Error();
+    }
     return url.href;
   } catch {
     throw new BadRequestException({
@@ -116,11 +117,12 @@ export class NotificationSettings {
   }
   async save(input: NotificationInput) {
     const previous = await this.stored();
-    if (input.emailEnabled && (!input.smtpHost || !/^[a-zA-Z0-9.-]+$/.test(input.smtpHost)))
+    if (input.emailEnabled && (!input.smtpHost || !/^[a-zA-Z0-9.-]+$/.test(input.smtpHost))) {
       throw new BadRequestException({
         code: "INVALID_SMTP_HOST",
         message: "Enter an SMTP hostname or IPv4 address",
       });
+    }
     if (
       input.smtpPassword === undefined &&
       previous.encryptedPassword &&
@@ -128,11 +130,12 @@ export class NotificationSettings {
         input.smtpUser !== previous.smtpUser ||
         input.smtpPort !== previous.smtpPort ||
         input.smtpSecurity !== previous.smtpSecurity)
-    )
+    ) {
       throw new BadRequestException({
         code: "SMTP_PASSWORD_REQUIRED",
         message: "Provide a password when changing the SMTP connection",
       });
+    }
     const { smtpPassword, discordWebhook, ...publicValues } = input;
     const encryptedPassword =
       smtpPassword === undefined
@@ -146,11 +149,12 @@ export class NotificationSettings {
         : discordWebhook
           ? this.box.encrypt(discordUrl(discordWebhook), "discord.webhook")
           : null;
-    if (input.discordEnabled && !encryptedWebhook)
+    if (input.discordEnabled && !encryptedWebhook) {
       throw new BadRequestException({
         code: "DISCORD_WEBHOOK_REQUIRED",
         message: "Provide a Discord webhook",
       });
+    }
     const now = new Date().toISOString();
     const value = {
       ...publicValues,

@@ -66,7 +66,9 @@ export class UsersService {
       where: { id },
       select: publicUserSelect,
     });
-    if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
+    if (!user) {
+      throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
+    }
     return user;
   }
   async create(input: Credentials) {
@@ -77,11 +79,12 @@ export class UsersService {
         select: publicUserSelect,
       });
     } catch (error) {
-      if ((error as { code?: string }).code === "P2002")
+      if ((error as { code?: string }).code === "P2002") {
         throw new ConflictException({
           code: "EMAIL_UNAVAILABLE",
           message: "Email cannot be registered",
         });
+      }
       throw error;
     }
   }
@@ -90,7 +93,9 @@ export class UsersService {
       // Serialize administrator changes with each other and initial provisioning.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(192837)`;
       const user = await tx.user.findUnique({ where: { id } });
-      if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
+      if (!user) {
+        throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
+      }
       if (
         user.active &&
         user.role === "ADMIN" &&
@@ -143,7 +148,9 @@ export class UsersService {
     return input;
   }
   async autoApproves(user: Pick<Viewer, "autoApprove" | "role">) {
-    if (user.autoApprove !== null) return user.autoApprove;
+    if (user.autoApprove !== null) {
+      return user.autoApprove;
+    }
     const policy = await this.policy();
     return user.role === "ADMIN" ? policy.adminAutoApprove : policy.userAutoApprove;
   }

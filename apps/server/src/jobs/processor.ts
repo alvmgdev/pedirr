@@ -11,7 +11,9 @@ export function createProcessor(
   notifications: Notifications,
 ) {
   return async (job: Job) => {
-    if (job.name === "dispatch") return dispatch(infrastructure, queue);
+    if (job.name === "dispatch") {
+      return dispatch(infrastructure, queue);
+    }
     if (job.name === "notify" && typeof job.data.eventId === "string") {
       await notifications.run(job.data.eventId);
       await infrastructure.db.outboxEvent.updateMany({
@@ -20,8 +22,9 @@ export function createProcessor(
       });
       return;
     }
-    if (job.name === "sync" && typeof job.data.requestId === "string")
+    if (job.name === "sync" && typeof job.data.requestId === "string") {
       return fulfillment.run(job.data.requestId);
+    }
     throw new Error("Unsupported work item");
   };
 }
