@@ -14,16 +14,16 @@ Deployment consists of app, worker, PostgreSQL, Redis, and a single migration ta
 
 ## Data model
 
-| Model | Responsibility and relationships |
-| --- | --- |
-| User / Session | Roles, approval overrides, locale/timezone; revocable hashed session tokens belong to users. |
-| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities. |
-| Request / RequestSubscriber | A unique entity/scope request shared by interested users. A league request has an explicit season scope. |
-| RequestHistory / RequestEvent | Moderation/status history and the exact scoped events reconciled with Sportarr. |
-| Setting | Shared policies and encrypted integration credentials. |
-| OutboxEvent | Transactional work intent, queue publication and successful notification processing. |
-| NotificationDelivery | Unique event/channel/recipient delivery attempts and confirmation. |
-| ManagerBinding | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent. |
+| Model                              | Responsibility and relationships                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| User / Session                     | Roles, approval overrides, locale/timezone; revocable hashed session tokens belong to users.                                         |
+| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                               |
+| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope.                             |
+| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr.                                                      |
+| Setting                            | Shared policies and encrypted integration credentials.                                                                               |
+| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                 |
+| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                   |
+| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent. |
 
 The authoritative constraints, relations and indexes are in `prisma/schema.prisma`. Versioned migrations create these structures before application startup.
 
@@ -42,14 +42,14 @@ The authoritative constraints, relations and indexes are in `prisma/schema.prism
 
 ## Implementation phases and review units
 
-| Phase | Deliverable |
-| --- | --- |
-| 0 | Upstream contract research, provider choice, uncertainty and scope documentation. |
-| 1 | Database migrations, deployment, authentication and user administration. |
-| 2 | Discovery and canonical season/event request workflow. |
-| 3 | Encrypted Sportarr settings, native adapter and background reconciliation. |
-| 4 | Localized email/Discord notifications and durable recovery. |
-| 5 | Bilingual schedule-led frontend and administrator controls. |
-| 6 | HTTP-to-SMTP integration, OpenAPI contracts, accessibility and acceptance audit. |
+| Phase | Deliverable                                                                       |
+| ----- | --------------------------------------------------------------------------------- |
+| 0     | Upstream contract research, provider choice, uncertainty and scope documentation. |
+| 1     | Database migrations, deployment, authentication and user administration.          |
+| 2     | Discovery and canonical season/event request workflow.                            |
+| 3     | Encrypted Sportarr settings, native adapter and background reconciliation.        |
+| 4     | Localized email/Discord notifications and durable recovery.                       |
+| 5     | Bilingual schedule-led frontend and administrator controls.                       |
+| 6     | HTTP-to-SMTP integration, OpenAPI contracts, accessibility and acceptance audit.  |
 
 Small functional commits retain these review boundaries; `git log --oneline` records the actual implementation history. The endpoint inventory and request/response schemas are served at `/api/docs` and `/api/openapi.json`; README describes installation and the principal workflows.

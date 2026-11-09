@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, type Item, type Page, type User } from "./api";
 import { Artwork, ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
@@ -30,17 +25,23 @@ export function Discover({ user }: { user: User }) {
     enabled: schedule,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => api<Page>(`/catalog/upcoming?page=${pageParam}`),
-    getNextPageParam: last => last.hasMore ? (last.nextPage ?? last.page + 1) : undefined,
+    getNextPageParam: (last) => (last.hasMore ? (last.nextPage ?? last.page + 1) : undefined),
   });
   const result = schedule ? upcoming : catalog;
   const popular = useQuery({
     queryKey: ["popular"],
-    queryFn: () =>
-      api<{ items: { id: string; metadata: Item }[] }>("/catalog/popular"),
+    queryFn: () => api<{ items: { id: string; metadata: Item }[] }>("/catalog/popular"),
   });
   const category = params.get("type") ?? "";
-  const results = schedule ? [...new Map((upcoming.data?.pages.flatMap(part => part.items) ?? []).map(item => [item.id, item])).values()] : catalog.data?.results ?? catalog.data?.items ?? [];
-  const items = query && category ? results.filter(item => item.entityType === category) : results;
+  const results = schedule
+    ? [
+        ...new Map(
+          (upcoming.data?.pages.flatMap((part) => part.items) ?? []).map((item) => [item.id, item]),
+        ).values(),
+      ]
+    : (catalog.data?.results ?? catalog.data?.items ?? []);
+  const items =
+    query && category ? results.filter((item) => item.entityType === category) : results;
   return (
     <>
       <header className="page-heading">
@@ -97,46 +98,95 @@ export function Discover({ user }: { user: User }) {
           </nav>
           {query && (
             <nav className="filter-tabs" aria-label={t("resultType")}>
-              {[["", "allResults"], ["league", "leagues"], ["team", "teams"], ["event", "events"]].map(([value, label]) => (
-                <button key={value} aria-pressed={category === value} onClick={() => setParams({ ...Object.fromEntries(params), type: value })}>
+              {[
+                ["", "allResults"],
+                ["league", "leagues"],
+                ["team", "teams"],
+                ["event", "events"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={category === value}
+                  onClick={() => setParams({ ...Object.fromEntries(params), type: value })}
+                >
                   {t(label)}
                 </button>
               ))}
             </nav>
           )}
-          <p className="muted">
-            {t("scheduleNote", { timezone: user.timezone })}
-          </p>
+          <p className="muted">{t("scheduleNote", { timezone: user.timezone })}</p>
           {result.isPending ? (
-            <><Loading /><ErrorMessage error={result.failureReason} /></>
+            <>
+              <Loading />
+              <ErrorMessage error={result.failureReason} />
+            </>
           ) : result.error && !items.length ? (
             <ErrorMessage error={result.error} />
           ) : (
             <div className="catalog-shelves">
-              {(query ? ["league", "team", "event"] : [mode === "leagues" ? "league" : "event"]).map(kind => {
-                const group = query ? items.filter(item => item.entityType === kind) : items;
+              {(query
+                ? ["league", "team", "event"]
+                : [mode === "leagues" ? "league" : "event"]
+              ).map((kind) => {
+                const group = query ? items.filter((item) => item.entityType === kind) : items;
                 if (!group.length) return null;
-                return <section key={kind} className={`catalog-shelf${query && !category && kind !== "event" && group.length <= 2 ? " shelf-compact" : ""}`}>
-                  {query && <h2>{t(kind === "league" ? "leagues" : kind === "team" ? "teams" : "events")} <span className="result-count">{group.length}</span></h2>}
-                  <div className="fixtures">{group.map(item => <Fixture headingLevel={query ? 3 : 2} key={kind + item.id} item={item} kind={kind} timezone={user.timezone} />)}</div>
-                </section>;
+                return (
+                  <section
+                    key={kind}
+                    className={`catalog-shelf${query && !category && kind !== "event" && group.length <= 2 ? " shelf-compact" : ""}`}
+                  >
+                    {query && (
+                      <h2>
+                        {t(kind === "league" ? "leagues" : kind === "team" ? "teams" : "events")}{" "}
+                        <span className="result-count">{group.length}</span>
+                      </h2>
+                    )}
+                    <div className="fixtures">
+                      {group.map((item) => (
+                        <Fixture
+                          headingLevel={query ? 3 : 2}
+                          key={kind + item.id}
+                          item={item}
+                          kind={kind}
+                          timezone={user.timezone}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
               })}
-              {!items.length && <p className="empty">{t(schedule ? (upcoming.hasNextPage ? "emptySchedulePage" : "emptySchedule") : "empty")}</p>}
+              {!items.length && (
+                <p className="empty">
+                  {t(
+                    schedule
+                      ? upcoming.hasNextPage
+                        ? "emptySchedulePage"
+                        : "emptySchedule"
+                      : "empty",
+                  )}
+                </p>
+              )}
             </div>
           )}
           {schedule && upcoming.hasNextPage && !upcoming.isPending && (
-            <button className="quiet load-more" disabled={upcoming.isFetching} onClick={() => void upcoming.fetchNextPage()}>
+            <button
+              className="quiet load-more"
+              disabled={upcoming.isFetching}
+              onClick={() => void upcoming.fetchNextPage()}
+            >
               {t(upcoming.isFetching ? "loading" : "moreEvents")}
             </button>
           )}
           {result.error && items.length > 0 && <ErrorMessage error={result.error} />}
-          {result.error && <button className="quiet" onClick={() => void result.refetch()}>{t("retry")}</button>}
+          {result.error && (
+            <button className="quiet" onClick={() => void result.refetch()}>
+              {t("retry")}
+            </button>
+          )}
           {!query && !schedule && !catalog.isPending && !catalog.error && (
             <Pager
               page={page}
-              more={
-                catalog.data?.hasMore ?? page < (catalog.data?.totalPages ?? 0)
-              }
+              more={catalog.data?.hasMore ?? page < (catalog.data?.totalPages ?? 0)}
               onChange={(page) => setParams({ view: mode, page: String(page) })}
             />
           )}
@@ -201,14 +251,10 @@ export function CatalogDetail({ user }: { user: User }) {
   });
   const request = useMutation({
     mutationFn: () =>
-      api<{ request: { id: string } | null; available?: boolean }>(
-        "/requests",
-        "POST",
-        {
-          kind,
-          identifier: id,
-        },
-      ),
+      api<{ request: { id: string } | null; available?: boolean }>("/requests", "POST", {
+        kind,
+        identifier: id,
+      }),
     onSuccess: (result) => {
       void client.invalidateQueries({ queryKey: ["requests"] });
       if (result.request) navigate("/requests/" + result.request.id);
@@ -217,7 +263,13 @@ export function CatalogDetail({ user }: { user: User }) {
     },
   });
   if (!valid) return <p>{t("notFound")}</p>;
-  if (detail.isPending) return <><Loading /><ErrorMessage error={detail.failureReason} /></>;
+  if (detail.isPending)
+    return (
+      <>
+        <Loading />
+        <ErrorMessage error={detail.failureReason} />
+      </>
+    );
   if (detail.error) return <ErrorMessage error={detail.error} />;
   const item = detail.data!;
   return (
@@ -226,7 +278,9 @@ export function CatalogDetail({ user }: { user: User }) {
         {t("back")}
       </Link>
       <header className="detail-heading">
-        <div className="detail-artwork"><Artwork item={item} kind={kind} /></div>
+        <div className="detail-artwork">
+          <Artwork item={item} kind={kind} />
+        </div>
         <div className="detail-copy">
           <p className="muted">
             {t(kind)}
@@ -234,9 +288,7 @@ export function CatalogDetail({ user }: { user: User }) {
           </p>
           <h1>{item.name}</h1>
           {item.leagueId && (
-            <Link to={"/catalog/league/" + item.leagueId}>
-              {item.leagueName ?? t("league")}
-            </Link>
+            <Link to={"/catalog/league/" + item.leagueId}>{item.leagueName ?? t("league")}</Link>
           )}
           {item.description && <p>{item.description}</p>}
         </div>
@@ -247,10 +299,7 @@ export function CatalogDetail({ user }: { user: User }) {
             ) : availability.error ? (
               <>
                 <ErrorMessage error={availability.error} />
-                <button
-                  className="quiet"
-                  onClick={() => void availability.refetch()}
-                >
+                <button className="quiet" onClick={() => void availability.refetch()}>
                   {t("retry")}
                 </button>
               </>
@@ -262,9 +311,7 @@ export function CatalogDetail({ user }: { user: User }) {
             ) : availability.data?.state === "requested" ? (
               <>
                 <Status value={availability.data.request!.status} />
-                <Link to={"/requests/" + availability.data.request!.id}>
-                  {t("requested")}
-                </Link>
+                <Link to={"/requests/" + availability.data.request!.id}>{t("requested")}</Link>
                 <button
                   className="quiet"
                   disabled={request.isPending}
@@ -279,19 +326,13 @@ export function CatalogDetail({ user }: { user: User }) {
                 <p role="status" className="notice">
                   {t("availabilityUnknown")}
                 </p>
-                <button
-                  className="quiet"
-                  onClick={() => void availability.refetch()}
-                >
+                <button className="quiet" onClick={() => void availability.refetch()}>
                   {t("retry")}
                 </button>
               </>
             ) : (
               <>
-                <button
-                  disabled={request.isPending}
-                  onClick={() => request.mutate()}
-                >
+                <button disabled={request.isPending} onClick={() => request.mutate()}>
                   {t(
                     request.isPending
                       ? "requestBusy"
@@ -314,9 +355,7 @@ export function CatalogDetail({ user }: { user: User }) {
         <section className="panel">
           <h2>{t("details")}</h2>
           <Fixture item={item} timezone={user.timezone} />
-          <p className="muted">
-            {t("scheduleNote", { timezone: user.timezone })}
-          </p>
+          <p className="muted">{t("scheduleNote", { timezone: user.timezone })}</p>
           {item.seasonName && (
             <p>
               {t("season")}: {item.seasonName}
@@ -327,7 +366,21 @@ export function CatalogDetail({ user }: { user: User }) {
         <section>
           <div className="section-actions">
             <h2>{t(kind === "league" ? "seasons" : "events")}</h2>
-            {kind !== "league" && <label className="sort-control">{t("eventOrder")}<select value={order} onChange={event => { setOrder(event.target.value); setPage(1); }}><option value="desc">{t("newestFirst")}</option><option value="asc">{t("oldestFirst")}</option></select></label>}
+            {kind !== "league" && (
+              <label className="sort-control">
+                {t("eventOrder")}
+                <select
+                  value={order}
+                  onChange={(event) => {
+                    setOrder(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="desc">{t("newestFirst")}</option>
+                  <option value="asc">{t("oldestFirst")}</option>
+                </select>
+              </label>
+            )}
           </div>
           {kind === "season" && <p className="muted">{t("openSeason")}</p>}
           {list.isPending ? (
@@ -345,17 +398,11 @@ export function CatalogDetail({ user }: { user: User }) {
                 />
               ))}
               {!list.data?.items.length && (
-                <p className="empty">
-                  {t(kind === "league" ? "noSeasons" : "empty")}
-                </p>
+                <p className="empty">{t(kind === "league" ? "noSeasons" : "empty")}</p>
               )}
             </div>
           )}
-          <Pager
-            page={page}
-            more={page < (list.data?.totalPages ?? 0)}
-            onChange={setPage}
-          />
+          <Pager page={page} more={page < (list.data?.totalPages ?? 0)} onChange={setPage} />
         </section>
       )}
     </>

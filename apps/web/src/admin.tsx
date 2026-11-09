@@ -43,15 +43,7 @@ function Field({
     </label>
   );
 }
-function Feedback({
-  pending,
-  error,
-  saved,
-}: {
-  pending: boolean;
-  error: unknown;
-  saved: boolean;
-}) {
+function Feedback({ pending, error, saved }: { pending: boolean; error: unknown; saved: boolean }) {
   const { t } = useTranslation();
   return (
     <>
@@ -111,7 +103,9 @@ function Users() {
     <>
       <div className="section-actions">
         <h2>{t("users")}</h2>
-        <Link className="button-link" to="/admin/users/new">{t("createUser")}</Link>
+        <Link className="button-link" to="/admin/users/new">
+          {t("createUser")}
+        </Link>
       </div>
       {users.isPending ? (
         <Loading />
@@ -129,19 +123,14 @@ function Users() {
           ))}
         </div>
       )}
-      <Pager
-        page={page}
-        more={page * 50 < (users.data?.total ?? 0)}
-        onChange={setPage}
-      />
+      <Pager page={page} more={page * 50 < (users.data?.total ?? 0)} onChange={setPage} />
     </>
   );
 }
 function UserEditor({ user }: { user: User }) {
   const { t } = useTranslation();
   const update = useMutation({
-    mutationFn: (body: unknown) =>
-      api(`/admin/users/${user.id}`, "PATCH", body),
+    mutationFn: (body: unknown) => api(`/admin/users/${user.id}`, "PATCH", body),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["users"] });
       void client.invalidateQueries({ queryKey: ["me"] });
@@ -175,9 +164,7 @@ function UserEditor({ user }: { user: User }) {
           {t("autoApprove")}
           <select
             name="autoApprove"
-            defaultValue={
-              user.autoApprove === null ? "inherit" : String(user.autoApprove)
-            }
+            defaultValue={user.autoApprove === null ? "inherit" : String(user.autoApprove)}
           >
             <option value="inherit">{t("inherit")}</option>
             <option value="true">{t("always")}</option>
@@ -188,7 +175,11 @@ function UserEditor({ user }: { user: User }) {
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
       <ErrorMessage error={update.error} />
-      {update.isSuccess && <p className="notice" role="status">{t("saved")}</p>}
+      {update.isSuccess && (
+        <p className="notice" role="status">
+          {t("saved")}
+        </p>
+      )}
     </form>
   );
 }
@@ -210,21 +201,48 @@ export function UserDetail({ user }: { user: User }) {
     },
   });
   if (user.role !== "ADMIN") return <p role="alert">{t("unauthorized")}</p>;
-  return <>
-    <Link className="back" to="/admin?tab=users">{t("users")}</Link>
-    <header className="page-heading"><h1>{t(creating ? "createUser" : "editUser")}</h1></header>
-    {creating ? <form className="panel compact-form" onSubmit={event => {
-      event.preventDefault();
-      const data = new FormData(event.currentTarget);
-      create.mutate({ email: data.get("email"), password: data.get("password") });
-    }}>
-      <Field name="email" type="email" required />
-      <label>{t("password")}<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required /></label>
-      <p className="muted">{t("passwordHint")}</p>
-      <ErrorMessage error={create.error} />
-      <button disabled={create.isPending}>{t("createUser")}</button>
-    </form> : detail.isPending ? <Loading /> : detail.error ? <ErrorMessage error={detail.error} /> : <UserEditor key={id} user={detail.data!} />}
-  </>;
+  return (
+    <>
+      <Link className="back" to="/admin?tab=users">
+        {t("users")}
+      </Link>
+      <header className="page-heading">
+        <h1>{t(creating ? "createUser" : "editUser")}</h1>
+      </header>
+      {creating ? (
+        <form
+          className="panel compact-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            create.mutate({ email: data.get("email"), password: data.get("password") });
+          }}
+        >
+          <Field name="email" type="email" required />
+          <label>
+            {t("password")}
+            <input
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={12}
+              maxLength={128}
+              required
+            />
+          </label>
+          <p className="muted">{t("passwordHint")}</p>
+          <ErrorMessage error={create.error} />
+          <button disabled={create.isPending}>{t("createUser")}</button>
+        </form>
+      ) : detail.isPending ? (
+        <Loading />
+      ) : detail.error ? (
+        <ErrorMessage error={detail.error} />
+      ) : (
+        <UserEditor key={id} user={detail.data!} />
+      )}
+    </>
+  );
 }
 type Policy = {
   registrationEnabled: boolean;
@@ -238,8 +256,7 @@ function Policies() {
     queryFn: () => api<Policy>("/admin/policies"),
   });
   const save = useMutation({
-    mutationFn: (body: unknown) =>
-      api<Policy>("/admin/policies", "PATCH", body),
+    mutationFn: (body: unknown) => api<Policy>("/admin/policies", "PATCH", body),
     onSuccess: (value) => client.setQueryData(["policies"], value),
   });
   if (policy.isPending) return <Loading />;
@@ -253,27 +270,18 @@ function Policies() {
           const data = new FormData(event.currentTarget);
           save.mutate(
             Object.fromEntries(
-              [
-                "registrationEnabled",
-                "userAutoApprove",
-                "adminAutoApprove",
-              ].map((key) => [key, data.has(key)]),
+              ["registrationEnabled", "userAutoApprove", "adminAutoApprove"].map((key) => [
+                key,
+                data.has(key),
+              ]),
             ),
           );
         }}
       >
         {(Object.keys(policy.data!) as (keyof Policy)[]).map((key) => (
-          <Toggle
-            key={key + String(policy.data![key])}
-            name={key}
-            checked={policy.data![key]}
-          />
+          <Toggle key={key + String(policy.data![key])} name={key} checked={policy.data![key]} />
         ))}
-        <Feedback
-          pending={save.isPending}
-          error={save.error}
-          saved={save.isSuccess}
-        />
+        <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
       </form>
     </section>
   );
@@ -297,13 +305,11 @@ function SportarrSettings() {
   });
   const [connection, setConnection] = useState<Connection>();
   const test = useMutation({
-    mutationFn: (body: unknown) =>
-      api<Connection>("/admin/settings/sportarr/test", "POST", body),
+    mutationFn: (body: unknown) => api<Connection>("/admin/settings/sportarr/test", "POST", body),
     onSuccess: setConnection,
   });
   const save = useMutation({
-    mutationFn: (body: unknown) =>
-      api<SportarrConfig>("/admin/settings/sportarr", "PUT", body),
+    mutationFn: (body: unknown) => api<SportarrConfig>("/admin/settings/sportarr", "PUT", body),
     onSuccess: (value) => {
       client.setQueryData(["sportarr-settings"], value);
     },
@@ -334,8 +340,7 @@ function SportarrSettings() {
             },
             {
               onSuccess: () => {
-                (form.elements.namedItem("apiKey") as HTMLInputElement).value =
-                  "";
+                (form.elements.namedItem("apiKey") as HTMLInputElement).value = "";
               },
             },
           );
@@ -347,9 +352,7 @@ function SportarrSettings() {
           className="quiet"
           type="button"
           disabled={test.isPending}
-          onClick={(event) =>
-            test.mutate(credentials(event.currentTarget.form!))
-          }
+          onClick={(event) => test.mutate(credentials(event.currentTarget.form!))}
         >
           {t(test.isPending ? "loading" : "testConnection")}
         </button>
@@ -361,16 +364,10 @@ function SportarrSettings() {
         )}
         <label>
           {t("rootFolder")}
-          <select
-            name="rootFolderId"
-            defaultValue={settings.data!.rootFolderId ?? ""}
-            required
-          >
+          <select name="rootFolderId" defaultValue={settings.data!.rootFolderId ?? ""} required>
             <option value="">{t("selectOption")}</option>
             {!connection && settings.data!.rootFolderId && (
-              <option value={settings.data!.rootFolderId}>
-                {t("currentSelection")}
-              </option>
+              <option value={settings.data!.rootFolderId}>{t("currentSelection")}</option>
             )}
             {connection?.rootFolders.map((root) => (
               <option key={root.id} value={root.id}>
@@ -388,9 +385,7 @@ function SportarrSettings() {
           >
             <option value="">{t("selectOption")}</option>
             {!connection && settings.data!.qualityProfileId && (
-              <option value={settings.data!.qualityProfileId}>
-                {t("currentSelection")}
-              </option>
+              <option value={settings.data!.qualityProfileId}>{t("currentSelection")}</option>
             )}
             {connection?.qualityProfiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
@@ -399,11 +394,7 @@ function SportarrSettings() {
             ))}
           </select>
         </label>
-        <Feedback
-          pending={save.isPending}
-          error={save.error}
-          saved={save.isSuccess}
-        />
+        <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
       </form>
     </section>
   );
@@ -473,12 +464,7 @@ function NotificationSettings() {
             <div className="form-stack">
               <Toggle name="emailEnabled" checked={value.emailEnabled} />
               <Field name="smtpHost" value={value.smtpHost} />
-              <Field
-                name="smtpPort"
-                value={value.smtpPort}
-                type="number"
-                required
-              />
+              <Field name="smtpPort" value={value.smtpPort} type="number" required />
               <label>
                 {t("smtpSecurity")}
                 <select name="smtpSecurity" defaultValue={value.smtpSecurity}>
@@ -510,11 +496,7 @@ function NotificationSettings() {
             </div>
           </section>
         </div>
-        <Feedback
-          pending={save.isPending}
-          error={save.error}
-          saved={save.isSuccess}
-        />
+        <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
       </form>
       <section className="delivery-list">
         <h2>{t("deliveryHistory")}</h2>
@@ -537,11 +519,7 @@ function NotificationSettings() {
                 {deliveries.data.map((item) => (
                   <tr key={item.id}>
                     <td>{item.channel === "email" ? t("email") : "Discord"}</td>
-                    <td>
-                      {item.channel === "discord"
-                        ? t("discordDestination")
-                        : item.recipient}
-                    </td>
+                    <td>{item.channel === "discord" ? t("discordDestination") : item.recipient}</td>
                     <td>{t(item.status)}</td>
                     <td>{item.attempts}</td>
                   </tr>

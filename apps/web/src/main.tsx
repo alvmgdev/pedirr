@@ -1,18 +1,8 @@
 import { Administration, UserDetail } from "./admin";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  BrowserRouter,
-  NavLink,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
-import {
-  QueryClientProvider,
-  useMutation,
-  useQuery,
-} from "@tanstack/react-query";
+import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import "./i18n";
 import "@fontsource/barlow/latin-400.css";
@@ -74,30 +64,30 @@ function App() {
         {t("skipContent")}
       </a>
       <header className="app-header">
-      <div className="app-nav">
-        <NavLink to="/" aria-label="Pedirr">
-          <LinkBrand />
-        </NavLink>
-        <nav aria-label={t("mainNavigation")}>
-          <NavLink end to="/">
-            {t("discover")}
+        <div className="app-nav">
+          <NavLink to="/" aria-label="Pedirr">
+            <LinkBrand />
           </NavLink>
-          <NavLink to="/requests">{t("requests")}</NavLink>
-          <NavLink to="/account">{t("account")}</NavLink>
-          {user.role === "ADMIN" && <NavLink to="/admin">{t("admin")}</NavLink>}
-        </nav>
-        <div className="nav-bottom">
-          <span>{user.email}</span>
-          <button disabled={logout.isPending} onClick={() => logout.mutate()}>
-            {t("logout")}
-          </button>
-          <ErrorMessage error={logout.error} />
+          <nav aria-label={t("mainNavigation")}>
+            <NavLink end to="/">
+              {t("discover")}
+            </NavLink>
+            <NavLink to="/requests">{t("requests")}</NavLink>
+            <NavLink to="/account">{t("account")}</NavLink>
+            {user.role === "ADMIN" && <NavLink to="/admin">{t("admin")}</NavLink>}
+          </nav>
+          <div className="nav-bottom">
+            <span>{user.email}</span>
+            <button disabled={logout.isPending} onClick={() => logout.mutate()}>
+              {t("logout")}
+            </button>
+            <ErrorMessage error={logout.error} />
+          </div>
         </div>
-      </div>
-      <div className="topbar">
-        <span>{t("scheduleNote", { timezone: user.timezone })}</span>
-        <Language user={user} />
-      </div>
+        <div className="topbar">
+          <span>{t("scheduleNote", { timezone: user.timezone })}</span>
+          <Language user={user} />
+        </div>
       </header>
       <div className="app-content">
         <main id="main" tabIndex={-1}>
@@ -113,7 +103,10 @@ function App() {
               element={<RequestDetail key={location.pathname} user={user} />}
             />
             <Route path="/account" element={<Account user={user} />} />
-            <Route path="/admin/users/:id" element={<UserDetail key={location.pathname} user={user} />} />
+            <Route
+              path="/admin/users/:id"
+              element={<UserDetail key={location.pathname} user={user} />}
+            />
             <Route path="/admin" element={<Administration user={user} />} />
             <Route path="*" element={<h1>{t("notFound")}</h1>} />
           </Routes>

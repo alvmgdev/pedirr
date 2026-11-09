@@ -18,9 +18,18 @@ export interface MetadataPage {
 export interface MetadataSearch {
   query: string;
   total: number;
-  results: (MetadataItem & { entityType: 'league' | 'team' | 'event' })[];
+  results: (MetadataItem & { entityType: "league" | "team" | "event" })[];
 }
-export type EventFilters = { league?: string; season?: string; team?: string; from?: string; to?: string; page: number; pageSize?: number; order?: 'asc' | 'desc' };
+export type EventFilters = {
+  league?: string;
+  season?: string;
+  team?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  pageSize?: number;
+  order?: "asc" | "desc";
+};
 export abstract class MetadataProvider {
   abstract search(query: string): Promise<MetadataSearch>;
   abstract leagues(page: number): Promise<MetadataPage>;

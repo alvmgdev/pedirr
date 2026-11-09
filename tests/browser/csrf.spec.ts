@@ -11,7 +11,9 @@ const admin = {
 };
 const policy = { registrationEnabled: false, userAutoApprove: false, adminAutoApprove: false };
 
-test("writes reuse one session CSRF token and refresh it once when it goes stale", async ({ page }) => {
+test("writes reuse one session CSRF token and refresh it once when it goes stale", async ({
+  page,
+}) => {
   let issued = 0;
   let validToken = "token-1";
   const sentTokens: string[] = [];
@@ -27,7 +29,10 @@ test("writes reuse one session CSRF token and refresh it once when it goes stale
       const token = request.headers()["x-csrf-token"];
       sentTokens.push(token);
       if (token !== validToken) {
-        return route.fulfill({ status: 403, json: { code: "CSRF_INVALID", message: "Refresh the page and try again" } });
+        return route.fulfill({
+          status: 403,
+          json: { code: "CSRF_INVALID", message: "Refresh the page and try again" },
+        });
       }
       return route.fulfill({ json: request.postDataJSON() });
     }

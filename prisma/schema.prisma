@@ -27,17 +27,17 @@ enum EntityKind {
 }
 
 model User {
-  id               String   @id @default(uuid())
-  email            String   @unique
-  passwordHash     String
-  role             Role     @default(USER)
-  active           Boolean  @default(true)
-  locale           String   @default("en")
-  timezone         String   @default("UTC")
-  autoApprove      Boolean?
-  createdAt        DateTime @default(now())
-  sessions         Session[]
-  subscriptions    RequestSubscriber[]
+  id            String              @id @default(uuid())
+  email         String              @unique
+  passwordHash  String
+  role          Role                @default(USER)
+  active        Boolean             @default(true)
+  locale        String              @default("en")
+  timezone      String              @default("UTC")
+  autoApprove   Boolean?
+  createdAt     DateTime            @default(now())
+  sessions      Session[]
+  subscriptions RequestSubscriber[]
 }
 
 model Session {
@@ -47,48 +47,51 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   @@index([expiresAt])
 }
 
 model CatalogEntity {
-  id          String   @id @default(uuid())
+  id          String               @id @default(uuid())
   kind        EntityKind
   title       String
   metadata    Json
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime             @updatedAt
   identifiers ExternalIdentifier[]
   requests    Request[]
   bindings    ManagerBinding[]
 }
 
 model ExternalIdentifier {
-  id        String @id @default(uuid())
+  id        String        @id @default(uuid())
   entityId  String
   entity    CatalogEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
   provider  String
   namespace String
   value     String
+
   @@unique([provider, namespace, value])
   @@index([entityId])
 }
 
 model Request {
-  id               String @id @default(uuid())
+  id               String              @id @default(uuid())
   entityId         String
-  entity           CatalogEntity @relation(fields: [entityId], references: [id])
+  entity           CatalogEntity       @relation(fields: [entityId], references: [id])
   scopeKey         String
   scope            Json
-  status           RequestStatus @default(PENDING)
-  integrationState String @default("idle")
+  status           RequestStatus       @default(PENDING)
+  integrationState String              @default("idle")
   lastError        String?
   reviewedBy       String?
   rejectionReason  String?
-  version          Int @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  version          Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
   subscribers      RequestSubscriber[]
   history          RequestHistory[]
   events           RequestEvent[]
+
   @@unique([entityId, scopeKey])
   @@index([status, updatedAt])
 }
@@ -96,75 +99,81 @@ model Request {
 model RequestSubscriber {
   requestId String
   userId    String
-  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
   @@id([requestId, userId])
 }
 
 model RequestHistory {
-  id        String @id @default(uuid())
+  id        String   @id @default(uuid())
   requestId String
-  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
   actorId   String?
   action    String
   details   Json
   createdAt DateTime @default(now())
+
   @@index([requestId, createdAt])
 }
 
 model ManagerBinding {
-  id         String @id @default(uuid())
-  entityId   String
-  entity     CatalogEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  manager    String
-  remoteId   String
-  snapshot   Json
-  checkedAt  DateTime @updatedAt
+  id        String        @id @default(uuid())
+  entityId  String
+  entity    CatalogEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  manager   String
+  remoteId  String
+  snapshot  Json
+  checkedAt DateTime      @updatedAt
+
   @@unique([manager, entityId])
   @@unique([manager, remoteId])
 }
 
 model Setting {
-  key       String @id
+  key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
 }
 
 model OutboxEvent {
-  id          String @id @default(uuid())
+  id          String    @id @default(uuid())
   type        String
   payload     Json
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   publishedAt DateTime?
   processedAt DateTime?
   jobId       String?
+
   @@index([publishedAt, createdAt])
   @@index([processedAt, publishedAt])
 }
 
 model NotificationDelivery {
-  id         String @id @default(uuid())
-  eventId    String
-  channel    String
-  recipient  String
-  status     String @default("pending")
-  attempts   Int @default(0)
-  lastError  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  eventId   String
+  channel   String
+  recipient String
+  status    String   @default("pending")
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+
   @@unique([eventId, channel, recipient])
 }
 
 model RequestEvent {
-  id          String @id @default(uuid())
-  requestId   String
-  request     Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  externalId  String
-  metadata    Json
-  remoteId    Int?
-  active      Boolean @default(true)
-  available   Boolean @default(false)
-  progress    Float @default(0)
-  checkedAt   DateTime?
+  id         String    @id @default(uuid())
+  requestId  String
+  request    Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  externalId String
+  metadata   Json
+  remoteId   Int?
+  active     Boolean   @default(true)
+  available  Boolean   @default(false)
+  progress   Float     @default(0)
+  checkedAt  DateTime?
+
   @@unique([requestId, externalId])
 }

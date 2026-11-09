@@ -58,11 +58,9 @@ test("administrator tests Sportarr, selects defaults and saves without redisplay
   await expect(page.getByLabel("API key")).toHaveValue("");
   expect(saved).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: "test-results/admin-mobile.png",
@@ -84,11 +82,9 @@ test("administrator can set policies and sees protection for the last administra
     if (path.endsWith("/auth/me")) body = admin;
     else if (path.endsWith("/auth/csrf")) body = { token: "test-token" };
     else if (path.endsWith("/admin/policies")) {
-      if (route.request().method() === "PATCH")
-        policy = route.request().postDataJSON();
+      if (route.request().method() === "PATCH") policy = route.request().postDataJSON();
       body = policy;
-    } else if (path.endsWith("/admin/users"))
-      body = { items: [admin], total: 1 };
+    } else if (path.endsWith("/admin/users")) body = { items: [admin], total: 1 };
     else if (path.endsWith("/admin/users/admin-1")) {
       status = route.request().method() === "GET" ? 200 : 409;
       body = status === 200 ? admin : { code: "LAST_ADMIN" };
@@ -116,19 +112,13 @@ test("administrator can set policies and sees protection for the last administra
   );
 });
 test("ordinary users cannot open administration", async ({ page }) => {
-  await page.route("**/api/v1/**", (route) =>
-    route.fulfill({ json: { ...admin, role: "USER" } }),
-  );
+  await page.route("**/api/v1/**", (route) => route.fulfill({ json: { ...admin, role: "USER" } }));
   await page.goto("/admin");
   await expect(page.getByRole("alert")).toContainText("You do not have access");
-  await expect(page.getByRole("link", { name: "Administration" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("link", { name: "Administration" })).toHaveCount(0);
 });
 
-test("notification form preserves saved secrets when fields are left blank", async ({
-  page,
-}) => {
+test("notification form preserves saved secrets when fields are left blank", async ({ page }) => {
   const settings = {
     emailEnabled: false,
     smtpHost: "smtp.example.invalid",

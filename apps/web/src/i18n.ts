@@ -6,7 +6,8 @@ const en = {
   oldestFirst: "Oldest first",
   editUser: "Edit user",
   inactive: "Inactive",
-  metadataLocalLimit: "Pedirr has reached its catalog request limit. Wait a moment before trying again.",
+  metadataLocalLimit:
+    "Pedirr has reached its catalog request limit. Wait a moment before trying again.",
   metadataProviderLimit: "The catalog provider has asked us to wait. Try again shortly.",
   metadataUnavailable: "The catalog provider is temporarily unavailable. Try again shortly.",
   metadataLoading: "This catalog data is still being loaded. Try again shortly.",
@@ -14,8 +15,7 @@ const en = {
   emptySchedulePage: "No upcoming events in this part of the schedule. Load more to continue.",
   resultType: "Filter returned results",
   allResults: "All",
-  alreadyAvailable:
-    "This content is already available in Sportarr. No request is needed.",
+  alreadyAvailable: "This content is already available in Sportarr. No request is needed.",
   availabilityUnknown:
     "Availability could not be checked. Try again before requesting this content.",
   followRequest: "Follow this request",
@@ -70,14 +70,11 @@ const en = {
     "Only new notices are sent after you enable a channel. Email uses each user’s language.",
   discordDestination: "Configured Discord channel",
   credentialsHint: "Secrets are stored encrypted and are never shown again.",
-  managerAuthFailed:
-    "Sportarr rejected the API key. Check the saved credentials.",
-  managerUnreachable:
-    "Sportarr could not be reached. Check its URL and network connection.",
+  managerAuthFailed: "Sportarr rejected the API key. Check the saved credentials.",
+  managerUnreachable: "Sportarr could not be reached. Check its URL and network connection.",
   managerDefaults: "Choose an existing folder and quality profile.",
   secretRequired: "Enter the secret again when changing the connection.",
-  invalidUrl:
-    "Enter a valid server URL without credentials or query parameters.",
+  invalidUrl: "Enter a valid server URL without credentials or query parameters.",
   invalidDiscord: "Enter a valid HTTPS Discord webhook URL.",
   invalidSmtp: "Enter an SMTP hostname or IPv4 address.",
 
@@ -110,8 +107,7 @@ const en = {
   popular: "Popular here",
   popularEmpty: "The leagues requested by your community will appear here.",
   empty: "Nothing to show yet.",
-  emptySchedule:
-    "No events on this page. Browse the next page or search for a league.",
+  emptySchedule: "No events on this page. Browse the next page or search for a league.",
   previous: "Previous",
   next: "Next",
   page: "Page {{page}}",
@@ -162,8 +158,7 @@ const en = {
   details: "Details",
   created: "Requested",
   synchronized: "Status updated",
-  requestHelp:
-    "Requests are reviewed by your administrator. Approved content is sent to Sportarr.",
+  requestHelp: "Requests are reviewed by your administrator. Approved content is sent to Sportarr.",
   openSeason: "New events in this season may be added over time.",
   noSeasons: "No seasons found for this league.",
   unknown: "Unknown",
@@ -190,16 +185,20 @@ const es: Record<keyof typeof en, string> = {
   oldestFirst: "Más antiguos primero",
   editUser: "Editar usuario",
   inactive: "Inactivo",
-  metadataLocalLimit: "Pedirr ha alcanzado su límite de consultas al catálogo. Espera un momento antes de reintentarlo.",
-  metadataProviderLimit: "El proveedor del catálogo nos ha pedido esperar. Reinténtalo en unos instantes.",
-  metadataUnavailable: "El proveedor del catálogo no está disponible temporalmente. Reinténtalo en unos instantes.",
-  metadataLoading: "Estos datos del catálogo todavía se están cargando. Reinténtalo en unos instantes.",
+  metadataLocalLimit:
+    "Pedirr ha alcanzado su límite de consultas al catálogo. Espera un momento antes de reintentarlo.",
+  metadataProviderLimit:
+    "El proveedor del catálogo nos ha pedido esperar. Reinténtalo en unos instantes.",
+  metadataUnavailable:
+    "El proveedor del catálogo no está disponible temporalmente. Reinténtalo en unos instantes.",
+  metadataLoading:
+    "Estos datos del catálogo todavía se están cargando. Reinténtalo en unos instantes.",
   moreEvents: "Mostrar más eventos",
-  emptySchedulePage: "No hay próximos eventos en esta parte de la agenda. Carga más para continuar.",
+  emptySchedulePage:
+    "No hay próximos eventos en esta parte de la agenda. Carga más para continuar.",
   resultType: "Filtrar resultados recibidos",
   allResults: "Todos",
-  alreadyAvailable:
-    "Este contenido ya está disponible en Sportarr. No hace falta pedirlo.",
+  alreadyAvailable: "Este contenido ya está disponible en Sportarr. No hace falta pedirlo.",
   availabilityUnknown:
     "No se ha podido comprobar la disponibilidad. Reintenta antes de pedir este contenido.",
   followRequest: "Seguir esta petición",
@@ -255,8 +254,7 @@ const es: Record<keyof typeof en, string> = {
   discordDestination: "Canal de Discord configurado",
   credentialsHint: "Los secretos se guardan cifrados y no vuelven a mostrarse.",
   managerAuthFailed: "Sportarr ha rechazado la clave. Revisa las credenciales.",
-  managerUnreachable:
-    "No se puede conectar con Sportarr. Revisa la URL y la conexión de red.",
+  managerUnreachable: "No se puede conectar con Sportarr. Revisa la URL y la conexión de red.",
   managerDefaults: "Elige una carpeta y un perfil de calidad existentes.",
   secretRequired: "Introduce de nuevo el secreto al cambiar la conexión.",
   invalidUrl: "Introduce una URL válida sin credenciales ni parámetros.",
@@ -274,10 +272,8 @@ const es: Record<keyof typeof en, string> = {
   email: "Correo electrónico",
   password: "Contraseña",
   welcome: "Tu deporte. Tu calendario.",
-  intro:
-    "Encuentra una liga, elige una temporada o pide el próximo gran partido.",
-  loginHelp:
-    "Inicia sesión para explorar deportes y pedir contenido para tu biblioteca.",
+  intro: "Encuentra una liga, elige una temporada o pide el próximo gran partido.",
+  loginHelp: "Inicia sesión para explorar deportes y pedir contenido para tu biblioteca.",
   registerHelp: "El administrador debe habilitar el registro.",
   loading: "Cargando…",
   retry: "Reintentar",
@@ -294,8 +290,7 @@ const es: Record<keyof typeof en, string> = {
   popular: "Populares aquí",
   popularEmpty: "Aquí aparecerán las ligas que pida tu comunidad.",
   empty: "Todavía no hay resultados.",
-  emptySchedule:
-    "No hay eventos en esta página. Mira la siguiente o busca una liga.",
+  emptySchedule: "No hay eventos en esta página. Mira la siguiente o busca una liga.",
   previous: "Anterior",
   next: "Siguiente",
   page: "Página {{page}}",
@@ -315,8 +310,7 @@ const es: Record<keyof typeof en, string> = {
   requested: "Ver petición",
   all: "Todas",
   mine: "Mis peticiones",
-  requestEmpty:
-    "Todavía no hay peticiones. Busca algo en Descubrir para empezar.",
+  requestEmpty: "Todavía no hay peticiones. Busca algo en Descubrir para empezar.",
   status: "Estado",
   PENDING: "Pendiente de aprobación",
   APPROVED: "Aprobada",
@@ -347,25 +341,21 @@ const es: Record<keyof typeof en, string> = {
   details: "Detalles",
   created: "Solicitada",
   synchronized: "Estado actualizado",
-  requestHelp:
-    "El administrador revisa las peticiones. El contenido aprobado se envía a Sportarr.",
+  requestHelp: "El administrador revisa las peticiones. El contenido aprobado se envía a Sportarr.",
   openSeason: "Pueden añadirse nuevos eventos a esta temporada.",
   noSeasons: "No se han encontrado temporadas de esta liga.",
   unknown: "Desconocido",
   requestBusy: "Enviando petición…",
-  registrationClosed:
-    "El registro está deshabilitado. Contacta con el administrador.",
+  registrationClosed: "El registro está deshabilitado. Contacta con el administrador.",
   invalidCredentials: "El correo o la contraseña no son correctos.",
   csrf: "La sesión ha cambiado. Recarga la página e inténtalo de nuevo.",
   rateLimited: "Demasiadas peticiones. Espera un momento antes de reintentar.",
-  metadataBusy:
-    "El catálogo deportivo está ocupado. Inténtalo en unos instantes.",
+  metadataBusy: "El catálogo deportivo está ocupado. Inténtalo en unos instantes.",
   requestChanged: "Esta petición ha cambiado. Actualiza antes de revisarla.",
   invalidInput: "Revisa los campos del formulario e inténtalo de nuevo.",
   lastAdmin: "Debe quedar al menos un administrador activo.",
   emailUnavailable: "Este correo ya está en uso.",
-  connectionError:
-    "No se ha podido conectar con el servidor. Revisa tu conexión.",
+  connectionError: "No se ha podido conectar con el servidor. Revisa tu conexión.",
   general: "General",
   users: "Usuarios",
   settings: "Ajustes",
@@ -374,9 +364,7 @@ const es: Record<keyof typeof en, string> = {
 };
 void i18n.use(initReactI18next).init({
   resources: { en: { translation: en }, es: { translation: es } },
-  lng:
-    localStorage.getItem("pedirr.locale") ??
-    (navigator.language.startsWith("es") ? "es" : "en"),
+  lng: localStorage.getItem("pedirr.locale") ?? (navigator.language.startsWith("es") ? "es" : "en"),
   fallbackLng: "en",
   interpolation: { escapeValue: false },
 });

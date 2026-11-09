@@ -14,8 +14,7 @@ export function Requests() {
   if (status) query.set("status", status);
   const result = useQuery({
     queryKey: ["requests", query.toString()],
-    queryFn: () =>
-      api<{ items: RequestRecord[]; total: number }>("/requests?" + query),
+    queryFn: () => api<{ items: RequestRecord[]; total: number }>("/requests?" + query),
     refetchInterval: 30000,
   });
   const change = (values: Record<string, string>) =>
@@ -27,8 +26,12 @@ export function Requests() {
         <p>{t("requestHelp")}</p>
       </header>
       <nav className="filter-tabs" aria-label={t("status")}>
-        {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map(value => (
-          <button key={value} aria-pressed={status === value} onClick={() => change({ status: value })}>
+        {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map((value) => (
+          <button
+            key={value}
+            aria-pressed={status === value}
+            onClick={() => change({ status: value })}
+          >
             {t(value || "all")}
           </button>
         ))}
@@ -50,12 +53,14 @@ export function Requests() {
       ) : (
         <div className="request-list">
           {result.data?.items.map((request) => (
-            <Link
-              className="request-row"
-              key={request.id}
-              to={"/requests/" + request.id}
-            >
-              <Artwork item={request.scope.event ?? request.scope.league ?? { id: request.id, name: request.entity.title }} kind={request.scope.kind === "event" ? "event" : "league"} />
+            <Link className="request-row" key={request.id} to={"/requests/" + request.id}>
+              <Artwork
+                item={
+                  request.scope.event ??
+                  request.scope.league ?? { id: request.id, name: request.entity.title }
+                }
+                kind={request.scope.kind === "event" ? "event" : "league"}
+              />
               <div className="request-name">
                 <h2>{request.entity.title}</h2>
                 <p>{request.scope.season?.name ?? t("event")}</p>
@@ -63,17 +68,13 @@ export function Requests() {
               <Status value={request.status} />
             </Link>
           ))}
-          {!result.data?.items.length && (
-            <p className="empty">{t("requestEmpty")}</p>
-          )}
+          {!result.data?.items.length && <p className="empty">{t("requestEmpty")}</p>}
         </div>
       )}
       <Pager
         page={page}
         more={page * 30 < (result.data?.total ?? 0)}
-        onChange={(page) =>
-          setParams({ ...Object.fromEntries(params), page: String(page) })
-        }
+        onChange={(page) => setParams({ ...Object.fromEntries(params), page: String(page) })}
       />
     </>
   );
@@ -88,8 +89,7 @@ export function RequestDetail({ user }: { user: User }) {
     refetchInterval: 15000,
   });
   const review = useMutation({
-    mutationFn: (body: unknown) =>
-      api("/requests/" + id + "/review", "POST", body),
+    mutationFn: (body: unknown) => api("/requests/" + id + "/review", "POST", body),
     onSuccess: () => {
       setReject(false);
       void client.invalidateQueries({ queryKey: ["requests"] });
@@ -112,7 +112,10 @@ export function RequestDetail({ user }: { user: User }) {
       <header className="detail-heading">
         <div className="detail-artwork">
           <Artwork
-            item={request.scope.event ?? request.scope.league ?? { id: request.id, name: request.entity.title }}
+            item={
+              request.scope.event ??
+              request.scope.league ?? { id: request.id, name: request.entity.title }
+            }
             kind={request.scope.kind === "event" ? "event" : "league"}
           />
         </div>
@@ -120,17 +123,13 @@ export function RequestDetail({ user }: { user: User }) {
           <Status value={request.status} />
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
-          <p className="muted">
-            {t("subscribers", { count: request._count.subscribers })}
-          </p>
+          <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
         </div>
         {user.role === "ADMIN" && request.status === "PENDING" && (
           <div className="request-box">
             <button
               disabled={review.isPending}
-              onClick={() =>
-                review.mutate({ decision: "approve", version: request.version })
-              }
+              onClick={() => review.mutate({ decision: "approve", version: request.version })}
             >
               {t("approve")}
             </button>
@@ -144,9 +143,7 @@ export function RequestDetail({ user }: { user: User }) {
                   review.mutate({
                     decision: "reject",
                     version: request.version,
-                    reason: String(
-                      new FormData(event.currentTarget).get("reason"),
-                    ),
+                    reason: String(new FormData(event.currentTarget).get("reason")),
                   });
                 }}
               >
@@ -161,9 +158,7 @@ export function RequestDetail({ user }: { user: User }) {
           </div>
         )}
       </header>
-      {request.rejectionReason && (
-        <p className="notice">{request.rejectionReason}</p>
-      )}
+      {request.rejectionReason && <p className="notice">{request.rejectionReason}</p>}
       {request.integrationState === "error" && (
         <p role="status" className="notice danger">
           {t("integrationError")}
@@ -178,18 +173,12 @@ export function RequestDetail({ user }: { user: User }) {
                 <div className="progress-row" key={event.id}>
                   <h3>{event.metadata.name}</h3>
                   <p>{t(event.available ? "available" : "waiting")}</p>
-                  <progress
-                    max={100}
-                    value={event.progress}
-                    aria-label={event.metadata.name}
-                  />
+                  <progress max={100} value={event.progress} aria-label={event.metadata.name} />
                 </div>
               ))}
             </div>
           ) : (
-            <p className="empty">
-              {t(request.status === "PENDING" ? "PENDING" : "waiting")}
-            </p>
+            <p className="empty">{t(request.status === "PENDING" ? "PENDING" : "waiting")}</p>
           )}
         </section>
         <section className="sidebar-note">
@@ -198,9 +187,7 @@ export function RequestDetail({ user }: { user: User }) {
             {request.history?.map((entry) => (
               <li key={entry.id}>
                 <strong>{t(entry.details.status ?? entry.action)}</strong>
-                <time dateTime={entry.createdAt}>
-                  {format(entry.createdAt)}
-                </time>
+                <time dateTime={entry.createdAt}>{format(entry.createdAt)}</time>
                 {entry.details.reason && <p>{entry.details.reason}</p>}
               </li>
             ))}

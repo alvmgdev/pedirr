@@ -50,10 +50,7 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
     else if (path.endsWith("/catalog/popular")) body = { items: [] };
     else if (path.endsWith("/catalog/events/event-1")) body = event;
     else if (path.endsWith("/requests/lookup")) body = { state: "missing" };
-    else if (
-      path.endsWith("/requests") &&
-      route.request().method() === "POST"
-    ) {
+    else if (path.endsWith("/requests") && route.request().method() === "POST") {
       expect(route.request().postDataJSON()).toEqual({
         kind: "event",
         identifier: "event-1",
@@ -63,21 +60,15 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
     await route.fulfill({ status, json: body });
   });
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Your sports. Your schedule." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your sports. Your schedule." })).toBeVisible();
   await page.screenshot({
     path: "test-results/login-desktop.png",
     fullPage: true,
   });
   await page.getByLabel("Email", { exact: true }).fill(user.email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("fixture-long-password");
+  await page.getByLabel("Password", { exact: true }).fill("fixture-long-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Arsenal vs Liverpool" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Arsenal vs Liverpool" })).toBeVisible();
   await page.screenshot({
     path: "test-results/discover-desktop.png",
     fullPage: true,
@@ -90,23 +81,15 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
     .click();
   await page.getByRole("button", { name: "Request this event" }).click();
   await expect(page).toHaveURL(/requests\/request-1$/);
-  await expect(
-    page.getByText("Pending approval", { exact: true }).first(),
-  ).toBeVisible();
+  await expect(page.getByText("Pending approval", { exact: true }).first()).toBeVisible();
   await page.getByLabel("Language").selectOption("es");
-  await expect(
-    page.getByRole("link", { name: "Descubrir", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Descubrir", exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("link", { name: "Descubrir", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Arsenal vs Liverpool" }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
+  await expect(page.getByRole("heading", { name: "Arsenal vs Liverpool" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await page.screenshot({
     path: "test-results/discover-mobile.png",
     fullPage: true,
@@ -127,27 +110,34 @@ test("closed registration is explained in Spanish", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   await page.getByLabel("Correo electrónico").fill("viewer@example.invalid");
-  await page
-    .getByLabel("Contraseña", { exact: true })
-    .fill("fixture-long-password");
+  await page.getByLabel("Contraseña", { exact: true }).fill("fixture-long-password");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "El registro está deshabilitado",
-  );
+  await expect(page.getByRole("alert")).toContainText("El registro está deshabilitado");
 });
 
-test('already available catalog content has no request action',async({page})=>{
- let writes=0;
- await page.route('**/api/v1/**',async route=>{
-  const path=new URL(route.request().url()).pathname;let body:unknown={};
-  if(route.request().method()!=='GET')writes++;
-  if(path.endsWith('/auth/me'))body={id:'user',email:'viewer@example.invalid',role:'USER',locale:'en',timezone:'UTC'};
-  else if(path.endsWith('/requests/lookup'))body={state:'available'};
-  else if(path.endsWith('/catalog/events/event-1'))body={id:'event-1',name:'Final',leagueId:'league-1',leagueName:'League'};
-  await route.fulfill({json:body});
- });
- await page.goto('/catalog/event/event-1');
- await expect(page.getByText('This content is already available in Sportarr. No request is needed.')).toBeVisible();
- await expect(page.getByRole('button',{name:'Request this event'})).toHaveCount(0);
- expect(writes).toBe(0);
+test("already available catalog content has no request action", async ({ page }) => {
+  let writes = 0;
+  await page.route("**/api/v1/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    let body: unknown = {};
+    if (route.request().method() !== "GET") writes++;
+    if (path.endsWith("/auth/me"))
+      body = {
+        id: "user",
+        email: "viewer@example.invalid",
+        role: "USER",
+        locale: "en",
+        timezone: "UTC",
+      };
+    else if (path.endsWith("/requests/lookup")) body = { state: "available" };
+    else if (path.endsWith("/catalog/events/event-1"))
+      body = { id: "event-1", name: "Final", leagueId: "league-1", leagueName: "League" };
+    await route.fulfill({ json: body });
+  });
+  await page.goto("/catalog/event/event-1");
+  await expect(
+    page.getByText("This content is already available in Sportarr. No request is needed."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Request this event" })).toHaveCount(0);
+  expect(writes).toBe(0);
 });

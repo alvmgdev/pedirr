@@ -37,8 +37,7 @@ export function Login() {
       const user = await api<User>("/auth/login", "POST", body);
       return api<User>("/me", "PATCH", {
         locale: i18n.language.startsWith("es") ? "es" : "en",
-        timezone:
-          Intl.DateTimeFormat().resolvedOptions().timeZone ?? user.timezone,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? user.timezone,
       });
     },
     onSuccess: (user) => {
@@ -75,13 +74,7 @@ export function Login() {
           >
             <label>
               {t("email")}
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                maxLength={254}
-              />
+              <input name="email" type="email" autoComplete="email" required maxLength={254} />
             </label>
             <label>
               {t("password")}
@@ -101,9 +94,7 @@ export function Login() {
             )}
             <ErrorMessage error={action.error} />
             <button disabled={action.isPending}>
-              {t(
-                action.isPending ? "loading" : register ? "register" : "login",
-              )}
+              {t(action.isPending ? "loading" : register ? "register" : "login")}
             </button>
           </form>
           <button
@@ -123,7 +114,15 @@ export function Login() {
 export function LinkBrand() {
   return (
     <div className="brand">
-      <svg viewBox="0 0 30 34" fill="none" aria-hidden="true"><path d="M3 3h24v9a5 5 0 0 0 0 10v9H3v-9a5 5 0 0 0 0-10V3Z" stroke="currentColor" strokeWidth="2"/><path d="m12 11 9 6-9 6V11Z" fill="currentColor"/></svg>pedirr
+      <svg viewBox="0 0 30 34" fill="none" aria-hidden="true">
+        <path
+          d="M3 3h24v9a5 5 0 0 0 0 10v9H3v-9a5 5 0 0 0 0-10V3Z"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path d="m12 11 9 6-9 6V11Z" fill="currentColor" />
+      </svg>
+      pedirr
     </div>
   );
 }
@@ -156,20 +155,13 @@ export function Account({ user }: { user: User }) {
             onSubmit={(event) => {
               event.preventDefault();
               profile.mutate({
-                timezone: String(
-                  new FormData(event.currentTarget).get("timezone"),
-                ),
+                timezone: String(new FormData(event.currentTarget).get("timezone")),
               });
             }}
           >
             <label>
               {t("timezone")}
-              <input
-                name="timezone"
-                defaultValue={user.timezone}
-                required
-                list="timezones"
-              />
+              <input name="timezone" defaultValue={user.timezone} required list="timezones" />
               <datalist id="timezones">
                 {Intl.supportedValuesOf("timeZone").map((zone) => (
                   <option key={zone} value={zone} />

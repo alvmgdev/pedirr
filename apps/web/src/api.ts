@@ -3,8 +3,10 @@ export const client = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60000,
-      retry: (attempt, error) => error instanceof ApiError && error.code === "METADATA_BUSY" && attempt < 2,
-      retryDelay: (_attempt, error) => error instanceof ApiError ? Math.max(1000, (error.retryAfterSeconds ?? 10) * 1000) : 1000,
+      retry: (attempt, error) =>
+        error instanceof ApiError && error.code === "METADATA_BUSY" && attempt < 2,
+      retryDelay: (_attempt, error) =>
+        error instanceof ApiError ? Math.max(1000, (error.retryAfterSeconds ?? 10) * 1000) : 1000,
       refetchOnWindowFocus: false,
     },
     mutations: { retry: false },
@@ -45,7 +47,8 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     return await send<T>(path, method, body);
   } catch (error) {
     // A cached token goes stale when the server revokes the session; refresh it once.
-    if (method === "GET" || !(error instanceof ApiError) || error.code !== "CSRF_INVALID") throw error;
+    if (method === "GET" || !(error instanceof ApiError) || error.code !== "CSRF_INVALID")
+      throw error;
     resetCsrfToken();
     return send<T>(path, method, body);
   } finally {
@@ -72,11 +75,7 @@ async function send<T>(path: string, method: string, body?: unknown): Promise<T>
   }
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    if (
-      response.status === 401 &&
-      path !== "/auth/login" &&
-      path !== "/auth/me"
-    )
+    if (response.status === 401 && path !== "/auth/login" && path !== "/auth/me")
       window.dispatchEvent(new Event("pedirr:session-expired"));
     throw new ApiError(
       response.status,

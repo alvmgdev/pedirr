@@ -32,9 +32,12 @@ export function ErrorMessage({ error }: { error: unknown }) {
     upstream: "metadataUnavailable",
     in_flight: "metadataLoading",
   };
-  const message = error instanceof ApiError
-    ? (error.code === "METADATA_BUSY" && error.reason ? busyReasons[error.reason] ?? "metadataBusy" : keys[error.code] ?? "error")
-    : "error";
+  const message =
+    error instanceof ApiError
+      ? error.code === "METADATA_BUSY" && error.reason
+        ? (busyReasons[error.reason] ?? "metadataBusy")
+        : (keys[error.code] ?? "error")
+      : "error";
   return error ? (
     <p role="alert" className="notice danger">
       {t(message)}
@@ -51,9 +54,7 @@ export function Loading() {
 }
 export function Status({ value }: { value: string }) {
   const { t } = useTranslation();
-  return (
-    <span className={"status status-" + value.toLowerCase()}>{t(value)}</span>
-  );
+  return <span className={"status status-" + value.toLowerCase()}>{t(value)}</span>;
 }
 export function Pager({
   page,
@@ -67,19 +68,11 @@ export function Pager({
   const { t } = useTranslation();
   return (
     <nav className="pager" aria-label={t("page", { page })}>
-      <button
-        className="quiet"
-        disabled={page === 1}
-        onClick={() => onChange(page - 1)}
-      >
+      <button className="quiet" disabled={page === 1} onClick={() => onChange(page - 1)}>
         {t("previous")}
       </button>
       <span>{t("page", { page })}</span>
-      <button
-        className="quiet"
-        disabled={!more}
-        onClick={() => onChange(page + 1)}
-      >
+      <button className="quiet" disabled={!more} onClick={() => onChange(page + 1)}>
         {t("next")}
       </button>
     </nav>
@@ -87,19 +80,25 @@ export function Pager({
 }
 export function Artwork({ item, kind = "league" }: { item: Item; kind?: string }) {
   const [failed, setFailed] = useState<string[]>([]);
-  const candidates = kind === "event"
-    ? [item.thumbUrl, item.imageUrl, item.posterUrl, item.logoUrl]
-    : [item.logoUrl, item.imageUrl, item.thumbUrl, item.posterUrl];
-  const image = candidates.find(value => typeof value === "string" && /^https?:\/\//.test(value) && !failed.includes(value));
+  const candidates =
+    kind === "event"
+      ? [item.thumbUrl, item.imageUrl, item.posterUrl, item.logoUrl]
+      : [item.logoUrl, item.imageUrl, item.thumbUrl, item.posterUrl];
+  const image = candidates.find(
+    (value) => typeof value === "string" && /^https?:\/\//.test(value) && !failed.includes(value),
+  );
   const photo = !image || (kind === "event" && image !== item.logoUrl);
   return (
-    <span className={`artwork ${photo ? "artwork-photo" : "artwork-logo"}${image ? "" : " artwork-default"}`} aria-hidden="true">
+    <span
+      className={`artwork ${photo ? "artwork-photo" : "artwork-logo"}${image ? "" : " artwork-default"}`}
+      aria-hidden="true"
+    >
       <img
         src={image ?? "/images/artwork-default.svg"}
         alt=""
         loading="lazy"
         decoding="async"
-        onError={image ? () => setFailed(previous => [...previous, image]) : undefined}
+        onError={image ? () => setFailed((previous) => [...previous, image]) : undefined}
       />
     </span>
   );
