@@ -1,4 +1,5 @@
 name: pedirr
+x-pedirr-image: &pedirr-image ${PEDIRR_IMAGE:-docker.io/alvmgdev/pedirr:latest}
 services:
   postgres:
     image: postgres:17-alpine
@@ -26,15 +27,15 @@ services:
       retries: 20
     restart: unless-stopped
   migrate:
-    build: .
-    command: ["npx", "prisma", "migrate", "deploy"]
+    image: *pedirr-image
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
     environment:
       DATABASE_URL: postgresql://pedirr:${POSTGRES_PASSWORD}@postgres:5432/pedirr
     depends_on:
       postgres:
         condition: service_healthy
   app:
-    build: .
+    image: *pedirr-image
     ports:
       - "${APP_PORT:-3000}:3000"
     environment: &app-environment
@@ -63,7 +64,7 @@ services:
       retries: 5
     restart: unless-stopped
   worker:
-    build: .
+    image: *pedirr-image
     command: ["node", "apps/server/dist/worker.js"]
     environment: *app-environment
     depends_on:

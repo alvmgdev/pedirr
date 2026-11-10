@@ -1,0 +1,9 @@
+# Builds the image from this checkout instead of pulling the published one:
+#   PEDIRR_IMAGE=pedirr:local docker compose -f compose.yaml -f compose.build.yaml up -d --build
+services:
+  migrate:
+    build: .
+  app:
+    build: .
+  worker:
+    build: .
