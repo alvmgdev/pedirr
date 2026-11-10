@@ -1,0 +1,22 @@
+name: Docker Hub description
+# Publishes docs/dockerhub.md as the Docker Hub overview. Runs after each stable
+# release and can be started by hand to publish a wording fix without a release.
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  description:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Docker Hub only accepts description updates from a token with the
+      # "Read, Write, Delete" scope, so it is kept apart from the push token.
+      - uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_DESCRIPTION_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/pedirr
+          readme-filepath: docs/dockerhub.md
+          short-description: "Sports content requests for Sportarr: browse the Hub catalog, request seasons or events, and fulfill them automatically."

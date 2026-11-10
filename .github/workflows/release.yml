@@ -43,3 +43,42 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create the GitHub release from the changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes="$RUNNER_TEMP/notes.md"
+          awk -v heading="## ${version} " 'index($0, heading) == 1 {found = 1; next} /^## / {found = 0} found' CHANGELOG.md | sed '/./,$!d' > "$notes"
+          if [ ! -s "$notes" ]; then
+            echo "CHANGELOG.md has no entry for ${version}" >&2
+            exit 1
+          fi
+          {
+            printf '\n## Docker image\n\n```sh\ndocker pull %s/pedirr:%s\n```\n\n' "$DOCKERHUB_USERNAME" "$version"
+            printf 'Available for `linux/amd64` and `linux/arm64`. Upgrade with `docker compose pull && docker compose up -d`.\n'
+            previous="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+            if [ -n "$previous" ]; then
+              printf '\n**Full changelog:** %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous" "$GITHUB_REF_NAME"
+            fi
+          } >> "$notes"
+          prerelease=()
+          if [[ "$version" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Pedirr ${version}" --notes-file "$notes" "${prerelease[@]}"
+  description:
+    needs: publish
+    if: ${{ !contains(github.ref_name, '-') }}
+    uses: ./.github/workflows/dockerhub-description.yml
+    secrets: inherit
