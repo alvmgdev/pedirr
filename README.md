@@ -6,13 +6,17 @@ Sports content requests for Sportarr. Includes a bilingual web interface, authen
 
 Requires Node.js 22 and Docker Compose. Run `npm ci`, `npm run db:generate`, `npm run check`, `npm run build`, and `npm test`. Format code with `npm run format` (Prettier and `prisma format`); Lint with `npm run lint` (ESLint with typescript-eslint and React hooks rules). CI rejects unformatted or failing files via `npm run format:check` and `npm run lint`. Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once to hide the bulk reformat from `git blame`.
 
+Releases are cut by bumping the version in the root and workspace `package.json` files, adding a `CHANGELOG.md` entry, and pushing a matching `vX.Y.Z` tag. The Release workflow reruns CI, then publishes the multi-architecture image to Docker Hub as `X.Y.Z`, `X.Y` and `latest`; prerelease tags such as `v0.2.0-beta.1` publish only their exact version. It needs the repository variable `DOCKERHUB_USERNAME` and the secret `DOCKERHUB_TOKEN` (a Docker Hub access token with write scope).
+
 For source development, export `DATABASE_URL` and `REDIS_URL` pointing to development services reachable from your shell, plus `APP_ORIGIN`, `SESSION_SECRET`, and `SETTINGS_ENCRYPTION_KEY` as described below. Shell commands do not automatically load the Compose `.env` file. The default Compose database and Redis ports are private; use Docker for the standard installation, or provide separate reachable development services.
 
 Run `npm run db:migrate` before starting the API. In separate terminals, run `npm run dev:api`, `npm run dev:worker`, and `npm run dev:web`. API and worker use TypeScript's compiler through `ts-node` with Node's watch mode, preserving Nest dependency-injection and validation metadata. These commands reload imported source files on change. For the default Vite proxy, export `PORT=3187` for the API and `APP_ORIGIN=http://localhost:5173`; open the frontend at that exact origin. Stop an existing application on port 3187 before using it for development.
 
 ## Docker
 
-Copy `.env.example` to `.env`, replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up --build -d`. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
+Copy `compose.yaml` and `.env.example` (as `.env`) to the installation directory. Replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up -d`. Compose pulls the published `docker.io/alvmgdev/pedirr` image (linux/amd64 and linux/arm64); set `PEDIRR_IMAGE` in `.env` to pin a release such as `docker.io/alvmgdev/pedirr:0.1.0`. One image runs the migrations, the API and the worker. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
+
+To upgrade, change the pinned version if any, then run `docker compose pull && docker compose up -d`. To build the image from a checkout instead, run `PEDIRR_IMAGE=pedirr:local docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 - Liveness: `http://localhost:3000/api/v1/health/live`
 - Readiness (database, Redis, worker): `http://localhost:3000/api/v1/health/ready`

@@ -43,5 +43,6 @@ Checked items are implemented; unchecked items are planned for the future and ha
 ## Platform
 
 - [x] Docker Compose deployment with separate API and worker processes
+- [x] Multi-architecture (amd64, arm64) container image published to Docker Hub from version tags
 - [x] OpenAPI documentation
-- [x] Continuous integration: formatting, linting, type checks, unit, integration and browser tests, dependency audit
+- [x] Continuous integration: formatting, linting, type checks, unit, integration and browser tests, dependency audit, image build
