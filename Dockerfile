@@ -31,6 +31,10 @@ FROM node:22-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
+LABEL org.opencontainers.image.title="Pedirr" \
+      org.opencontainers.image.description="Sports content requests for Sportarr" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later"
+COPY --chown=node:node LICENSE ./LICENSE
 COPY --from=deps --chown=node:node /app/package.json ./package.json
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=deps --chown=node:node /app/prisma ./prisma

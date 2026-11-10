@@ -4,7 +4,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 
 ## 0.1.0 - Unreleased
 
-First public release.
+First public release, licensed under GPL-3.0-or-later.
 
 - Email and password accounts with revocable sessions, CSRF and Origin protection, an initial administrator command, administrator user management, and self-registration that is closed by default.
 - Sportarr Hub catalog: search, leagues, seasons, teams, events and a seven-day upcoming schedule.
