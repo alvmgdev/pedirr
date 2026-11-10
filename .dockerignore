@@ -1,4 +1,12 @@
 .git
 node_modules
-dist
+**/node_modules
+**/dist
 .env
+coverage
+test-results
+playwright-report
+tests
+docs
+.agents
+.github
