@@ -304,7 +304,7 @@ test("available events are not rewritten and automatic search uses the native si
 test("numeric queue enums are normalized using the source-defined order", async () => {
   global.fetch = async () => Response.json([{ eventId: 1, status: 6, progress: 100 }]);
   assert.deepEqual(await new SportarrClient(config).queue(), [
-    { eventId: 1, status: "Importing", progress: 100 },
+    { eventId: 1, status: "Importing", progress: 100, part: null },
   ]);
 });
 test("native write compatibility rejects unreviewed minor releases", async () => {
@@ -318,4 +318,46 @@ test("native write compatibility rejects unreviewed minor releases", async () =>
       (error) => error.getResponse().code === "SPORTARR_UNSUPPORTED_VERSION",
     );
   }
+});
+
+test("part searches send the part name and parts/queue keep Sportarr's part identity", async () => {
+  const bodies = [];
+  global.fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/event/9/automatic-search")) {
+      bodies.push(JSON.parse(init.body));
+      return Response.json({ success: true });
+    }
+    if (path.endsWith("/event/9/parts")) {
+      return Response.json({
+        parts: [
+          { name: "Full Event", partNumber: 0 },
+          { name: "Prelims", partNumber: 2 },
+        ],
+        isFightNightStyle: false,
+      });
+    }
+    if (path.endsWith("/queue")) {
+      return Response.json([
+        { eventId: 9, status: 1, progress: 10, part: "Prelims" },
+        { eventId: 9, status: "Downloading", progress: 20, part: "  " },
+        { eventId: 9, status: "Downloading", progress: 30 },
+      ]);
+    }
+    assert.fail("Unexpected endpoint " + path);
+  };
+  const client = new SportarrClient(config);
+  await client.search(9);
+  await client.search(9, "Prelims");
+  assert.deepEqual(bodies, [{}, { part: "Prelims" }]);
+  assert.deepEqual(await client.parts(9), [
+    { name: "Full Event", number: 0 },
+    { name: "Prelims", number: 2 },
+  ]);
+  assert.deepEqual(
+    (await client.queue()).map((item) => item.part),
+    ["Prelims", null, null],
+  );
+  global.fetch = async () => Response.json({ parts: [{ name: "Prelims", partNumber: -1 }] });
+  await assert.rejects(client.parts(9));
 });

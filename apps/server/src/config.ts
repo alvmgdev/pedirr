@@ -65,3 +65,21 @@ function isAddressOrRange(entry: string): boolean {
   }
   return Number(prefix) <= (family === 4 ? 32 : 128);
 }
+
+/**
+ * Minutes before Pedirr repeats an automatic search that has not produced a
+ * file (SEARCH_RETRY_MINUTES, default 60, 15-10080). Each missing event part
+ * has its own interval, so parts of one event are searched together.
+ */
+export function searchRetrySeconds(
+  raw: string | undefined = process.env.SEARCH_RETRY_MINUTES,
+): number {
+  const value = (raw ?? "").trim();
+  if (value === "") {
+    return 3600;
+  }
+  if (!/^\d+$/.test(value) || Number(value) < 15 || Number(value) > 10080) {
+    throw new Error("SEARCH_RETRY_MINUTES must be a whole number between 15 and 10080");
+  }
+  return Number(value) * 60;
+}

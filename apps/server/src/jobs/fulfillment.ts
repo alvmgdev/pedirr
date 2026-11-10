@@ -4,9 +4,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { Infrastructure } from "../infrastructure";
 import { MetadataItem, MetadataProvider } from "../metadata/provider";
 import { parseItem } from "../metadata/hub";
-import { ContentManager, ManagerEvent, QueueItem } from "../managers/client";
+import { ContentManager, ManagerEvent, ManagerPart, QueueItem } from "../managers/client";
 import { SportarrClient } from "../managers/sportarr";
 import { SportarrSettings } from "../settings/sportarr";
+import { searchRetrySeconds } from "../config";
 
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const conflict = () =>
@@ -30,6 +31,75 @@ export function errorCode(error: unknown): string {
 }
 export function imported(event: ManagerEvent): boolean {
   return event.hasFile && event.files.some((file) => file.exists === true);
+}
+const ACTIVE_QUEUE = [
+  "Queued",
+  "Downloading",
+  "Paused",
+  "Completed",
+  "Importing",
+  "ImportPending",
+  "ImportWarning",
+  "Warning",
+];
+const OPTIONAL_PARTS = new Set(["post show"]);
+const lower = (value: unknown) => (typeof value === "string" ? value.trim().toLowerCase() : "");
+
+/**
+ * Monitored event parts still missing a file, for one search per part.
+ *
+ * Sportarr's event-level automatic search grabs only the best release, which
+ * keeps choosing the part already held, so an event split into parts (for
+ * example Early Prelims, Prelims and Main Card) would never be completed. A
+ * part search rejects releases of other parts and unlabelled releases, and
+ * stops when a whole-event file exists. Parts already downloading, the
+ * optional Post Show and parts excluded by event or league monitoring are
+ * skipped. While a queue item of unknown part is active, nothing is searched.
+ */
+export function partsToSearch(
+  event: ManagerEvent,
+  parts: ManagerPart[],
+  leagueMonitoredParts: unknown,
+  activity: QueueItem[],
+): string[] {
+  const files = event.files.filter((file) => file.exists === true);
+  if (files.length === 0) {
+    return [];
+  }
+  const wholeEvent = files.some(
+    (file) =>
+      file.partNumber === 0 ||
+      ((file.partNumber === null || file.partNumber === undefined) && !lower(file.partName)),
+  );
+  if (wholeEvent) {
+    return [];
+  }
+  const active = activity.filter((item) => ACTIVE_QUEUE.includes(item.status));
+  if (active.some((item) => !item.part)) {
+    return [];
+  }
+  const configured =
+    typeof event.monitoredParts === "string"
+      ? event.monitoredParts
+      : typeof leagueMonitoredParts === "string"
+        ? leagueMonitoredParts
+        : null;
+  const monitored =
+    configured === null ? null : new Set(configured.split(",").map(lower).filter(Boolean));
+  const heldNames = new Set(files.map((file) => lower(file.partName)));
+  const heldNumbers = new Set(files.map((file) => file.partNumber));
+  const busy = new Set(active.map((item) => lower(item.part)));
+  return parts
+    .filter(
+      (part) =>
+        part.number > 0 &&
+        !OPTIONAL_PARTS.has(lower(part.name)) &&
+        (monitored === null || monitored.has(lower(part.name))) &&
+        !heldNames.has(lower(part.name)) &&
+        !heldNumbers.has(part.number) &&
+        !busy.has(lower(part.name)),
+    )
+    .map((part) => part.name);
 }
 export function aggregateStatus(
   events: { available: boolean; downloading: boolean }[],
@@ -173,6 +243,7 @@ export class Fulfillment {
       });
       const existing = await manager.events(league.id);
       const queue = await manager.queue();
+      const retrySeconds = searchRetrySeconds();
       const results: { available: boolean; downloading: boolean }[] = [];
       for (const event of events) {
         await check();
@@ -191,18 +262,7 @@ export class Fulfillment {
         );
         const available = imported(current);
         const activity: QueueItem[] = queue.filter((item) => item.eventId === current.id);
-        const downloading = activity.some((item) =>
-          [
-            "Queued",
-            "Downloading",
-            "Paused",
-            "Completed",
-            "Importing",
-            "ImportPending",
-            "ImportWarning",
-            "Warning",
-          ].includes(item.status),
-        );
+        const downloading = activity.some((item) => ACTIVE_QUEUE.includes(item.status));
         const progress = available
           ? 100
           : Math.max(0, ...activity.map((item) => Math.min(100, Math.max(0, item.progress))));
@@ -227,15 +287,33 @@ export class Fulfillment {
           },
         });
         results.push({ available, downloading });
-        if (!available && !downloading && Date.parse(event.scheduledStart!) <= Date.now()) {
-          const searchKey = `pedirr:search:${managerKey}:${current.id}`;
-          if (await redis.set(searchKey, owner, "EX", 21600, "NX")) {
-            await check();
-            try {
-              await manager.search(current.id);
-            } catch (error) {
-              await redis.expire(searchKey, 300);
-              throw error;
+        if (!available && Date.parse(event.scheduledStart!) <= Date.now()) {
+          const searches: { key: string; part?: string }[] = [];
+          if (!current.files.some((file) => file.exists === true)) {
+            if (!downloading) {
+              searches.push({ key: `pedirr:search:${managerKey}:${current.id}` });
+            }
+          } else {
+            const missing = partsToSearch(
+              current,
+              await manager.parts(current.id),
+              league.monitoredParts,
+              activity,
+            );
+            for (const part of missing) {
+              const id = encodeURIComponent(part.toLowerCase());
+              searches.push({ key: `pedirr:search:${managerKey}:${current.id}:part:${id}`, part });
+            }
+          }
+          for (const search of searches) {
+            if (await redis.set(search.key, owner, "EX", retrySeconds, "NX")) {
+              await check();
+              try {
+                await manager.search(current.id, search.part);
+              } catch (error) {
+                await redis.expire(search.key, 300);
+                throw error;
+              }
             }
           }
         }

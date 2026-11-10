@@ -32,7 +32,10 @@ export abstract class ContentManager {
   abstract assertWriteCompatibility(): Promise<void>;
   abstract ensureLeague(input: LeagueInput): Promise<ManagerLeague>;
   abstract ensureEvent(input: EventInput, existing: ManagerEvent[]): Promise<ManagerEvent>;
-  abstract search(id: number): Promise<void>;
+  /** Automatic search; with a part name, Sportarr searches only that event part. */
+  abstract search(id: number, part?: string): Promise<void>;
+  /** Parts Sportarr defines for an event (number 0 is the full event). */
+  abstract parts(id: number): Promise<ManagerPart[]>;
   abstract queue(): Promise<QueueItem[]>;
   abstract testConnection(): Promise<ConnectionResult>;
   abstract leagues(): Promise<ManagerLeague[]>;
@@ -57,4 +60,5 @@ export type EventInput = {
   seasonNumber: number | null;
   qualityProfileId: number;
 };
-export type QueueItem = { eventId: number; status: string; progress: number };
+export type QueueItem = { eventId: number; status: string; progress: number; part: string | null };
+export type ManagerPart = { name: string; number: number };
