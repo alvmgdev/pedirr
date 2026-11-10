@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Events split into parts (Early Prelims, Prelims, Main Card…) are now completed automatically: once an event holds some part files, every monitored missing part gets its own automatic search in the same run, instead of an event-level search that kept choosing the part already held. Parts already downloading, the optional Post Show and unmonitored parts are skipped; a whole-event file still covers every part.
+- Configurable search retry interval, `SEARCH_RETRY_MINUTES`. **The default changes from 6 hours to 60 minutes**; set `SEARCH_RETRY_MINUTES=360` to keep the previous behaviour. Each event and each part has its own interval.
+
 ## 0.1.1 - 2026-11-10
 
 - `TRUST_PROXY` setting for deployments behind a reverse proxy. Rate limits for login, registration and writes now apply per client address taken from the trusted proxy's `X-Forwarded-For`, instead of to the proxy's single address. Disabled by default; trusting every peer is refused and invalid values stop startup.

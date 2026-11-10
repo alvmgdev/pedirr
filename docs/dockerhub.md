@@ -76,6 +76,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HUB_REQUESTS_PER_MINUTE: ${HUB_REQUESTS_PER_MINUTE:-20}
       TRUST_PROXY: ${TRUST_PROXY:-}
+      SEARCH_RETRY_MINUTES: ${SEARCH_RETRY_MINUTES:-60}
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?Set SETTINGS_ENCRYPTION_KEY}
@@ -128,6 +129,8 @@ LOG_LEVEL=info
 HUB_REQUESTS_PER_MINUTE=20
 # Behind a reverse proxy: hop count (1) or proxy addresses/CIDR. Empty = direct.
 TRUST_PROXY=
+# Minutes before repeating an automatic search that found nothing (15-10080)
+SEARCH_RETRY_MINUTES=60
 ```
 
 Start Pedirr and create the first administrator (password of 12-128 characters):
