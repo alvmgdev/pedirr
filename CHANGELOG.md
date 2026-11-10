@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-11-10
 
 First public release, licensed under GPL-3.0-or-later.
 
