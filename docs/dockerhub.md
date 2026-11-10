@@ -13,13 +13,7 @@ Writes to Sportarr require Sportarr 4.1.11 or a later 4.1 release.
 
 Source code, issues and changelog: [github.com/alvmgdev/pedirr](https://github.com/alvmgdev/pedirr).
 
-## Tags
-
-| Tag      | Meaning                                    |
-| -------- | ------------------------------------------ |
-| `latest` | Latest stable release                      |
-| `0.1`    | Latest patch of the 0.1 line (recommended) |
-| `0.1.0`  | Exact release                              |
+## Image
 
 Images are published for `linux/amd64` and `linux/arm64`. One image runs the database migrations, the API and web interface, and the background worker.
 
@@ -31,7 +25,7 @@ Create a directory with these two files.
 
 ```yaml
 name: pedirr
-x-pedirr-image: &pedirr-image ${PEDIRR_IMAGE:-docker.io/alvmgdev/pedirr:0.1}
+x-pedirr-image: &pedirr-image ${PEDIRR_IMAGE:-docker.io/alvmgdev/pedirr:latest}
 services:
   postgres:
     image: postgres:17-alpine
