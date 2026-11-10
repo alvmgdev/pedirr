@@ -10,6 +10,7 @@ process.env.SESSION_SECRET = "test-secret-that-is-longer-than-thirty-two-charact
 const { AuthController, AuthService, SecurityGuard, passwordOptions } = require("../dist/auth");
 const { UsersController, UsersService } = require("../dist/users");
 const { Infrastructure } = require("../dist/infrastructure");
+const { trustProxy } = require("../dist/config");
 let app, base, user;
 let registrationSetting = null;
 const sessions = new Map();
@@ -171,6 +172,35 @@ test("shared login rate limiter rejects excessive attempts", async () => {
     response = await login(await csrf());
   }
   assert.equal(response.status, 429);
+});
+
+test("a trusted proxy gives each client its own login limit", async () => {
+  counters.clear();
+  const express = app.getHttpAdapter().getInstance();
+  express.set("trust proxy", trustProxy("loopback"));
+  try {
+    for (let i = 0; i < 3; i++) {
+      await login(await csrf(), { "x-forwarded-for": "203.0.113.7" });
+    }
+    await login(await csrf(), { "x-forwarded-for": "198.51.100.9" });
+    assert.equal(counters.get("pedirr:rate:login:203.0.113.7"), 3);
+    assert.equal(counters.get("pedirr:rate:login:198.51.100.9"), 1);
+  } finally {
+    express.set("trust proxy", false);
+    counters.clear();
+  }
+});
+
+test("without a trusted proxy, forwarded addresses cannot dodge the limit", async () => {
+  counters.clear();
+  for (let i = 0; i < 3; i++) {
+    await login(await csrf(), { "x-forwarded-for": `198.51.100.${i}` });
+  }
+  const keys = [...counters.keys()].filter((key) => key.startsWith("pedirr:rate:login:"));
+  assert.equal(keys.length, 1);
+  assert.equal(counters.get(keys[0]), 3);
+  assert.doesNotMatch(keys[0], /198\.51\.100/);
+  counters.clear();
 });
 
 test("ordinary users cannot read or change administrator policies", async () => {

@@ -4,18 +4,27 @@ import { static as staticFiles, Request, Response, NextFunction } from "express"
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
-import { port, required } from "./config";
+import { port, required, trustProxy } from "./config";
 import { logger } from "./infrastructure";
 
 async function bootstrap() {
   required("DATABASE_URL");
   required("REDIS_URL");
-  const app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
+  const trust = trustProxy();
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: false,
+    abortOnError: false,
+  });
+  if (trust !== false) {
+    // Client addresses (rate limits) come from X-Forwarded-For set by these proxies.
+    app.set("trust proxy", trust);
+  }
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -55,7 +64,7 @@ async function bootstrap() {
     });
   }
   await app.listen(port(), "0.0.0.0");
-  logger.info({ port: port() }, "Pedirr API listening");
+  logger.info({ port: port(), trustProxy: trust }, "Pedirr API listening");
 }
 bootstrap().catch(() => {
   logger.fatal({ code: "API_STARTUP_FAILED" }, "Startup failed");
