@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 0.1.1 - 2026-11-10
 
 - `TRUST_PROXY` setting for deployments behind a reverse proxy. Rate limits for login, registration and writes now apply per client address taken from the trusted proxy's `X-Forwarded-For`, instead of to the proxy's single address. Disabled by default; trusting every peer is refused and invalid values stop startup.
 
