@@ -75,6 +75,7 @@ services:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HUB_REQUESTS_PER_MINUTE: ${HUB_REQUESTS_PER_MINUTE:-20}
+      TRUST_PROXY: ${TRUST_PROXY:-}
       APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
       SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY:?Set SETTINGS_ENCRYPTION_KEY}
@@ -125,6 +126,8 @@ SESSION_SECRET=
 SETTINGS_ENCRYPTION_KEY=
 LOG_LEVEL=info
 HUB_REQUESTS_PER_MINUTE=20
+# Behind a reverse proxy: hop count (1) or proxy addresses/CIDR. Empty = direct.
+TRUST_PROXY=
 ```
 
 Start Pedirr and create the first administrator (password of 12-128 characters):
@@ -135,7 +138,7 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a-long-password' \
   docker compose run --rm -e ADMIN_EMAIL -e ADMIN_PASSWORD app node apps/server/dist/bootstrap-admin.js
 ```
 
-Open `APP_ORIGIN`, sign in, and configure Sportarr and notifications from the administration screen. Put a TLS reverse proxy in front of Pedirr before exposing it publicly.
+Open `APP_ORIGIN`, sign in, and configure Sportarr and notifications from the administration screen. Put a TLS reverse proxy in front of Pedirr before exposing it publicly, and set `TRUST_PROXY` to that proxy (for example `1`) so rate limits apply to each client rather than to the proxy.
 
 ## Data and backups
 

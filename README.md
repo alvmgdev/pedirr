@@ -23,7 +23,7 @@ To upgrade, change the pinned version if any, then run `docker compose pull && d
 - API documentation: `http://localhost:3000/api/docs`
 - OpenAPI: `http://localhost:3000/api/openapi.json`
 
-Use a TLS reverse proxy before exposing the finished application publicly. Persistent data lives in the Compose volumes. Do not use `docker compose down -v` unless you intend to delete it.
+Use a TLS reverse proxy before exposing the finished application publicly. Behind a proxy, set `TRUST_PROXY` so login, registration and write rate limits apply to each client instead of to the proxy's single address: a hop count (`1` when exactly one proxy forwards to Pedirr) or a comma-separated list of proxy IP addresses, CIDR ranges or Express subnet names (`loopback`, `linklocal`, `uniquelocal`). The proxy must replace any client-supplied `X-Forwarded-For`. Leave it empty when clients connect directly; `true` (trust every peer) is rejected because any client could then choose its address, and invalid values stop startup. Persistent data lives in the Compose volumes. Do not use `docker compose down -v` unless you intend to delete it.
 
 See [API research](docs/api-research.md), [architecture](docs/architecture.md), [implementation status](docs/progress.md), and the [roadmap](ROADMAP.md).
 
