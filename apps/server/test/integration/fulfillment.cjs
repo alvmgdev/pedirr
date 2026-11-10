@@ -56,7 +56,9 @@ async function main() {
     let hasFile = false,
       activity = true,
       searches = 0,
-      writes = 0;
+      writes = 0,
+      partFiles = null;
+    const searchedParts = [];
     const manager = {
       assertWriteCompatibility: async () => {},
       ensureLeague: async (input) => {
@@ -69,10 +71,20 @@ async function main() {
         writes++;
         assert.equal(input.externalId, "ev-100");
         assert.equal(input.leagueId, 8);
-        return { id: 9, hasFile, files: hasFile ? [{ exists: true }] : [] };
+        return { id: 9, hasFile, files: partFiles ?? (hasFile ? [{ exists: true }] : []) };
       },
-      search: async () => {
+      parts: async () => [
+        { name: "Full Event", number: 0 },
+        { name: "Early Prelims", number: 1 },
+        { name: "Prelims", number: 2 },
+        { name: "Main Card", number: 3 },
+        { name: "Post Show", number: 4 },
+      ],
+      search: async (_, part) => {
         searches++;
+        if (part) {
+          searchedParts.push(part);
+        }
       },
     };
     const worker = new Fulfillment(
@@ -105,6 +117,13 @@ async function main() {
     await worker.run(request.id);
     assert.equal(searches, 1);
     assert.equal(await db.outboxEvent.count({ where: { type: "request.status" } }), 3);
+    // A split event with only its Main Card searches each missing part once, together.
+    partFiles = [{ exists: true, partName: "Main Card", partNumber: 3 }];
+    await worker.run(request.id);
+    assert.deepEqual(searchedParts.sort(), ["Early Prelims", "Prelims"]);
+    await worker.run(request.id);
+    assert.equal(searchedParts.length, 2, "part searches share the retry interval");
+    partFiles = null;
     const previousWrites = writes;
     event.leagueId = "another-league";
     await assert.rejects(worker.run(request.id));

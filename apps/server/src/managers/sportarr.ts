@@ -11,6 +11,7 @@ import {
   ManagerConfig,
   ManagerEvent,
   ManagerLeague,
+  ManagerPart,
   QueueItem,
 } from "./client";
 
@@ -257,8 +258,24 @@ export class SportarrClient extends ContentManager {
     }
     return current;
   }
-  async search(id: number): Promise<void> {
-    await this.read(`event/${positiveId(id)}/automatic-search`, (value) => value, "POST", {});
+  async search(id: number, part?: string): Promise<void> {
+    await this.read(
+      `event/${positiveId(id)}/automatic-search`,
+      (value) => value,
+      "POST",
+      part === undefined ? {} : { part: text(part) },
+    );
+  }
+  parts(id: number): Promise<ManagerPart[]> {
+    return this.read(`event/${positiveId(id)}/parts`, (value) =>
+      array(object(value).parts, (row) => {
+        const data = object(row);
+        if (!Number.isSafeInteger(data.partNumber) || Number(data.partNumber) < 0) {
+          throw new Error("Invalid part");
+        }
+        return { name: text(data.name), number: Number(data.partNumber) };
+      }),
+    );
   }
   queue(): Promise<QueueItem[]> {
     return this.read("queue", (value) =>
@@ -285,7 +302,15 @@ export class SportarrClient extends ContentManager {
         ) {
           throw new Error("Invalid queue");
         }
-        return { eventId: positiveId(data.eventId), status, progress: data.progress };
+        if (data.part !== undefined && data.part !== null && typeof data.part !== "string") {
+          throw new Error("Invalid queue");
+        }
+        return {
+          eventId: positiveId(data.eventId),
+          status,
+          progress: data.progress,
+          part: typeof data.part === "string" && data.part.trim() ? data.part.trim() : null,
+        };
       }),
     );
   }

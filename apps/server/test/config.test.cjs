@@ -34,3 +34,14 @@ test("TRUST_PROXY refuses trusting every peer and malformed values", () => {
     assert.throws(() => trustProxy(value), /TRUST_PROXY/, value);
   }
 });
+
+test("SEARCH_RETRY_MINUTES defaults to one hour and is bounded", () => {
+  const { searchRetrySeconds } = require("../dist/config");
+  assert.equal(searchRetrySeconds(undefined), 3600);
+  assert.equal(searchRetrySeconds(" "), 3600);
+  assert.equal(searchRetrySeconds("15"), 900);
+  assert.equal(searchRetrySeconds("360"), 21600);
+  for (const value of ["14", "10081", "1.5", "-60", "hour", "60m"]) {
+    assert.throws(() => searchRetrySeconds(value), /SEARCH_RETRY_MINUTES/, value);
+  }
+});

@@ -4,7 +4,7 @@ import "reflect-metadata";
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
 import { HttpException } from "@nestjs/common";
-import { required } from "./config";
+import { required, searchRetrySeconds } from "./config";
 import { Infrastructure, logger } from "./infrastructure";
 import { HubProvider } from "./metadata/hub";
 import { SportarrSettings } from "./settings/sportarr";
@@ -12,6 +12,8 @@ import { Fulfillment, errorCode } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
 
 async function main() {
+  // Fail at startup rather than on the first search.
+  searchRetrySeconds();
   const infrastructure = new Infrastructure();
   const connection = new Redis(required("REDIS_URL"), { maxRetriesPerRequest: null });
   const queue = new Queue("pedirr-work", {
