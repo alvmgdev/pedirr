@@ -872,6 +872,112 @@ th {
   height: 1px;
   overflow: hidden;
 }
+/* Parts of a fight card, listed in card order like a bout sheet. */
+.parts-dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 28px;
+}
+.parts-dialog::backdrop {
+  background: rgb(16 16 20 / 80%);
+}
+.parts-dialog h2 {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+.parts-dialog p {
+  color: var(--muted);
+  margin: 0 0 20px;
+  max-width: 60ch;
+}
+.parts-dialog fieldset {
+  border: 0;
+  margin: 0 0 20px;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.part-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.part-option input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.part-option .part-name {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 21px;
+}
+.part-state {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: right;
+}
+.part-available {
+  cursor: default;
+}
+.part-available .part-name {
+  color: var(--muted);
+}
+.part-available .part-state {
+  color: #a7e3c5;
+}
+.part-downloading .part-state,
+.part-requested .part-state {
+  color: var(--accent);
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.request-parts {
+  margin-bottom: 40px;
+}
+.request-parts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  max-width: 720px;
+}
+.request-parts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.request-parts .part-name {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 22px;
+  flex: 1 1 160px;
+}
+.request-parts p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.part-mine {
+  font-size: 14px;
+  color: var(--accent);
+}
 @media (max-width: 1050px) {
   .nav-bottom > span {
     display: none;

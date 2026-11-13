@@ -28,6 +28,8 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
       league: { id: "league-1", name: "Premier League" },
     },
     _count: { subscribers: 1 },
+    parts: [],
+    subscription: { parts: [], status: "PENDING" },
     history: [],
     events: [],
   };
