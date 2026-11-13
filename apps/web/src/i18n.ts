@@ -100,6 +100,8 @@ const en = {
   save: "Save changes",
   saved: "Changes saved",
   cancel: "Cancel",
+  requestedBy: "Requested by",
+  wholeRequest: "Everything requested",
   issues: "Issues",
   issuesHelp:
     "Report problems with content you requested. Only you and the administrators can see your issues.",
@@ -353,6 +355,8 @@ const es: Record<keyof typeof en, string> = {
   save: "Guardar cambios",
   saved: "Cambios guardados",
   cancel: "Cancelar",
+  requestedBy: "Pedida por",
+  wholeRequest: "Todo lo pedido",
   issues: "Incidencias",
   issuesHelp:
     "Reporta problemas con el contenido que has pedido. Solo tú y los administradores podéis ver tus incidencias.",

@@ -229,6 +229,20 @@ async function main() {
     assert.deepEqual(ids(await requests.list(admin, 1, "PENDING")), [id]);
     assert.deepEqual(ids(await requests.list(bob, 1, "PENDING", true)), [id]);
     assert.deepEqual(ids(await requests.list(alice, 1, "PENDING", true)), []);
+    // Administrators see who asked for what; users see only their own subscription.
+    const adminView = await requests.detail(id, admin);
+    assert.deepEqual(
+      adminView.subscribers.map(({ email, parts, status }) => [email, parts, status]),
+      [
+        [alice.email, ["Main Card"], "APPROVED"],
+        [bob.email, ["Main Card", "Prelims"], "PENDING"],
+      ],
+    );
+    assert.equal(adminView.subscription, null);
+    const aliceView = await requests.detail(id, alice);
+    assert.equal(aliceView.subscribers, null);
+    assert.deepEqual(aliceView.subscription, { parts: ["Main Card"], status: "APPROVED" });
+    assert.ok(!JSON.stringify(aliceView).includes(bob.email));
 
     // The Main Card arrives: Alice is done while Bob's Prelims still wait.
     byId(20).files = [{ exists: true, partNumber: 3, partName: "Main Card" }];
@@ -362,7 +376,7 @@ async function main() {
     assert.equal((await reload(request.id)).status, "AVAILABLE");
 
     console.log(
-      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, optional Post Show, Full Event and whole-event compatibility.",
+      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, subscribers for administrators only, optional Post Show, Full Event and whole-event compatibility.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
