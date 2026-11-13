@@ -7,6 +7,7 @@ Checked items are implemented; unchecked items are planned for the future and ha
 - [x] Email and password sign-in with Argon2id, revocable sessions and CSRF/Origin protection
 - [x] Initial administrator bootstrap command
 - [x] Administrator user management: creation, roles, active status and per-user auto-approval
+- [x] Per-user season access: single events by default, whole seasons when an administrator allows them
 - [x] Self-registration, closed by default and enabled or disabled by administrators
 - [x] Profile language and timezone; password changes revoke existing sessions
 
@@ -22,6 +23,7 @@ Checked items are implemented; unchecked items are planned for the future and ha
 - [x] Availability check against Sportarr before requesting
 - [x] Manual review and automatic approval policies by role and by user
 - [x] Request tracking (pending, approved, rejected, downloading, available) with history
+- [ ] Choice of event parts (for example Early Prelims, Prelims, Main Card) when requesting events or seasons, with per-user status for each part
 
 ## Sportarr integration
 
