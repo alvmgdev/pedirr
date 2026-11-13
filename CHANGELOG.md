@@ -9,6 +9,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 - The Pedirr mark on the sign-in screen and in the navigation sits on the wordmark's baseline at its ascender height instead of about 4 px too high, and scales with the wordmark on phones.
 - Issues. Users report problems about content they follow (wrong content, missing content or part, quality, language, playback or other), optionally naming the affected event and part. Each issue is private to its reporter and the administrators, has a conversation with comments and status changes, and moves through open, in progress, resolved and closed; resolving requires an explanation, and reporters can close or reopen their own issues. A new Issues section lists them with a count of those awaiting attention, and administrators are notified of new issues. Includes a database migration.
 - On phones the navigation shows "Admin" instead of "Administration" so five sections fit.
+- A requested Post Show no longer keeps an event from becoming available: like Sportarr, Pedirr treats it as optional when other parts were requested. It is still monitored and searched, but only for seven days after the event; requested on its own, it is what that user waits for, without holding back anyone else.
 
 ## 0.2.0 - 2026-11-10
 
