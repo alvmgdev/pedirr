@@ -182,6 +182,20 @@ const schemas: Record<string, SchemaObject> = {
     ...requestProperties,
     subscribed: boolean,
     subscription,
+    subscribers: {
+      ...nullable(
+        array(
+          object({
+            email: { type: "string", format: "email" },
+            parts: array(string),
+            status,
+            createdAt: date,
+          }),
+        ),
+      ),
+      description:
+        "Administrators only: every subscriber with their parts (empty for the whole request) and status.",
+    },
     events: array(
       object({
         id: uuid,

@@ -222,6 +222,25 @@ export function RequestDetail({ user }: { user: User }) {
           </ul>
         </section>
       )}
+      {request.subscribers && request.subscribers.length > 0 && (
+        <section className="request-subscribers">
+          <h2>{t("requestedBy")}</h2>
+          <ul>
+            {request.subscribers.map((subscriber) => (
+              <li key={subscriber.email}>
+                <span className="part-name">{subscriber.email}</span>
+                <span className="muted">
+                  {subscriber.parts.length ? subscriber.parts.join(", ") : t("wholeRequest")}
+                </span>
+                <Status value={subscriber.status} />
+                <time className="muted" dateTime={subscriber.createdAt}>
+                  {format(subscriber.createdAt)}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="workspace-columns">
         <section>
           <h2>{t("progress")}</h2>

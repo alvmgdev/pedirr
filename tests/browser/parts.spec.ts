@@ -42,6 +42,20 @@ const request = {
     { name: "Early Prelims", status: "REJECTED", rejectionReason: "Not released" },
   ],
   subscription: { parts: ["Main Card"], status: "AVAILABLE" },
+  subscribers: [
+    {
+      email: "admin@example.invalid",
+      parts: ["Main Card"],
+      status: "AVAILABLE",
+      createdAt: "2026-10-04T10:00:00Z",
+    },
+    {
+      email: "fan@example.invalid",
+      parts: ["Prelims", "Early Prelims"],
+      status: "PENDING",
+      createdAt: "2026-10-05T10:00:00Z",
+    },
+  ],
   history: [],
   events: [
     {
@@ -147,5 +161,13 @@ test("a request with parts shows each part, the viewer's own status and parts to
   await expect(page.getByText("Waiting for review: Prelims")).toBeVisible();
   await expect(page.getByRole("button", { name: "Approve" })).toBeVisible();
   await expect(page.getByText("In the library: Main Card")).toBeVisible();
+  const requesters = page.locator(".request-subscribers");
+  await expect(requesters.getByRole("heading", { name: "Requested by" })).toBeVisible();
+  await expect(requesters.locator("li").filter({ hasText: "fan@example.invalid" })).toContainText(
+    "Prelims, Early Prelims",
+  );
+  await expect(requesters.locator("li").filter({ hasText: "fan@example.invalid" })).toContainText(
+    "Pending approval",
+  );
   await page.screenshot({ path: "test-results/request-parts-desktop.png", fullPage: true });
 });

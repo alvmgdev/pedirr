@@ -434,9 +434,17 @@ export class RequestsService {
       where: { id },
       include: {
         ...include,
+        // Administrators see every subscriber; users only their own subscription.
         subscribers: {
-          where: { userId: viewer.id },
-          select: { userId: true, parts: true, status: true },
+          where: viewer.role === "ADMIN" ? {} : { userId: viewer.id },
+          select: {
+            userId: true,
+            parts: true,
+            status: true,
+            createdAt: true,
+            user: { select: { email: true } },
+          },
+          orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
         },
         events: {
           where: { active: true },
@@ -461,12 +469,21 @@ export class RequestsService {
       throw new NotFoundException({ code: "REQUEST_NOT_FOUND", message: "Request not found" });
     }
     const { subscribers, ...result } = request;
+    const own = subscribers.find((subscriber) => subscriber.userId === viewer.id);
     return {
       ...result,
-      subscribed: subscribers.length > 0,
-      subscription: subscribers[0]
-        ? { parts: subscribers[0].parts, status: subscribers[0].status }
-        : null,
+      subscribed: own !== undefined,
+      subscription: own ? { parts: own.parts, status: own.status } : null,
+      // Who asked for what, so administrators can review and answer; never shown to users.
+      subscribers:
+        viewer.role === "ADMIN"
+          ? subscribers.map((subscriber) => ({
+              email: subscriber.user.email,
+              parts: subscriber.parts,
+              status: subscriber.status,
+              createdAt: subscriber.createdAt,
+            }))
+          : null,
     };
   }
   async moderate(id: string, input: Moderation, viewer: Viewer) {

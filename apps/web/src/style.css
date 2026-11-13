@@ -947,17 +947,20 @@ th {
   gap: 12px;
   flex-wrap: wrap;
 }
-.request-parts {
+.request-parts,
+.request-subscribers {
   margin-bottom: 40px;
 }
-.request-parts ul {
+.request-parts ul,
+.request-subscribers ul {
   list-style: none;
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--line);
   max-width: 720px;
 }
-.request-parts li {
+.request-parts li,
+.request-subscribers li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -965,7 +968,8 @@ th {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
-.request-parts .part-name {
+.request-parts .part-name,
+.request-subscribers .part-name {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 22px;
   flex: 1 1 160px;
@@ -975,6 +979,12 @@ th {
   margin: 0;
   color: var(--muted);
   font-size: 14px;
+}
+.request-subscribers .part-name {
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .part-mine {
   font-size: 14px;
