@@ -45,6 +45,21 @@ for (const locale of ["en", "es"]) {
         },
       ],
     };
+    const issue = {
+      id: "11111111-1111-4111-8111-111111111111",
+      status: "IN_PROGRESS",
+      category: "LANGUAGE",
+      part: "Main Card",
+      description: "The commentary is in another language.",
+      createdAt: "2026-11-08T10:00:00Z",
+      updatedAt: "2026-11-08T12:00:00Z",
+      resolvedAt: null,
+      mine: false,
+      reporter: { id: "user-1", email: "viewer@example.invalid" },
+      request: { id: "request-1", title: event.name, kind: "event", season: null },
+      event: null,
+      comments: 1,
+    };
     let signedIn = false;
     await page.addInitScript((value) => localStorage.setItem("pedirr.locale", value), locale);
     await page.route("**/api/v1/**", async (route) => {
@@ -74,6 +89,23 @@ for (const locale of ["en", "es"]) {
             { name: "Post Show", optional: true, selected: false, state: "none" },
           ],
         };
+      } else if (path.endsWith("/issues/open")) {
+        body = { open: 1 };
+      } else if (path.endsWith(`/issues/${issue.id}`)) {
+        body = {
+          ...issue,
+          timeline: [
+            {
+              id: "22222222-2222-4222-8222-222222222222",
+              body: "Checking the release.",
+              status: "IN_PROGRESS",
+              createdAt: "2026-11-08T12:00:00Z",
+              author: { role: "ADMIN", mine: true, email: user.email },
+            },
+          ],
+        };
+      } else if (path.endsWith("/issues")) {
+        body = { items: [issue], total: 1, page: 1, pageSize: 30 };
       } else if (path.endsWith("/requests/request-1")) {
         body = request;
       } else if (path.endsWith("/requests")) {
@@ -145,6 +177,8 @@ for (const locale of ["en", "es"]) {
       "/catalog/event/event-1",
       "/requests",
       "/requests/request-1",
+      "/issues",
+      `/issues/${issue.id}`,
       "/account",
       "/admin",
       "/admin/users/admin-1",

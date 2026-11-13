@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, client, type RequestRecord, type User } from "./api";
 import { Artwork, ErrorMessage, Loading, Pager, Status } from "./ui";
+import { RequestIssues } from "./issues";
 export function Requests() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -257,6 +258,9 @@ export function RequestDetail({ user }: { user: User }) {
           </ol>
         </section>
       </div>
+      {(request.subscription || user.role === "ADMIN") && (
+        <RequestIssues request={request} user={user} />
+      )}
     </>
   );
 }
