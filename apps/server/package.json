@@ -8,8 +8,8 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js",
     "worker": "node dist/worker.js",
-    "dev": "node --watch --require ts-node/register src/main.ts",
-    "dev:worker": "node --watch --require ts-node/register src/worker.ts",
+    "dev": "node --watch dev.cjs main",
+    "dev:worker": "node --watch dev.cjs worker",
     "test": "node --test test/*.test.cjs"
   },
   "dependencies": {
@@ -35,7 +35,7 @@
     "@nestjs/testing": "^11.2.8",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.5",
-    "@types/node": "^22.19.0",
+    "@types/node": "^24.19.2",
     "@types/nodemailer": "^8.0.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
