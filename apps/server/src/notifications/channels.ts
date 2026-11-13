@@ -20,6 +20,11 @@ export function renderNotice(locale: string, title: string, status: string, url:
       REJECTED: "Rejected",
       DOWNLOADING: "Downloading",
       AVAILABLE: "Available",
+      OPEN: "Issue reported",
+      IN_PROGRESS: "Issue in progress",
+      RESOLVED: "Issue resolved",
+      CLOSED: "Issue closed",
+      COMMENT: "New comment on an issue",
     },
     es: {
       PENDING: "Pendiente de aprobación",
@@ -27,6 +32,11 @@ export function renderNotice(locale: string, title: string, status: string, url:
       REJECTED: "Rechazada",
       DOWNLOADING: "Descargando",
       AVAILABLE: "Disponible",
+      OPEN: "Incidencia abierta",
+      IN_PROGRESS: "Incidencia en curso",
+      RESOLVED: "Incidencia resuelta",
+      CLOSED: "Incidencia cerrada",
+      COMMENT: "Nuevo comentario en una incidencia",
     },
   };
   const label = (labels[locale] ?? labels.en)[status] ?? status;

@@ -5,6 +5,19 @@ import { NotificationSettings } from "../settings/notifications";
 import { DiscordChannel, EmailChannel, NotificationChannel, renderNotice } from "./channels";
 import { errorCode } from "../jobs/fulfillment";
 import { required } from "../config";
+import { OutboxEvent } from "@prisma/client";
+
+const NOTIFIED = ["request.created", "request.status", "issue.created", "issue.updated"];
+type NoticeTarget = {
+  title: string;
+  status: string;
+  url: string;
+  users: { email: string; locale: string }[];
+};
+const requestTitle = (request: { entity: { title: string }; scope: unknown }) => {
+  const scope = request.scope as { kind?: string; season?: { name?: string } };
+  return request.entity.title + (scope.kind === "season" ? ` · ${scope.season?.name ?? ""}` : "");
+};
 
 export class Notifications {
   constructor(
@@ -16,50 +29,30 @@ export class Notifications {
   async run(eventId: string) {
     const { db, redis } = this.infrastructure;
     const event = await db.outboxEvent.findUnique({ where: { id: eventId } });
-    if (!event || !["request.created", "request.status"].includes(event.type)) {
+    if (!event || !NOTIFIED.includes(event.type)) {
       return;
     }
-    // Requests with parts address only the subscribers whose own status changed.
-    const payload = event.payload as { requestId: string; status: string; userIds?: string[] };
-    const request = await db.request.findUnique({
-      where: { id: payload.requestId },
-      include: {
-        entity: true,
-        subscribers: {
-          where: {
-            createdAt: { lte: event.createdAt },
-            user: { active: true },
-            ...(Array.isArray(payload.userIds) ? { userId: { in: payload.userIds } } : {}),
-          },
-          include: { user: { select: { email: true, locale: true } } },
-        },
-      },
-    });
-    if (!request) {
+    const notice = event.type.startsWith("issue.")
+      ? await this.issueNotice(event)
+      : await this.requestNotice(event);
+    if (!notice) {
       return;
     }
+    const { title, status, url, users } = notice;
     const config = await this.settings.configuration();
-    const scope = request.scope as { kind: string; season?: { name: string } };
-    const title =
-      request.entity.title + (scope.kind === "season" ? ` · ${scope.season?.name ?? ""}` : "");
-    const url = `${new URL(required("APP_ORIGIN")).origin}/requests/${request.id}`;
     const deliveries: { channel: "email" | "discord"; recipient: string; locale: string }[] = [];
     if (config.emailEnabled && event.createdAt >= new Date(config.emailSince)) {
-      const users = request.subscribers.map((subscription) => subscription.user);
-      if (event.type === "request.created") {
-        users.push(
-          ...(await db.user.findMany({
-            where: { active: true, role: "ADMIN" },
-            select: { email: true, locale: true },
-          })),
-        );
-      }
       const recipients = new Map(users.map((user) => [user.email, user.locale]));
       for (const [recipient, locale] of recipients) {
         deliveries.push({ channel: "email", recipient, locale });
       }
     }
-    if (config.discordEnabled && event.createdAt >= new Date(config.discordSince)) {
+    // The shared Discord channel hears about requests and new issues, not each issue update.
+    if (
+      config.discordEnabled &&
+      event.type !== "issue.updated" &&
+      event.createdAt >= new Date(config.discordSince)
+    ) {
       deliveries.push({
         channel: "discord",
         recipient: createHash("sha256").update(config.discordWebhook).digest("hex"),
@@ -103,7 +96,7 @@ export class Notifications {
         await (target.channel === "email" ? this.email : this.discord).send(
           config,
           target.recipient,
-          renderNotice(target.locale, title, payload.status, url),
+          renderNotice(target.locale, title, status, url),
           record.id,
         );
         await db.notificationDelivery.update({
@@ -128,5 +121,76 @@ export class Notifications {
     if (failure) {
       throw failure;
     }
+  }
+
+  private async requestNotice(event: OutboxEvent): Promise<NoticeTarget | undefined> {
+    const { db } = this.infrastructure;
+    // Requests with parts address only the subscribers whose own status changed.
+    const payload = event.payload as { requestId: string; status: string; userIds?: string[] };
+    const request = await db.request.findUnique({
+      where: { id: payload.requestId },
+      include: {
+        entity: true,
+        subscribers: {
+          where: {
+            createdAt: { lte: event.createdAt },
+            user: { active: true },
+            ...(Array.isArray(payload.userIds) ? { userId: { in: payload.userIds } } : {}),
+          },
+          include: { user: { select: { email: true, locale: true } } },
+        },
+      },
+    });
+    if (!request) {
+      return undefined;
+    }
+    const users = request.subscribers.map((subscription) => subscription.user);
+    if (event.type === "request.created") {
+      users.push(...(await this.admins()));
+    }
+    return {
+      title: requestTitle(request),
+      status: payload.status,
+      url: `${new URL(required("APP_ORIGIN")).origin}/requests/${request.id}`,
+      users,
+    };
+  }
+  private async issueNotice(event: OutboxEvent): Promise<NoticeTarget | undefined> {
+    const payload = event.payload as {
+      issueId: string;
+      status?: string;
+      audience?: "admins" | "reporter";
+      actorId?: string;
+    };
+    const issue = await this.infrastructure.db.issue.findUnique({
+      where: { id: payload.issueId },
+      include: {
+        request: { include: { entity: true } },
+        reporter: { select: { id: true, email: true, locale: true, active: true } },
+      },
+    });
+    if (!issue) {
+      return undefined;
+    }
+    // New issues go to administrators; updates go to the other side of the conversation.
+    const audience = event.type === "issue.created" ? "admins" : payload.audience;
+    const users =
+      audience === "reporter"
+        ? issue.reporter.active && issue.reporter.id !== payload.actorId
+          ? [issue.reporter]
+          : []
+        : await this.admins(payload.actorId);
+    return {
+      title: requestTitle(issue.request) + (issue.part ? ` · ${issue.part}` : ""),
+      status: event.type === "issue.created" ? "OPEN" : (payload.status ?? "COMMENT"),
+      url: `${new URL(required("APP_ORIGIN")).origin}/issues/${issue.id}`,
+      users,
+    };
+  }
+  private admins(except?: string) {
+    return this.infrastructure.db.user.findMany({
+      where: { active: true, role: "ADMIN", ...(except ? { id: { not: except } } : {}) },
+      select: { email: true, locale: true },
+    });
   }
 }

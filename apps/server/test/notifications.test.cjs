@@ -251,3 +251,74 @@ test("email transport delivers a localized message to a local SMTP fixture", asy
     await new Promise((resolve) => server.close(resolve));
   }
 });
+test("issue notices reach administrators when reported and the reporter when answered", async () => {
+  process.env.APP_ORIGIN = "https://pedirr.example.invalid";
+  const sent = [];
+  let outbox;
+  const issue = {
+    id: "issue",
+    part: "Main Card",
+    request: { entity: { title: "UFC 334" }, scope: { kind: "event" } },
+    reporter: { id: "user", email: "user@example.invalid", locale: "es", active: true },
+  };
+  const db = {
+    outboxEvent: { findUnique: async () => outbox },
+    issue: { findUnique: async () => issue },
+    user: {
+      findMany: async ({ where }) =>
+        [
+          { id: "admin", email: "admin@example.invalid", locale: "en" },
+          { id: "other", email: "other-admin@example.invalid", locale: "en" },
+        ].filter((admin) => admin.id !== where.id?.not),
+    },
+    notificationDelivery: {
+      upsert: async ({ create }) => ({ ...create, id: `${create.channel}:${create.recipient}` }),
+      findUnique: async () => ({ status: "pending" }),
+      update: async () => ({}),
+    },
+  };
+  const channel = (name) => ({
+    send: async (_config, recipient, notice) => sent.push({ name, recipient, ...notice }),
+  });
+  const worker = new Notifications(
+    { db, redis: { set: async () => "OK", eval: async () => 1 } },
+    { configuration: async () => config },
+    channel("email"),
+    channel("discord"),
+  );
+  const run = async (type, payload) => {
+    sent.length = 0;
+    outbox = { id: type, type, createdAt: new Date("2026-11-14"), payload };
+    await worker.run(type);
+    return sent.map(({ name, recipient }) => (name === "email" ? recipient : name)).sort();
+  };
+  assert.deepEqual(await run("issue.created", { issueId: "issue", actorId: "user" }), [
+    "admin@example.invalid",
+    "discord",
+    "other-admin@example.invalid",
+  ]);
+  assert.match(sent[0].subject, /Issue reported|Incidencia abierta/);
+  assert.equal(sent[0].url, "https://pedirr.example.invalid/issues/issue");
+  assert.match(sent[0].text, /UFC 334 · Main Card/);
+  // An administrator's answer goes to the reporter only, in their language, not to Discord.
+  assert.deepEqual(
+    await run("issue.updated", {
+      issueId: "issue",
+      status: "RESOLVED",
+      audience: "reporter",
+      actorId: "admin",
+    }),
+    ["user@example.invalid"],
+  );
+  assert.match(sent[0].subject, /Incidencia resuelta/);
+  // The reporter's reply reaches every administrator except whoever wrote it.
+  assert.deepEqual(
+    await run("issue.updated", {
+      issueId: "issue",
+      status: "COMMENT",
+      audience: "admins",
+      actorId: "admin",
+    }),
+    ["other-admin@example.invalid"],
+  );
+});
