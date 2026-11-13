@@ -27,17 +27,19 @@ enum EntityKind {
 }
 
 model User {
-  id            String              @id @default(uuid())
-  email         String              @unique
-  passwordHash  String
-  role          Role                @default(USER)
-  active        Boolean             @default(true)
-  locale        String              @default("en")
-  timezone      String              @default("UTC")
-  autoApprove   Boolean?
-  createdAt     DateTime            @default(now())
-  sessions      Session[]
-  subscriptions RequestSubscriber[]
+  id                String              @id @default(uuid())
+  email             String              @unique
+  passwordHash      String
+  role              Role                @default(USER)
+  active            Boolean             @default(true)
+  locale            String              @default("en")
+  timezone          String              @default("UTC")
+  autoApprove       Boolean?
+  // Single events are always allowed; whole seasons need this grant unless ADMIN.
+  canRequestSeasons Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  sessions          Session[]
+  subscriptions     RequestSubscriber[]
 }
 
 model Session {

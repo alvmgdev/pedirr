@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { validate } = require("class-validator");
-const { UsersService, UserUpdate, AccessPolicy } = require("../dist/users");
+const { UsersService, UserCreate, UserUpdate, AccessPolicy } = require("../dist/users");
 
 function fixture(adminCount = 1) {
   const revoked = [];
@@ -60,5 +60,47 @@ test("null is accepted only as an explicit auto-approval inheritance setting", a
   }
   assert.ok(
     (await validate(Object.assign(new AccessPolicy(), { registrationEnabled: true }))).length > 0,
+  );
+});
+test("the season grant is an optional boolean on user creation and updates", async () => {
+  const credentials = { email: "viewer@example.invalid", password: "a-long-enough-password" };
+  for (const value of [undefined, true, false]) {
+    const create = Object.assign(new UserCreate(), credentials, { canRequestSeasons: value });
+    assert.equal((await validate(create)).length, 0);
+    assert.equal(
+      (await validate(Object.assign(new UserUpdate(), { canRequestSeasons: value }))).length,
+      0,
+    );
+  }
+  for (const value of [null, "true", 1]) {
+    const create = Object.assign(new UserCreate(), credentials, { canRequestSeasons: value });
+    assert.ok((await validate(create)).length > 0);
+    assert.ok(
+      (await validate(Object.assign(new UserUpdate(), { canRequestSeasons: value }))).length > 0,
+    );
+  }
+});
+test("changing the season grant does not revoke sessions", async () => {
+  const { service, revoked } = fixture();
+  await service.update("admin-id", { canRequestSeasons: true });
+  assert.deepEqual(revoked, []);
+});
+test("created users can only request single events unless granted", async () => {
+  const created = [];
+  const service = new UsersService({
+    db: { user: { create: async ({ data }) => (created.push(data), data) } },
+  });
+  await service.create({ email: "One@Example.invalid", password: "a-long-enough-password" });
+  await service.create({
+    email: "two@example.invalid",
+    password: "a-long-enough-password",
+    canRequestSeasons: true,
+  });
+  assert.deepEqual(
+    created.map(({ email, canRequestSeasons }) => ({ email, canRequestSeasons })),
+    [
+      { email: "one@example.invalid", canRequestSeasons: false },
+      { email: "two@example.invalid", canRequestSeasons: true },
+    ],
   );
 });

@@ -33,6 +33,7 @@ export const publicUserSelect = {
   locale: true,
   timezone: true,
   autoApprove: true,
+  canRequestSeasons: true,
 } as const;
 export type Viewer = {
   id: string;
@@ -42,7 +43,11 @@ export type Viewer = {
   locale: string;
   timezone: string;
   autoApprove: boolean | null;
+  canRequestSeasons: boolean;
 };
+/** Administrators may always request whole seasons; other users need the grant. */
+export const mayRequestSeasons = (user: Pick<Viewer, "role" | "canRequestSeasons">) =>
+  user.role === "ADMIN" || user.canRequestSeasons;
 export type AuthRequest = Request & { viewer?: Viewer; sessionHash?: string };
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 export const passwordOptions = {

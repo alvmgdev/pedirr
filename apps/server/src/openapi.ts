@@ -55,6 +55,7 @@ const schemas: Record<string, SchemaObject> = {
     locale: enumeration("en", "es"),
     timezone: string,
     autoApprove: nullable(boolean),
+    canRequestSeasons: boolean,
   }),
   Ok: object({ ok: { type: "boolean", enum: [true] } }),
   CsrfToken: object({

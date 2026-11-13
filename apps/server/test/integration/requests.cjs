@@ -17,7 +17,12 @@ async function main() {
     const users = await Promise.all(
       ["ADMIN", "USER", "USER"].map((role, index) =>
         db.user.create({
-          data: { email: `${index}@example.invalid`, passwordHash: "unused", role },
+          data: {
+            email: `${index}@example.invalid`,
+            passwordHash: "unused",
+            role,
+            canRequestSeasons: true,
+          },
         }),
       ),
     );
@@ -108,6 +113,34 @@ async function main() {
     assert.equal(mine.total, 2);
     assert.ok(mine.items.every((item) => item.subscribed && !("subscribers" in item)));
     // Force an outbox failure and verify the request and subscription roll back.
+    // Season requests need the grant; the stored user wins over a stale session copy.
+    const eventsOnly = await db.user.create({
+      data: { email: "events-only@example.invalid", passwordHash: "unused" },
+    });
+    assert.equal(eventsOnly.canRequestSeasons, false);
+    const seasonDenied = (error) => error.getResponse().code === "SEASON_REQUESTS_NOT_ALLOWED";
+    const before = await db.request.count();
+    await assert.rejects(
+      service.create({ kind: "season", identifier: "events-only-season" }, eventsOnly),
+      seasonDenied,
+    );
+    await assert.rejects(
+      service.create(
+        { kind: "season", identifier: "events-only-season" },
+        { ...eventsOnly, canRequestSeasons: true },
+      ),
+      seasonDenied,
+    );
+    await assert.rejects(
+      service.create({ kind: "season", identifier: "season-uuid" }, eventsOnly),
+      seasonDenied,
+    );
+    assert.equal(await db.request.count(), before);
+    assert.equal(
+      (await service.create({ kind: "event", identifier: "events-only-event" }, eventsOnly))
+        .created,
+      true,
+    );
     await db.$executeRawUnsafe(
       `ALTER TABLE "OutboxEvent" ADD CONSTRAINT reject_fulfillment CHECK (type <> 'request.fulfill') NOT VALID`,
     );
@@ -121,7 +154,7 @@ async function main() {
       0,
     );
     console.log(
-      "Request integration passed: concurrent deduplication, scoped identities, moderation races, policy precedence, authorization, privacy and transactional outbox rollback.",
+      "Request integration passed: season permission, concurrent deduplication, scoped identities, moderation races, policy precedence, authorization, privacy and transactional outbox rollback.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
