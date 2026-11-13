@@ -31,6 +31,16 @@ export class UserUpdate {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsBoolean()
   autoApprove?: boolean | null;
+  @ApiProperty({ required: false, description: "Allows requesting whole seasons." })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canRequestSeasons?: boolean;
+}
+export class UserCreate extends Credentials {
+  @ApiProperty({ required: false, default: false, description: "Allows requesting whole seasons." })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canRequestSeasons?: boolean;
 }
 export class UserPage {
   @ApiProperty({ required: false, default: 1 })
@@ -71,11 +81,15 @@ export class UsersService {
     }
     return user;
   }
-  async create(input: Credentials) {
+  async create(input: UserCreate) {
     const passwordHash = await argon2.hash(input.password, passwordOptions);
     try {
       return await this.infrastructure.db.user.create({
-        data: { email: input.email.trim().toLowerCase(), passwordHash },
+        data: {
+          email: input.email.trim().toLowerCase(),
+          passwordHash,
+          canRequestSeasons: input.canRequestSeasons ?? false,
+        },
         select: publicUserSelect,
       });
     } catch (error) {
@@ -167,7 +181,7 @@ export class UsersController {
   @Get("users/:id") detail(@Param("id", ParseUUIDPipe) id: string) {
     return this.users.detail(id);
   }
-  @Post("users") create(@Body() input: Credentials) {
+  @Post("users") create(@Body() input: UserCreate) {
     return this.users.create(input);
   }
   @Patch("users/:id") update(@Param("id", ParseUUIDPipe) id: string, @Body() input: UserUpdate) {

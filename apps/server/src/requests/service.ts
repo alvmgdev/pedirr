@@ -10,10 +10,15 @@ import {
 import { Prisma, RequestStatus } from "@prisma/client";
 import { Infrastructure } from "../infrastructure";
 import { MetadataItem, MetadataProvider } from "../metadata/provider";
-import { Viewer } from "../auth";
+import { mayRequestSeasons, Viewer } from "../auth";
 
 export type RequestTarget = { kind: "season" | "event"; identifier: string };
 export type Moderation = { decision: "approve" | "reject"; version: number; reason?: string };
+const seasonRequestsNotAllowed = () =>
+  new ForbiddenException({
+    code: "SEASON_REQUESTS_NOT_ALLOWED",
+    message: "Your account can request single events only",
+  });
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const include = {
   entity: { include: { identifiers: true } },
@@ -128,6 +133,9 @@ export class RequestsService {
     return this.availability.check(target.scope as AvailabilityTarget);
   }
   async create(input: RequestTarget, viewer: Viewer) {
+    if (input.kind === "season" && !mayRequestSeasons(viewer)) {
+      throw seasonRequestsNotAllowed();
+    }
     const target = await this.target(input);
     const existing = await this.existing(target);
     if (!existing) {
@@ -148,6 +156,9 @@ export class RequestsService {
       const user = await tx.user.findUnique({ where: { id: viewer.id } });
       if (!user?.active) {
         throw new ForbiddenException();
+      }
+      if (input.kind === "season" && !mayRequestSeasons(user)) {
+        throw seasonRequestsNotAllowed();
       }
       const entity = await this.entity(tx, target.entity, target.kind);
       const existing = await tx.request.findUnique({
