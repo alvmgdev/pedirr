@@ -28,6 +28,8 @@ Verified against https://sportarr.net/openapi-partner.json: `/api/public/v1/sear
 
 ## Implementation review
 
+Issues reuse the request vocabulary: a hairline list with the problem in Barlow Condensed and the affected content underneath, and a conversation built on the history timeline, where status changes read as gold "Marked as" lines. Reporters see administrator replies as "Administrator". The navigation adds Issues with a small gold count; on phones Administration shortens to "Admin" (the accessible name stays complete) and the bar scrolls rather than the page if it ever overflows.
+
 The brand mark is aligned like a letter of the wordmark: baseline alignment and a height of 0.74em, the ascender height of Barlow Condensed, so it spans from the top of the "d" to the baseline at every size. A browser test checks both edges within 1 px.
 
 Event parts use a native modal dialog listed in card order, like a bout sheet: a hairline row per part with its name in Barlow Condensed and its state on the right (already requested in ticket gold, in the library in green and disabled, optional parts labelled). The checkbox is named by the part and described by its state. Request details list each part with its status and mark the viewer's own parts.

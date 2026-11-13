@@ -25,6 +25,12 @@ Checked items are implemented; unchecked items are planned for the future and ha
 - [x] Request tracking (pending, approved, rejected, downloading, available) with history
 - [x] Choice of event parts (for example Early Prelims, Prelims, Main Card) when requesting events or seasons, with per-user status for each part
 
+## Issues
+
+- [x] Issue reports on requested content (category, affected event and part), private to the reporter and administrators
+- [x] Comments, status lifecycle (open, in progress, resolved, closed) and reopening by the reporter
+- [ ] Administrator actions in Sportarr from an issue (for example searching again)
+
 ## Sportarr integration
 
 - [x] Encrypted connection settings, connection test, library folder and quality profile defaults

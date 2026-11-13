@@ -10,21 +10,22 @@ Visible states: pending, approved, rejected, downloading, available. Season requ
 
 Security implementation requirements: Argon2id passwords, opaque revocable sessions, CSRF tokens and Origin validation, same-origin deployment, server authorization, shared rate limiting, encrypted settings secrets with an external key, strict input validation, and redacted structured logs. UI and notifications support en/es; timestamps are stored in UTC. All source and documentation are English.
 
-Deployment consists of app, worker, PostgreSQL, Redis, and a single migration task. Implemented modules: auth/users, catalog/discovery, requests/moderation, settings/integrations, synchronization, notifications.
+Deployment consists of app, worker, PostgreSQL, Redis, and a single migration task. Implemented modules: auth/users, catalog/discovery, requests/moderation, issues, settings/integrations, synchronization, notifications.
 
 ## Data model
 
-| Model                              | Responsibility and relationships                                                                                                                      |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| User / Session                     | Roles, approval overrides, season access (single events by default), locale/timezone; revocable hashed session tokens belong to users.                |
-| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                                |
-| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope. Subscribers keep their own parts and status. |
-| RequestPart                        | One requested event part (e.g. Main Card) with its shared review status; none means the whole event.                                                  |
-| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr, with each event's parts on disk and downloading.                      |
-| Setting                            | Shared policies and encrypted integration credentials.                                                                                                |
-| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                                  |
-| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                                    |
-| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent.                  |
+| Model                              | Responsibility and relationships                                                                                                                                             |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| User / Session                     | Roles, approval overrides, season access (single events by default), locale/timezone; revocable hashed session tokens belong to users.                                       |
+| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                                                       |
+| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope. Subscribers keep their own parts and status.                        |
+| Issue / IssueComment               | Problems reported by subscribers about a request (optionally an event and part), private to the reporter and administrators, with a timeline of comments and status changes. |
+| RequestPart                        | One requested event part (e.g. Main Card) with its shared review status; none means the whole event.                                                                         |
+| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr, with each event's parts on disk and downloading.                                             |
+| Setting                            | Shared policies and encrypted integration credentials.                                                                                                                       |
+| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                                                         |
+| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                                                           |
+| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent.                                         |
 
 The authoritative constraints, relations and indexes are in `prisma/schema.prisma`. Versioned migrations create these structures before application startup.
 
