@@ -14,9 +14,12 @@ import {
   effectiveMonitoredParts,
   heldParts,
   isFullEventOnly,
+  isOptionalPart,
+  OPTIONAL_SEARCH_DAYS,
   partKey,
   partsRequestStatus,
   queuedParts,
+  requiredParts,
   selectableParts,
   splitParts,
 } from "../requests/parts";
@@ -306,13 +309,15 @@ export class Fulfillment {
         let downloading = activity.some((item) => ACTIVE_QUEUE.includes(item.status));
         let availableParts: string[] = [];
         let downloadingParts: string[] = [];
+        let missing: string[] = [];
         if (definitions.length) {
           const held = heldParts(current, definitions);
           availableParts = held.whole ? definitions.map((part) => part.name) : held.names;
-          const missing = wanted.filter(
+          missing = wanted.filter(
             (name) => !availableParts.some((item) => partKey(item) === partKey(name)),
           );
-          available = missing.length === 0;
+          // An optional part (the Post Show) is fetched when it appears but never blocks.
+          available = requiredParts(wanted).every((name) => !missing.includes(name));
           downloadingParts = queued.unknown
             ? missing
             : missing.filter((name) =>
@@ -342,7 +347,8 @@ export class Fulfillment {
           update: { ...state, active: true },
         });
         results.push({ available, downloading });
-        if (!available && Date.parse(event.scheduledStart!) <= Date.now()) {
+        const started = Date.parse(event.scheduledStart!);
+        if ((definitions.length ? missing.length > 0 : !available) && started <= Date.now()) {
           const searches: { key: string; part?: string }[] = [];
           const partSearch = (part: string) => ({
             key: `pedirr:search:${managerKey}:${current.id}:part:${encodeURIComponent(part.toLowerCase())}`,
@@ -351,10 +357,12 @@ export class Fulfillment {
           if (definitions.length) {
             // Search each requested part on its own, so another part is never grabbed instead.
             if (!queued.unknown) {
-              for (const part of wanted) {
-                const held = availableParts.some((item) => partKey(item) === partKey(part));
+              // Optional parts are rarely released: search them only in the days after the event.
+              const optionalUntil = started + OPTIONAL_SEARCH_DAYS * 86400000;
+              for (const part of missing) {
                 const busy = queued.names.some((item) => partKey(item) === partKey(part));
-                if (!held && !busy) {
+                const late = isOptionalPart(part) && Date.now() > optionalUntil;
+                if (!busy && !late) {
                   searches.push(partSearch(part));
                 }
               }

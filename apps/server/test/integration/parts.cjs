@@ -37,6 +37,11 @@ async function main() {
       card: hubEvent("card", "ev-200"),
       managed: hubEvent("managed", "ev-300"),
       whole: hubEvent("whole", "ev-400"),
+      // Started yesterday: optional parts are still searched.
+      recent: {
+        ...hubEvent("recent", "ev-500"),
+        scheduledStart: new Date(Date.now() - 86400000).toISOString(),
+      },
     };
     const definitions = [
       { name: "Full Event", number: 0 },
@@ -87,7 +92,7 @@ async function main() {
       ensureEvent: async (input) => {
         if (!stored.has(input.externalId)) {
           stored.set(input.externalId, {
-            id: 20,
+            id: input.externalId === "ev-500" ? 50 : 20,
             externalId: input.externalId,
             leagueId: 8,
             title: input.title,
@@ -326,8 +331,38 @@ async function main() {
     await requests.create({ kind: "event", identifier: "whole" }, bob);
     assert.equal(await statusOf(whole.request.id, bob), "APPROVED");
 
+    // A requested Post Show is searched in the days after the event but never blocks.
+    const recent = await requests.create(
+      { kind: "event", identifier: "recent", parts: ["Main Card", "Post Show"] },
+      alice,
+    );
+    await worker.run(recent.request.id);
+    assert.deepEqual(partWrites.at(-1), { id: 50, parts: "Main Card,Post Show" });
+    assert.ok(searches.includes("50:Main Card"));
+    assert.ok(searches.includes("50:Post Show"));
+    byId(50).files = [{ exists: true, partNumber: 3, partName: "Main Card" }];
+    await worker.run(recent.request.id);
+    assert.equal((await reload(recent.request.id)).status, "AVAILABLE");
+    assert.equal(await statusOf(recent.request.id, alice), "AVAILABLE");
+    // Long after the event the Post Show is no longer searched, and still does not block.
+    await requests.create({ kind: "event", identifier: "card", parts: ["Post Show"] }, alice);
+    await worker.run(id);
+    assert.ok(!searches.includes("20:Post Show"));
+    assert.equal(await statusOf(id, alice), "AVAILABLE");
+    // Someone waiting only for the Post Show never holds back the others.
+    const recentEvent = await requests.create(
+      { kind: "event", identifier: "recent", parts: ["Post Show"] },
+      bob,
+    );
+    // Bob joins the Post Show Alice already had approved, so nothing waits for review.
+    request = await reload(recentEvent.request.id);
+    await worker.run(request.id);
+    assert.equal(await statusOf(request.id, bob), "APPROVED");
+    assert.equal(await statusOf(request.id, alice), "AVAILABLE");
+    assert.equal((await reload(request.id)).status, "AVAILABLE");
+
     console.log(
-      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, Full Event and whole-event compatibility.",
+      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, optional Post Show, Full Event and whole-event compatibility.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

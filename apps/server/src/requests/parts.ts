@@ -19,6 +19,16 @@ export const ACTIVE_QUEUE = [
 export const partKey = (value: unknown) =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
 export const isOptionalPart = (name: string) => OPTIONAL_PARTS.has(partKey(name));
+/** Days after an event start during which optional parts such as the Post Show are searched. */
+export const OPTIONAL_SEARCH_DAYS = 7;
+/**
+ * Parts that decide availability. Like Sportarr, optional parts never block an event that has
+ * other parts requested; requested on their own they are what the user is waiting for.
+ */
+export function requiredParts(names: string[]): string[] {
+  const required = names.filter((name) => !isOptionalPart(name));
+  return required.length ? required : names;
+}
 const has = (names: Iterable<string>, name: string) =>
   [...names].some((item) => partKey(item) === partKey(name));
 
@@ -176,7 +186,7 @@ export function progressStatus(
     }
     const wanted = approved.filter((name) => has(event.parts, name));
     // The event-level flag reflects the parts approved at the last sync, not this set.
-    complete &&= wanted.every((name) => has(event.availableParts, name));
+    complete &&= requiredParts(wanted).every((name) => has(event.availableParts, name));
     downloading ||= wanted.some((name) => has(event.downloadingParts, name));
   }
   if (complete && closed) {
