@@ -11,6 +11,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 - On phones the navigation shows "Admin" instead of "Administration" so five sections fit.
 - A requested Post Show no longer keeps an event from becoming available: like Sportarr, Pedirr treats it as optional when other parts were requested. It is still monitored and searched, but only for seven days after the event; requested on its own, it is what that user waits for, without holding back anyone else.
 - Administrators see who requested each request, with each person's parts and own status, under "Requested by" on the request details. Users still never see other subscribers.
+- Requests for the whole event, including those made before parts existed, offer "Follow request" again instead of a parts dialog whose choice changed nothing, since they already cover every part.
 
 ## 0.2.0 - 2026-11-10
 

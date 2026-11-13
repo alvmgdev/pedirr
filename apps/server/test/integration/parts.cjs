@@ -37,6 +37,7 @@ async function main() {
       card: hubEvent("card", "ev-200"),
       managed: hubEvent("managed", "ev-300"),
       whole: hubEvent("whole", "ev-400"),
+      legacy: hubEvent("legacy", "ev-600"),
       // Started yesterday: optional parts are still searched.
       recent: {
         ...hubEvent("recent", "ev-500"),
@@ -375,8 +376,18 @@ async function main() {
     assert.equal(await statusOf(request.id, alice), "AVAILABLE");
     assert.equal((await reload(request.id)).status, "AVAILABLE");
 
+    // A whole-event request made before parts existed offers following, not a parts choice.
+    const legacy = await requests.create({ kind: "event", identifier: "legacy" }, alice);
+    assert.equal(legacy.request.parts.length, 0);
+    assert.deepEqual(await requests.partOptions({ kind: "event", identifier: "legacy" }, bob), {
+      supported: false,
+      parts: [],
+    });
+    await requests.create({ kind: "event", identifier: "legacy" }, bob);
+    assert.equal(await statusOf(legacy.request.id, bob), legacy.request.status);
+
     console.log(
-      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, subscribers for administrators only, optional Post Show, Full Event and whole-event compatibility.",
+      "Parts integration passed: per-user part status, add-only monitoring, per-part search, part review and re-review, pending-part moderation queue, subscribers for administrators only, optional Post Show, Full Event and whole-event compatibility, including following a whole-event request.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
