@@ -8,6 +8,19 @@ import { ContentManager, ManagerEvent, ManagerPart, QueueItem } from "../manager
 import { SportarrClient } from "../managers/sportarr";
 import { SportarrSettings } from "../settings/sportarr";
 import { searchRetrySeconds } from "../config";
+import {
+  ACTIVE_QUEUE,
+  addMonitoredParts,
+  effectiveMonitoredParts,
+  heldParts,
+  isFullEventOnly,
+  partKey,
+  partsRequestStatus,
+  queuedParts,
+  selectableParts,
+  splitParts,
+} from "../requests/parts";
+import { refreshSubscribers } from "../requests/subscribers";
 
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const conflict = () =>
@@ -32,16 +45,6 @@ export function errorCode(error: unknown): string {
 export function imported(event: ManagerEvent): boolean {
   return event.hasFile && event.files.some((file) => file.exists === true);
 }
-const ACTIVE_QUEUE = [
-  "Queued",
-  "Downloading",
-  "Paused",
-  "Completed",
-  "Importing",
-  "ImportPending",
-  "ImportWarning",
-  "Warning",
-];
 const OPTIONAL_PARTS = new Set(["post show"]);
 const lower = (value: unknown) => (typeof value === "string" ? value.trim().toLowerCase() : "");
 
@@ -179,7 +182,10 @@ export class Fulfillment {
   }
   async run(requestId: string) {
     const { db, redis } = this.infrastructure;
-    const request = await db.request.findUnique({ where: { id: requestId } });
+    const request = await db.request.findUnique({
+      where: { id: requestId },
+      include: { parts: true },
+    });
     if (!request || !["APPROVED", "DOWNLOADING", "AVAILABLE"].includes(request.status)) {
       return;
     }
@@ -241,13 +247,20 @@ export class Fulfillment {
         rootFolderId: config.rootFolderId,
         qualityProfileId: config.qualityProfileId,
       });
+      // Requests with parts monitor and search only their approved parts.
+      const byParts = request.parts.length > 0;
+      const approvedParts = request.parts
+        .filter((part) => part.status === "APPROVED")
+        .map((part) => part.name);
+      const multiPart = byParts && (await manager.multiPartEnabled());
       const existing = await manager.events(league.id);
       const queue = await manager.queue();
       const retrySeconds = searchRetrySeconds();
       const results: { available: boolean; downloading: boolean }[] = [];
       for (const event of events) {
         await check();
-        const current = await manager.ensureEvent(
+        const created = !existing.some((item) => item.externalId === event.shortId);
+        let current = await manager.ensureEvent(
           {
             externalId: event.shortId!,
             title: event.name,
@@ -260,36 +273,93 @@ export class Fulfillment {
           },
           existing,
         );
-        const available = imported(current);
+        let definitions: ManagerPart[] = [];
+        let wanted: string[] = [];
+        if (multiPart) {
+          const effective = effectiveMonitoredParts(current.monitoredParts, league.monitoredParts);
+          // A "Full Event" event keeps one whole file; its parts are never changed.
+          if (!isFullEventOnly(effective)) {
+            definitions = selectableParts(await manager.parts(current.id));
+            wanted = definitions
+              .filter((part) => approvedParts.some((name) => partKey(name) === partKey(part.name)))
+              .map((part) => part.name);
+          }
+          if (wanted.length) {
+            // Only ever add parts. An event Pedirr just created starts with the requested ones;
+            // an existing event keeps everything it already monitors (null already means all).
+            const configured = created || effective === null ? null : splitParts(effective);
+            const missing = configured
+              ? wanted.filter((name) => !configured.some((item) => partKey(item) === partKey(name)))
+              : wanted;
+            if (created || (configured && missing.length)) {
+              await check();
+              current = await manager.setMonitoredParts(
+                current.id,
+                addMonitoredParts(definitions, configured ?? [], missing),
+              );
+            }
+          }
+        }
         const activity: QueueItem[] = queue.filter((item) => item.eventId === current.id);
-        const downloading = activity.some((item) => ACTIVE_QUEUE.includes(item.status));
+        const queued = queuedParts(activity);
+        let available: boolean;
+        let downloading = activity.some((item) => ACTIVE_QUEUE.includes(item.status));
+        let availableParts: string[] = [];
+        let downloadingParts: string[] = [];
+        if (definitions.length) {
+          const held = heldParts(current, definitions);
+          availableParts = held.whole ? definitions.map((part) => part.name) : held.names;
+          const missing = wanted.filter(
+            (name) => !availableParts.some((item) => partKey(item) === partKey(name)),
+          );
+          available = missing.length === 0;
+          downloadingParts = queued.unknown
+            ? missing
+            : missing.filter((name) =>
+                queued.names.some((item) => partKey(item) === partKey(name)),
+              );
+          downloading = downloadingParts.length > 0;
+        } else {
+          available = imported(current);
+        }
         const progress = available
           ? 100
           : Math.max(0, ...activity.map((item) => Math.min(100, Math.max(0, item.progress))));
+        const state = {
+          metadata: json(event),
+          remoteId: current.id,
+          available,
+          progress,
+          parts: definitions.map((part) => part.name),
+          availableParts,
+          downloadingParts,
+          downloading,
+          checkedAt: new Date(),
+        };
         await db.requestEvent.upsert({
           where: { requestId_externalId: { requestId, externalId: event.id } },
-          create: {
-            requestId,
-            externalId: event.id,
-            metadata: json(event),
-            remoteId: current.id,
-            available,
-            progress,
-            checkedAt: new Date(),
-          },
-          update: {
-            metadata: json(event),
-            remoteId: current.id,
-            available,
-            progress,
-            active: true,
-            checkedAt: new Date(),
-          },
+          create: { requestId, externalId: event.id, ...state },
+          update: { ...state, active: true },
         });
         results.push({ available, downloading });
         if (!available && Date.parse(event.scheduledStart!) <= Date.now()) {
           const searches: { key: string; part?: string }[] = [];
-          if (!current.files.some((file) => file.exists === true)) {
+          const partSearch = (part: string) => ({
+            key: `pedirr:search:${managerKey}:${current.id}:part:${encodeURIComponent(part.toLowerCase())}`,
+            part,
+          });
+          if (definitions.length) {
+            // Search each requested part on its own, so another part is never grabbed instead.
+            if (!queued.unknown) {
+              for (const part of wanted) {
+                const held = availableParts.some((item) => partKey(item) === partKey(part));
+                const busy = queued.names.some((item) => partKey(item) === partKey(part));
+                if (!held && !busy) {
+                  searches.push(partSearch(part));
+                }
+              }
+            }
+          } else if (!current.files.some((file) => file.exists === true)) {
             if (!downloading) {
               searches.push({ key: `pedirr:search:${managerKey}:${current.id}` });
             }
@@ -300,10 +370,7 @@ export class Fulfillment {
               league.monitoredParts,
               activity,
             );
-            for (const part of missing) {
-              const id = encodeURIComponent(part.toLowerCase());
-              searches.push({ key: `pedirr:search:${managerKey}:${current.id}:part:${id}`, part });
-            }
+            searches.push(...missing.map(partSearch));
           }
           for (const search of searches) {
             if (await redis.set(search.key, owner, "EX", retrySeconds, "NX")) {
@@ -319,7 +386,8 @@ export class Fulfillment {
         }
       }
       await check();
-      const status = aggregateStatus(results, plan.closed);
+      const progressStatus = aggregateStatus(results, plan.closed);
+      const status = byParts ? partsRequestStatus(request.parts, progressStatus) : progressStatus;
       await db.$transaction(async (tx) => {
         await tx.requestEvent.updateMany({
           where: { requestId, externalId: { notIn: events.map((event) => event.id) } },
@@ -327,7 +395,13 @@ export class Fulfillment {
         });
         const updated = await tx.request.updateMany({
           where: { id: requestId, version: request.version },
-          data: { status, integrationState: "synced", lastError: null, version: { increment: 1 } },
+          data: {
+            status,
+            closed: plan.closed,
+            integrationState: "synced",
+            lastError: null,
+            version: { increment: 1 },
+          },
         });
         if (!updated.count) {
           throw new Error("Request changed during synchronization");
@@ -336,10 +410,14 @@ export class Fulfillment {
           await tx.requestHistory.create({
             data: { requestId, action: "synchronized", details: { status } },
           });
-          await tx.outboxEvent.create({
-            data: { type: "request.status", payload: { requestId, status } },
-          });
+          // Requests with parts notify each user from their own status instead.
+          if (!byParts) {
+            await tx.outboxEvent.create({
+              data: { type: "request.status", payload: { requestId, status } },
+            });
+          }
         }
+        await refreshSubscribers(tx, requestId);
       });
     } catch (error) {
       await db.request.updateMany({
