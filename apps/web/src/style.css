@@ -1075,6 +1075,9 @@ th {
   gap: 12px;
   margin-bottom: 16px;
 }
+.follow-request {
+  margin-top: 16px;
+}
 .request-issues {
   margin-top: 48px;
   max-width: 720px;

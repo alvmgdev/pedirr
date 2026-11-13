@@ -2,8 +2,15 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { api, client, type RequestRecord, type User } from "./api";
-import { Artwork, ErrorMessage, Loading, Pager, Status } from "./ui";
+import {
+  api,
+  client,
+  mayRequestSeasons,
+  type PartOptions,
+  type RequestRecord,
+  type User,
+} from "./api";
+import { Artwork, ErrorMessage, Loading, Pager, PartsDialog, Status } from "./ui";
 import { RequestIssues } from "./issues";
 export function Requests() {
   const { t } = useTranslation();
@@ -139,6 +146,7 @@ export function RequestDetail({ user }: { user: User }) {
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
           <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
+          {!request.subscription && <FollowRequest request={request} user={user} />}
         </div>
         {user.role === "ADMIN" && reviewable && (
           <div className="request-box">
@@ -281,5 +289,64 @@ export function RequestDetail({ user }: { user: User }) {
         <RequestIssues request={request} user={user} />
       )}
     </>
+  );
+}
+
+/**
+ * Lets someone who does not follow a request join it from its page: a whole-event request is
+ * followed directly; a request with parts asks which parts to follow.
+ */
+function FollowRequest({ request, user }: { request: RequestRecord; user: User }) {
+  const { t } = useTranslation();
+  const [choosing, setChoosing] = useState(false);
+  const kind = request.scope.kind;
+  const identifier = kind === "event" ? request.scope.event?.id : request.scope.season?.id;
+  const byParts = request.parts.length > 0;
+  const options = useQuery({
+    queryKey: ["parts", kind, identifier],
+    queryFn: () =>
+      api<PartOptions>(
+        `/requests/parts?kind=${kind}&identifier=${encodeURIComponent(identifier!)}`,
+      ),
+    enabled: byParts && Boolean(identifier),
+    staleTime: 15000,
+  });
+  const follow = useMutation({
+    mutationFn: (parts?: string[]) =>
+      api("/requests", "POST", { kind, identifier, ...(parts ? { parts } : {}) }),
+    onSuccess: () => {
+      setChoosing(false);
+      void client.invalidateQueries({ queryKey: ["requests"] });
+      void client.invalidateQueries({ queryKey: ["parts", kind, identifier] });
+    },
+  });
+  // Seasons need the season grant; the server enforces it too.
+  if (!identifier || (kind === "season" && !mayRequestSeasons(user))) {
+    return null;
+  }
+  const supported = options.data?.supported === true;
+  return (
+    <div className="follow-request">
+      <button
+        className="quiet"
+        disabled={follow.isPending || (byParts && !supported)}
+        onClick={() => (byParts ? setChoosing(true) : follow.mutate(undefined))}
+      >
+        {t(byParts ? "requestPartsAction" : "followRequest")}
+      </button>
+      {!choosing && <ErrorMessage error={follow.error ?? options.error} />}
+      {choosing && supported && (
+        <PartsDialog
+          parts={options.data!.parts}
+          busy={follow.isPending}
+          error={follow.error}
+          onConfirm={(parts) => follow.mutate(parts)}
+          onClose={() => {
+            setChoosing(false);
+            follow.reset();
+          }}
+        />
+      )}
+    </div>
   );
 }
