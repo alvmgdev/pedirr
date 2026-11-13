@@ -23,6 +23,7 @@ export function ErrorMessage({ error }: { error: unknown }) {
     REQUEST_CHANGED: "requestChanged",
     INVALID_INPUT: "invalidInput",
     LAST_ADMIN: "lastAdmin",
+    SEASON_REQUESTS_NOT_ALLOWED: "seasonRequestsNotAllowed",
     EMAIL_UNAVAILABLE: "emailUnavailable",
     CONNECTION_FAILED: "connectionError",
   };

@@ -98,7 +98,11 @@ export type User = {
   locale: string;
   timezone: string;
   autoApprove: boolean | null;
+  canRequestSeasons: boolean;
 };
+/** Administrators may always request whole seasons; other users need the grant. */
+export const mayRequestSeasons = (user: Pick<User, "role" | "canRequestSeasons">) =>
+  user.role === "ADMIN" || user.canRequestSeasons;
 export type Item = {
   id: string;
   name: string;

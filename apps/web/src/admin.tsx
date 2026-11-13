@@ -150,6 +150,7 @@ function UserEditor({ user }: { user: User }) {
           role: data.get("role"),
           active: data.has("active"),
           autoApprove: approval === "inherit" ? null : approval === "true",
+          canRequestSeasons: data.has("canRequestSeasons"),
         });
       }}
     >
@@ -174,6 +175,7 @@ function UserEditor({ user }: { user: User }) {
           </select>
         </label>
         <Toggle name="active" checked={user.active} />
+        <Toggle name="canRequestSeasons" checked={user.canRequestSeasons} />
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
       <ErrorMessage error={update.error} />
@@ -219,7 +221,11 @@ export function UserDetail({ user }: { user: User }) {
           onSubmit={(event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);
-            create.mutate({ email: data.get("email"), password: data.get("password") });
+            create.mutate({
+              email: data.get("email"),
+              password: data.get("password"),
+              canRequestSeasons: data.has("canRequestSeasons"),
+            });
           }}
         >
           <Field name="email" type="email" required />
@@ -235,6 +241,8 @@ export function UserDetail({ user }: { user: User }) {
             />
           </label>
           <p className="muted">{t("passwordHint")}</p>
+          <Toggle name="canRequestSeasons" checked={false} />
+          <p className="muted">{t("canRequestSeasonsHint")}</p>
           <ErrorMessage error={create.error} />
           <button disabled={create.isPending}>{t("createUser")}</button>
         </form>
