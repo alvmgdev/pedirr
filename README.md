@@ -1,6 +1,38 @@
 # Pedirr
 
-Sports content requests for Sportarr. Includes a bilingual web interface, authentication and user administration, sports discovery, season/event requests, approval policies, Sportarr synchronization, and email/Discord notifications. Implementation and verification are recorded in the [MVP acceptance review](docs/mvp-acceptance.md). The Docker Hub page text lives in [docs/dockerhub.md](docs/dockerhub.md).
+Sports content requests for [Sportarr](https://sportarr.net). People browse the Sportarr Hub catalog, request a fight card, a game or a whole season, and Pedirr sends approved requests to Sportarr, follows the download and tells them when it is in the library.
+
+![Discover: this week's events from the Sportarr Hub catalog](docs/screenshots/discover.png)
+
+## Features
+
+- **Discovery**: search leagues, teams and events, browse seasons, and see the next seven days of events.
+- **Requests**: request single events or, when an administrator allows it, whole seasons. Requests are shared, so the same content is never requested or downloaded twice.
+- **Event parts**: fight cards are requested by part (Early Prelims, Prelims, Main Card…), with each person's own status.
+- **Approval**: manual review or automatic approval by role and by user.
+- **Sportarr**: approved content is monitored and searched in Sportarr without touching existing league settings, with progress and availability tracked.
+- **Issues**: users report problems with what they requested and follow the conversation with the administrators.
+- **Notifications**: optional email (SMTP) and Discord messages.
+- **Everywhere**: English and Spanish, phones and desktops, Docker images for amd64 and arm64.
+
+## Screenshots
+
+|                                                                                                                           |                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ![Sign in](docs/screenshots/sign-in.png) Sign in                                                                          | ![A league with its seasons](docs/screenshots/league.png) League and seasons             |
+| ![Choosing the parts of a fight card](docs/screenshots/parts-dialog.png) Choosing the parts of a fight card               | ![Requests and their status](docs/screenshots/requests.png) Requests and their status    |
+| ![A request with parts awaiting review](docs/screenshots/request-parts.png) Parts awaiting review, and who asked for them | ![An available request](docs/screenshots/request-available.png) A request in the library |
+| ![User administration](docs/screenshots/admin-users.png) User administration                                              | ![Discover on a phone](docs/screenshots/discover-mobile.png) On a phone                  |
+
+Screenshots come from a real installation; email addresses are replaced with example ones.
+
+## Quick start
+
+Pedirr runs with Docker Compose next to your Sportarr: copy [`compose.yaml`](compose.yaml) and [`.env.example`](.env.example) (as `.env`), fill in the secrets, run `docker compose up -d`, and create the first administrator. The [Docker](#docker) and [Initial administrator](#initial-administrator) sections below have the details, and [docs/dockerhub.md](docs/dockerhub.md) is a self-contained installation guide.
+
+## Reference
+
+The sections below are the technical reference for administrators and developers. Pedirr includes a bilingual web interface, authentication and user administration, sports discovery, season/event requests, approval policies, Sportarr synchronization, and email/Discord notifications. Implementation and verification are recorded in the [MVP acceptance review](docs/mvp-acceptance.md). The Docker Hub page text lives in [docs/dockerhub.md](docs/dockerhub.md).
 
 ## Development
 
