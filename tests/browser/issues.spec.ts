@@ -132,10 +132,13 @@ test("a subscriber reports a problem about a part and follows the conversation",
   const state = { current: issue("OPEN") };
   const writes = await fixtures(page, viewer, state);
   await page.goto(`/requests/${request.id}`);
+  await page.screenshot({ path: "test-results/request-actions.png" });
   await page.getByRole("button", { name: "Report a problem" }).click();
+  await expect(page.getByRole("dialog", { name: "Report a problem" })).toBeVisible();
   await page.getByRole("combobox", { name: "Problem" }).selectOption("LANGUAGE");
   await page.getByRole("combobox", { name: "Part", exact: true }).selectOption("Main Card");
   await page.getByLabel("What is wrong?").fill("The commentary is in Portuguese.");
+  await page.screenshot({ path: "test-results/report-dialog.png" });
   await page.getByRole("button", { name: "Send report" }).click();
   await expect(page).toHaveURL(new RegExp(`/issues/${issueId}$`));
   expect(writes[0]).toEqual({
