@@ -1,6 +1,26 @@
-# Pedirr
+<p align="center">
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/alvmgdev/pedirr?label=license&color=4c1"></a>
+</p>
 
-Sports content requests for [Sportarr](https://sportarr.net). People browse the Sportarr Hub catalog, request a fight card, a game or a whole season, and Pedirr sends approved requests to Sportarr, follows the download and tells them when it is in the library.
+<p align="center">
+  <img src="docs/logo.svg" alt="" width="96">
+</p>
+
+<h1 align="center">Pedirr</h1>
+
+<p align="center"><strong>Sports requests for Sportarr</strong></p>
+
+<p align="center">
+  Like Overseerr, but for sports. People browse the Sportarr Hub catalog and request a fight card, a game or a whole season; Pedirr sends approved requests to Sportarr, follows the download and tells them when it is in the library.
+</p>
+
+<p align="center">
+  <a href="https://hub.docker.com/r/alvmgdev/pedirr"><img alt="docker" src="https://img.shields.io/badge/docker-alvmgdev%2Fpedirr-2496ED?logo=docker&logoColor=white"></a>
+  <a href="https://hub.docker.com/r/alvmgdev/pedirr"><img alt="pulls" src="https://img.shields.io/docker/pulls/alvmgdev/pedirr?label=pulls&logo=docker&logoColor=white&color=2496ED"></a>
+  <img alt="arch" src="https://img.shields.io/badge/arch-amd64%20%7C%20arm64-e8692b">
+  <a href="https://github.com/alvmgdev/pedirr/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/alvmgdev/pedirr?label=release&color=8a2be2"></a>
+  <a href="https://github.com/alvmgdev/pedirr/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/alvmgdev/pedirr?style=flat&label=stars&color=dfb317"></a>
+</p>
 
 ![Discover: this week's events from the Sportarr Hub catalog](docs/screenshots/discover.png)
 
