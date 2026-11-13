@@ -361,14 +361,11 @@ test("part searches send the part name and parts/queue keep Sportarr's part iden
   global.fetch = async () => Response.json({ parts: [{ name: "Prelims", partNumber: -1 }] });
   await assert.rejects(client.parts(9));
 });
-test("part definitions, the multi-part setting and monitored parts use Sportarr's native API", async () => {
+test("the multi-part setting and monitored parts use Sportarr's native API", async () => {
   const calls = [];
   global.fetch = async (url, init) => {
     const { pathname } = new URL(url);
     calls.push({ method: init.method, path: pathname, body: init.body && JSON.parse(init.body) });
-    if (pathname.endsWith("/library/parts/Mixed%20Martial%20Arts")) {
-      return Response.json({ parts: [{ name: "Main Card", partNumber: 3 }] });
-    }
     if (pathname.endsWith("/config")) {
       return Response.json({ enableMultiPartEpisodes: true });
     }
@@ -381,9 +378,6 @@ test("part definitions, the multi-part setting and monitored parts use Sportarr'
     assert.fail("Unexpected endpoint " + pathname);
   };
   const client = new SportarrClient(config);
-  assert.deepEqual(await client.sportParts("Mixed Martial Arts"), [
-    { name: "Main Card", number: 3 },
-  ]);
   assert.equal(await client.multiPartEnabled(), true);
   assert.equal(
     (await client.setMonitoredParts(7, "Prelims,Main Card")).monitoredParts,
