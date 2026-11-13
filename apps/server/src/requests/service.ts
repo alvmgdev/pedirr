@@ -150,11 +150,15 @@ export class RequestsService {
       throw seasonRequestsNotAllowed();
     }
     const target = await this.target(input);
+    const found = await this.existing(target);
+    // A whole-event request already covers every part: there is nothing to choose, only to follow.
+    if (found && !found.parts.length) {
+      return { supported: false, parts: [] };
+    }
     const info = await this.availability.parts(target.scope as AvailabilityTarget);
     if (!info.supported) {
       return { supported: false, parts: [] };
     }
-    const found = await this.existing(target);
     const existing = found
       ? await this.infrastructure.db.request.findUnique({
           where: { id: found.id },
