@@ -2,7 +2,7 @@
 
 # Compiled output is architecture independent, so the build stage runs natively
 # on the builder even when the final image targets another platform.
-FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
@@ -17,7 +17,7 @@ RUN npm run build
 
 # Production dependencies install on the target platform so native modules
 # (argon2, Prisma engines) match the runtime architecture.
-FROM node:22-bookworm-slim AS deps
+FROM node:24-bookworm-slim AS deps
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
@@ -27,7 +27,7 @@ RUN npm ci --omit=dev --workspace @pedirr/server --no-audit --no-fund && npm cac
 COPY prisma prisma
 RUN npx prisma generate
 
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
