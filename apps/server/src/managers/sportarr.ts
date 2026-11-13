@@ -278,9 +278,6 @@ export class SportarrClient extends ContentManager {
   parts(id: number): Promise<ManagerPart[]> {
     return this.read(`event/${positiveId(id)}/parts`, partList);
   }
-  sportParts(sport: string): Promise<ManagerPart[]> {
-    return this.read(`library/parts/${encodeURIComponent(text(sport))}`, partList);
-  }
   multiPartEnabled(): Promise<boolean> {
     return this.read("config", (value) => {
       const enabled = object(value).enableMultiPartEpisodes;

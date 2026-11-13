@@ -162,3 +162,141 @@ test("request submission fails closed when configured availability cannot be che
     (error) => error.getResponse().code === "AVAILABILITY_UNKNOWN",
   );
 });
+
+// Parts are offered only when Sportarr knows the event's real parts.
+const card = [
+  { name: "Full Event", partNumber: 0 },
+  { name: "Early Prelims", partNumber: 1 },
+  { name: "Prelims", partNumber: 2 },
+  { name: "Main Card", partNumber: 3 },
+  { name: "Post Show", partNumber: 4 },
+];
+const fightNight = card.filter((part) => ![1, 4].includes(part.partNumber));
+function sportarrWithParts({ events, parts, leagues, multiPart = true, calls = [] }) {
+  global.fetch = async (url) => {
+    const path = new URL(url).pathname + new URL(url).search;
+    calls.push(path);
+    if (path.endsWith("/config")) {
+      return Response.json({ enableMultiPartEpisodes: multiPart });
+    }
+    if (path.endsWith("/leagues")) {
+      return Response.json(
+        leagues ?? [
+          { id: 8, externalId: "lg-200", name: "UFC", sport: "Combat", monitored: false },
+        ],
+      );
+    }
+    if (path.includes("/leagues/8/events?showAll=true")) {
+      return Response.json({
+        page: 1,
+        totalPages: 1,
+        totalRecords: events.length,
+        records: events,
+      });
+    }
+    const match = path.match(/\/event\/(\d+)\/parts$/);
+    if (match) {
+      return Response.json({ parts: parts[match[1]] ?? [{ name: "Full Event", partNumber: 0 }] });
+    }
+    if (path.endsWith("/queue")) {
+      return Response.json([]);
+    }
+    assert.fail("Unexpected Sportarr call " + path);
+  };
+  return calls;
+}
+const ufc = { id: "ufc", name: "UFC", shortId: "lg-200", sportName: "Combat" };
+const stored = (id, shortId, extra = {}) => ({
+  id,
+  externalId: shortId,
+  leagueId: 8,
+  title: shortId,
+  hasFile: false,
+  monitored: false,
+  files: [],
+  ...extra,
+});
+const eventTarget = (shortId) => ({
+  kind: "event",
+  league: ufc,
+  event: { id: shortId, shortId, leagueId: "ufc", name: shortId },
+});
+
+test("an event Sportarr does not hold yet is requested whole, never with guessed parts", async () => {
+  const calls = sportarrWithParts({ events: [stored(1, "ev-other")], parts: {} });
+  const availability = new Availability({}, settings);
+  assert.deepEqual(await availability.parts(eventTarget("ev-new")), { supported: false });
+  assert.ok(!calls.some((call) => call.includes("library/parts")));
+  sportarrWithParts({ events: [], parts: {}, leagues: [] });
+  assert.deepEqual(await availability.parts(eventTarget("ev-new")), { supported: false });
+});
+
+test("only the parts Sportarr defines for the event are offered", async () => {
+  sportarrWithParts({
+    events: [stored(1, "ev-ppv"), stored(2, "ev-fight-night"), stored(3, "ev-weekly")],
+    parts: { 1: card, 2: fightNight },
+  });
+  const availability = new Availability({}, settings);
+  const ppv = await availability.parts(eventTarget("ev-ppv"));
+  assert.deepEqual(
+    ppv.parts.map((part) => part.name),
+    ["Early Prelims", "Prelims", "Main Card", "Post Show"],
+  );
+  assert.deepEqual(ppv.defaults, ["Early Prelims", "Prelims", "Main Card"]);
+  const night = await availability.parts(eventTarget("ev-fight-night"));
+  assert.deepEqual(
+    night.parts.map((part) => part.name),
+    ["Prelims", "Main Card"],
+  );
+  // Weekly wrestling and similar events have no parts: no dialog.
+  assert.deepEqual(await availability.parts(eventTarget("ev-weekly")), { supported: false });
+  sportarrWithParts({ events: [stored(1, "ev-ppv")], parts: { 1: card }, multiPart: false });
+  assert.deepEqual(await availability.parts(eventTarget("ev-ppv")), { supported: false });
+});
+
+test("a season offers the parts its events have in Sportarr", async () => {
+  sportarrWithParts({
+    events: [
+      stored(1, "ev-ppv"),
+      stored(2, "ev-fight-night"),
+      stored(3, "ev-other-season"),
+      stored(4, "ev-whole", { monitoredParts: "Full Event" }),
+    ],
+    parts: { 1: fightNight, 2: fightNight, 3: card, 4: card },
+    leagues: [
+      {
+        id: 8,
+        externalId: "lg-200",
+        name: "UFC",
+        sport: "Combat",
+        monitored: false,
+        monitoredParts: "Prelims,Main Card",
+      },
+    ],
+  });
+  const metadata = {
+    events: async ({ season, page }) => ({
+      items: ["ev-ppv", "ev-fight-night", "ev-whole"].map((shortId) => ({
+        id: shortId,
+        shortId,
+        leagueId: "ufc",
+        seasonId: season,
+      })),
+      page,
+      total: 3,
+      totalPages: 1,
+    }),
+  };
+  const availability = new Availability(metadata, settings);
+  const season = await availability.parts({
+    kind: "season",
+    league: ufc,
+    season: { id: "2026", name: "2026", leagueId: "ufc" },
+  });
+  // ev-other-season is outside the season and ev-whole keeps one file, so no Early Prelims.
+  assert.deepEqual(
+    season.parts.map((part) => part.name),
+    ["Prelims", "Main Card"],
+  );
+  assert.deepEqual(season.defaults, ["Prelims", "Main Card"]);
+});
