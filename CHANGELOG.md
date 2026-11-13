@@ -2,6 +2,10 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Season access per user. Users request single events by default and an administrator can allow whole seasons when creating or editing the account; administrators can always request seasons. **Existing users lose season access until an administrator grants it.** The server rejects season requests without the permission (`SEASON_REQUESTS_NOT_ALLOWED`), and the season page explains the limitation instead of offering the request.
+
 ## 0.2.0 - 2026-11-10
 
 - Events split into parts (Early Prelims, Prelims, Main Card…) are now completed automatically: once an event holds some part files, every monitored missing part gets its own automatic search in the same run, instead of an event-level search that kept choosing the part already held. Parts already downloading, the optional Post Show and unmonitored parts are skipped; a whole-event file still covers every part.
