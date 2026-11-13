@@ -124,6 +124,8 @@ export class Fulfillment {
     private readonly managerFactory: (
       config: Awaited<ReturnType<SportarrSettings["configuration"]>>,
     ) => ContentManager = (config) => new SportarrClient(config),
+    // How long one run waits for Sportarr to import events it was just asked to refresh.
+    private readonly importWait = { attempts: 6, delayMs: 5000 },
   ) {}
   private async plan(scopeValue: Prisma.JsonValue) {
     const scope = scopeValue as Record<string, unknown>;
@@ -256,26 +258,52 @@ export class Fulfillment {
         .filter((part) => part.status === "APPROVED")
         .map((part) => part.name);
       const multiPart = byParts && (await manager.multiPartEnabled());
-      const existing = await manager.events(league.id);
+      let existing = await manager.events(league.id);
+      // Sportarr must import the events itself. An event made by hand has no team names or
+      // local air date, and Sportarr then accepts releases of other games for it.
+      const notImported = () =>
+        events.filter((event) => !existing.some((item) => item.externalId === event.shortId));
+      if (notImported().length) {
+        await check();
+        await manager.refreshEvents(league.id, [
+          ...new Set(
+            notImported()
+              .map((event) => event.seasonName)
+              .filter((season): season is string => typeof season === "string" && season !== ""),
+          ),
+        ]);
+        for (
+          let attempt = 0;
+          attempt < this.importWait.attempts && notImported().length;
+          attempt++
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, this.importWait.delayMs));
+          await check();
+          existing = await manager.events(league.id);
+        }
+      }
+      let awaitingImport = false;
       const queue = await manager.queue();
       const retrySeconds = searchRetrySeconds();
       const results: { available: boolean; downloading: boolean }[] = [];
       for (const event of events) {
         await check();
-        const created = !existing.some((item) => item.externalId === event.shortId);
-        let current = await manager.ensureEvent(
-          {
-            externalId: event.shortId!,
-            title: event.name,
-            sport: String(plan.league.sportName),
-            leagueId: league.id,
-            eventDate: event.scheduledStart!,
-            season: typeof event.seasonName === "string" ? event.seasonName : null,
-            seasonNumber: typeof event.seasonNumber === "number" ? event.seasonNumber : null,
-            qualityProfileId: config.qualityProfileId,
-          },
-          existing,
-        );
+        const before = existing.find((item) => item.externalId === event.shortId);
+        // Pedirr starts the monitoring of an event nobody monitored yet, so it may choose its
+        // parts; an event already monitored or with its own parts only ever gains parts.
+        const starting =
+          before !== undefined &&
+          !before.monitored &&
+          !before.hasFile &&
+          typeof before.monitoredParts !== "string";
+        const found = await manager.monitorEvent(event.shortId!, league.id, existing);
+        if (!found) {
+          // Not imported yet: nothing is searched for it, and the run is retried.
+          awaitingImport = true;
+          results.push({ available: false, downloading: false });
+          continue;
+        }
+        let current = found;
         let definitions: ManagerPart[] = [];
         let wanted: string[] = [];
         if (multiPart) {
@@ -288,13 +316,13 @@ export class Fulfillment {
               .map((part) => part.name);
           }
           if (wanted.length) {
-            // Only ever add parts. An event Pedirr just created starts with the requested ones;
-            // an existing event keeps everything it already monitors (null already means all).
-            const configured = created || effective === null ? null : splitParts(effective);
+            // Only ever add parts. An event Pedirr starts monitoring gets the requested ones;
+            // any other event keeps everything it already monitors (null already means all).
+            const configured = starting || effective === null ? null : splitParts(effective);
             const missing = configured
               ? wanted.filter((name) => !configured.some((item) => partKey(item) === partKey(name)))
               : wanted;
-            if (created || (configured && missing.length)) {
+            if (starting || (configured && missing.length)) {
               await check();
               current = await manager.setMonitoredParts(
                 current.id,
@@ -427,6 +455,10 @@ export class Fulfillment {
         }
         await refreshSubscribers(tx, requestId);
       });
+      if (awaitingImport) {
+        // The events held so far are synchronized; the job retries for the rest.
+        throw new HttpException({ code: "EVENT_NOT_IMPORTED", retryAfterSeconds: 120 }, 503);
+      }
     } catch (error) {
       await db.request.updateMany({
         where: { id: requestId },

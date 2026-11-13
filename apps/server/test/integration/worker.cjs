@@ -42,6 +42,7 @@ async function main() {
     downloading = false,
     searches = 0;
   const writes = [];
+  let refreshes = 0;
   const league = { id: "league", shortId: "lg-100", name: "Fixture League", sportName: "Soccer" };
   const event = {
     id: "event",
@@ -104,20 +105,35 @@ async function main() {
         result = { records, page: 1, totalPages: 1, totalRecords: records.length };
       } else if (req.method === "GET" && path === "/api/queue") {
         result = downloading ? [{ eventId: 9, status: 1, progress: 50 }] : [];
-      } else if (req.method === "POST" && path === "/api/events") {
+      } else if (req.method === "POST" && path === "/api/leagues/8/refresh-events") {
+        // Sportarr imports the league's Hub events itself, complete and unmonitored.
+        refreshes++;
+        for (const shortId of ["ev-100", "ev-101", "ev-102", "ev-103", "ev-104"]) {
+          if (![...managerEvents.values()].some((item) => item.externalId === shortId)) {
+            const id = 9 + managerEvents.size;
+            managerEvents.set(id, {
+              id,
+              externalId: shortId,
+              leagueId: 8,
+              title: shortId,
+              monitored: false,
+              hasFile: false,
+              files: [],
+            });
+          }
+        }
+        result = { success: true, queued: true };
+      } else if (req.method === "PUT" && /^\/api\/events\/\d+$/.test(path)) {
         let body = "";
         for await (const chunk of req) {
           body += chunk;
         }
-        const input = JSON.parse(body);
-        writes.push(input);
-        assert.ok(["ev-100", "ev-101", "ev-102"].includes(input.externalId));
-        assert.equal(input.leagueId, 8);
-        assert.equal(input.monitored, true);
-        assert.equal(input.searchOnAdd, false);
-        const id = 9 + managerEvents.size;
-        managerEvents.set(id, { ...input, id, hasFile: false, files: [] });
-        result = { id };
+        assert.deepEqual(JSON.parse(body), { monitored: true });
+        const held = managerEvents.get(Number(path.split("/").at(-1)));
+        assert.ok(["ev-100", "ev-101", "ev-102"].includes(held.externalId));
+        held.monitored = true;
+        writes.push({ externalId: held.externalId });
+        result = held;
       } else if (req.method === "GET" && /^\/api\/events\/\d+$/.test(path)) {
         result = managerEvents.get(Number(path.split("/").at(-1)));
       } else if (req.method === "POST" && /^\/api\/event\/\d+\/automatic-search$/.test(path)) {
@@ -406,6 +422,8 @@ async function main() {
     await run("dispatch");
     await drain();
     assert.equal(writes.length, 1);
+    // The event was imported by Sportarr on request, never created by Pedirr.
+    assert.equal(refreshes, 1);
     assert.equal(searches, 1);
     downloading = true;
     await run("sync", { requestId: approved.id });

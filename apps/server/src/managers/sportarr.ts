@@ -6,7 +6,6 @@ import {
 import {
   ConnectionResult,
   ContentManager,
-  EventInput,
   LeagueInput,
   ManagerConfig,
   ManagerEvent,
@@ -219,46 +218,29 @@ export class SportarrClient extends ContentManager {
     }
     return created;
   }
-  async ensureEvent(input: EventInput, existing: ManagerEvent[]): Promise<ManagerEvent> {
-    if (!/^ev-\d+$/.test(input.externalId) || !Number.isFinite(Date.parse(input.eventDate))) {
+  async monitorEvent(
+    externalId: string,
+    leagueId: number,
+    existing: ManagerEvent[],
+  ): Promise<ManagerEvent | undefined> {
+    if (!/^ev-\d+$/.test(externalId)) {
       throw new BadRequestException({
         code: "INVALID_EVENT_METADATA",
-        message: "Event requires a Hub short identifier and scheduled date",
+        message: "Event requires a Hub short identifier",
       });
     }
-    const matches = existing.filter((item) => item.externalId === input.externalId);
+    const matches = existing.filter((item) => item.externalId === externalId);
     if (matches.length > 1) {
       throw this.invalid();
     }
     let current = matches[0];
     if (!current) {
-      try {
-        const id = await this.read(
-          "events",
-          (value) => {
-            const response = object(value);
-            return positiveId(response.event ? object(response.event).id : response.id);
-          },
-          "POST",
-          { ...input, monitored: true, searchOnAdd: false },
-        );
-        current = await this.event(id);
-      } catch (error) {
-        // Ambiguous timeout/response: read the library before any retry can write again.
-        const recovered = (await this.events(input.leagueId)).filter(
-          (item) => item.externalId === input.externalId,
-        );
-        if (recovered.length !== 1) {
-          throw error;
-        }
-        current = recovered[0];
-      }
+      return undefined;
     }
-    // Sportarr also deduplicates by title/date. Never adopt that match without identity proof.
-    if (current.externalId !== input.externalId || current.leagueId !== input.leagueId) {
+    if (current.leagueId !== leagueId) {
       throw new BadGatewayException({
         code: "SPORTARR_IDENTITY_CONFLICT",
-        message: "Sportarr returned a different event identity or league",
+        message: "Sportarr holds the event in a different league",
       });
     }
     if (!current.hasFile && !current.monitored) {
@@ -266,6 +248,22 @@ export class SportarrClient extends ContentManager {
       current = await this.event(current.id);
     }
     return current;
+  }
+  async refreshEvents(leagueId: number, seasons: string[]): Promise<void> {
+    try {
+      await this.read(
+        `leagues/${positiveId(leagueId)}/refresh-events`,
+        (value) => value,
+        "POST",
+        seasons.length ? { seasons } : {},
+      );
+    } catch (error) {
+      // Sportarr answers 429 while a refresh of the same league ran in the last minutes.
+      const body = (error as { getResponse?: () => { upstreamStatus?: number } }).getResponse?.();
+      if (body?.upstreamStatus !== 429) {
+        throw error;
+      }
+    }
   }
   async search(id: number, part?: string): Promise<void> {
     await this.read(

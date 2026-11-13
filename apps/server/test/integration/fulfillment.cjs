@@ -59,19 +59,35 @@ async function main() {
       writes = 0,
       partFiles = null;
     const searchedParts = [];
+    const refreshes = [];
+    let importedEvent = false,
+      importsOnRefresh = false;
+    const held = () => ({
+      id: 9,
+      externalId: "ev-100",
+      leagueId: 8,
+      monitored: true,
+      hasFile,
+      files: partFiles ?? (hasFile ? [{ exists: true }] : []),
+    });
     const manager = {
       assertWriteCompatibility: async () => {},
       ensureLeague: async (input) => {
         assert.equal(input.externalId, "lg-100");
         return { id: 8 };
       },
-      events: async () => [],
+      // Sportarr holds the event only after importing it from the Hub.
+      events: async () => (importedEvent ? [held()] : []),
+      refreshEvents: async (leagueId, seasons) => {
+        refreshes.push({ leagueId, seasons });
+        importedEvent = importsOnRefresh;
+      },
       queue: async () => (activity ? [{ eventId: 9, status: "Importing", progress: 100 }] : []),
-      ensureEvent: async (input) => {
+      monitorEvent: async (externalId, leagueId, existing) => {
         writes++;
-        assert.equal(input.externalId, "ev-100");
-        assert.equal(input.leagueId, 8);
-        return { id: 9, hasFile, files: partFiles ?? (hasFile ? [{ exists: true }] : []) };
+        assert.equal(externalId, "ev-100");
+        assert.equal(leagueId, 8);
+        return existing.find((item) => item.externalId === externalId);
       },
       parts: async () => [
         { name: "Full Event", number: 0 },
@@ -99,12 +115,27 @@ async function main() {
         }),
       },
       () => manager,
+      { attempts: 1, delayMs: 0 },
     );
+    // Sportarr has not imported the event: it is requested from Sportarr, never made by hand,
+    // nothing is searched, and the run asks to be retried.
+    await assert.rejects(
+      worker.run(request.id),
+      (error) => error.getResponse().code === "EVENT_NOT_IMPORTED",
+    );
+    assert.deepEqual(refreshes, [{ leagueId: 8, seasons: [] }]);
+    assert.equal(searches, 0);
+    let waiting = await db.request.findUnique({ where: { id: request.id } });
+    assert.equal(waiting.status, "APPROVED");
+    assert.equal(waiting.lastError, "EVENT_NOT_IMPORTED");
+    assert.equal(await db.requestEvent.count(), 0);
+    // The next refresh imports it, and the same run goes on with the complete event.
+    importsOnRefresh = true;
     await worker.run(request.id);
-    assert.equal(
-      (await db.request.findUnique({ where: { id: request.id } })).status,
-      "DOWNLOADING",
-    );
+    assert.equal(refreshes.length, 2);
+    waiting = await db.request.findUnique({ where: { id: request.id } });
+    assert.equal(waiting.status, "DOWNLOADING");
+    assert.equal(waiting.lastError, null);
     assert.equal(searches, 0);
     hasFile = true;
     activity = false;
@@ -133,7 +164,7 @@ async function main() {
     assert.equal(failed.lastError, "REQUEST_METADATA_CHANGED");
     assert.equal(failed.integrationState, "error");
     console.log(
-      "Fulfillment integration passed: scoped writes, import states, lost-file recovery, throttled search, metadata conflict and durable status outbox.",
+      "Fulfillment integration passed: events imported by Sportarr and never created by hand, scoped writes, import states, lost-file recovery, throttled search, metadata conflict and durable status outbox.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

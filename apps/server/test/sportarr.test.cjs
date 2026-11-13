@@ -228,16 +228,6 @@ test("new league is inert and a partial upstream commit is reconciled before ret
   assert.equal((await client.ensureLeague(input)).id, 8);
   assert.equal(writes, 1);
 });
-const eventInput = {
-  externalId: "ev-1",
-  title: "Game",
-  sport: "Soccer",
-  leagueId: 8,
-  eventDate: "2026-11-10T12:00:00Z",
-  season: "2026",
-  seasonNumber: 2026,
-  qualityProfileId: 2,
-};
 test("existing event monitoring uses only the explicitly requested field", async () => {
   let monitored = false;
   global.fetch = async (url, init) => {
@@ -248,50 +238,62 @@ test("existing event monitoring uses only the explicitly requested field", async
     }
     return Response.json({ ...entry(1), leagueId: 8, monitored, qualityProfileId: 9 });
   };
-  const result = await new SportarrClient(config).ensureEvent(eventInput, [
+  const result = await new SportarrClient(config).monitorEvent("ev-1", 8, [
     { ...entry(1), leagueId: 8, monitored: false, qualityProfileId: 9 },
   ]);
   assert.equal(result.monitored, true);
   assert.equal(result.qualityProfileId, 9);
 });
-test("a title/date duplicate with another external ID is not adopted or monitored", async () => {
-  let writes = 0;
-  global.fetch = async (url, init) => {
-    if (init.method === "POST") {
-      writes++;
-      return Response.json({ event: { id: 44 }, alreadyAdded: true });
-    }
-    assert.equal(init.method, "GET");
-    return Response.json({ ...entry(44), leagueId: 8, monitored: false });
-  };
+test("an event Sportarr has not imported is never created by hand", async () => {
+  // A hand-made event has no team names or local air date, so Sportarr would accept
+  // releases of other games for it.
+  global.fetch = async () => assert.fail("Must not write to Sportarr");
+  const client = new SportarrClient(config);
+  assert.equal(await client.monitorEvent("ev-1", 8, []), undefined);
+  assert.equal(await client.monitorEvent("ev-1", 8, [{ ...entry(2), leagueId: 8 }]), undefined);
   await assert.rejects(
-    new SportarrClient(config).ensureEvent(eventInput, []),
+    client.monitorEvent("ev-1", 8, [{ ...entry(1), leagueId: 9 }]),
     (error) => error.getResponse().code === "SPORTARR_IDENTITY_CONFLICT",
   );
-  assert.equal(writes, 1);
+  await assert.rejects(
+    client.monitorEvent("ev-1", 8, [
+      { ...entry(1), leagueId: 8 },
+      { ...entry(1), leagueId: 8 },
+    ]),
+  );
+  await assert.rejects(
+    client.monitorEvent("1", 8, []),
+    (error) => error.getResponse().code === "INVALID_EVENT_METADATA",
+  );
 });
-test("an ambiguous event creation is reconciled through the complete league list", async () => {
-  let posts = 0;
+test("league events are imported through Sportarr's own refresh, tolerating its cooldown", async () => {
+  const calls = [];
+  let status = 202;
   global.fetch = async (url, init) => {
-    if (init.method === "POST") {
-      posts++;
-      throw new Error("Connection lost after commit");
-    }
-    assert.ok(url.includes("/leagues/8/events?showAll=true"));
-    return Response.json({
-      page: 1,
-      totalPages: 1,
-      totalRecords: 1,
-      records: [{ ...entry(1), leagueId: 8 }],
-    });
+    calls.push({ path: new URL(url).pathname, method: init.method, body: JSON.parse(init.body) });
+    return Response.json({ queued: status === 202 }, { status });
   };
-  assert.equal((await new SportarrClient(config).ensureEvent(eventInput, [])).id, 1);
-  assert.equal(posts, 1);
+  const client = new SportarrClient(config);
+  await client.refreshEvents(8, ["2026-2027"]);
+  await client.refreshEvents(8, []);
+  assert.deepEqual(calls, [
+    {
+      path: "/sports/api/leagues/8/refresh-events",
+      method: "POST",
+      body: { seasons: ["2026-2027"] },
+    },
+    { path: "/sports/api/leagues/8/refresh-events", method: "POST", body: {} },
+  ]);
+  // 429: the same league was refreshed moments ago, which is all Pedirr needs.
+  status = 429;
+  await client.refreshEvents(8, []);
+  status = 500;
+  await assert.rejects(client.refreshEvents(8, []));
 });
 test("available events are not rewritten and automatic search uses the native singular route", async () => {
   const client = new SportarrClient(config);
   global.fetch = async () => assert.fail("Available content must not trigger writes");
-  await client.ensureEvent(eventInput, [
+  await client.monitorEvent("ev-1", 8, [
     { ...entry(1), leagueId: 8, monitored: false, hasFile: true },
   ]);
   global.fetch = async (url, init) => {

@@ -90,20 +90,36 @@ async function main() {
       events: async () => [...stored.values()].map((item) => ({ ...item })),
       queue: async () => queue.map((item) => ({ ...item })),
       multiPartEnabled: async () => true,
-      ensureEvent: async (input) => {
-        if (!stored.has(input.externalId)) {
-          stored.set(input.externalId, {
-            id: input.externalId === "ev-500" ? 50 : 20,
-            externalId: input.externalId,
-            leagueId: 8,
-            title: input.title,
-            monitored: true,
-            hasFile: false,
-            monitoredParts: null,
-            files: [],
-          });
+      // Sportarr imports the league's Hub events itself, unmonitored; Pedirr never creates them.
+      refreshEvents: async () => {
+        for (const [shortId, id] of [
+          ["ev-200", 20],
+          ["ev-500", 50],
+          ["ev-600", 60],
+        ]) {
+          if (!stored.has(shortId)) {
+            stored.set(shortId, {
+              id,
+              externalId: shortId,
+              leagueId: 8,
+              title: shortId,
+              monitored: false,
+              hasFile: false,
+              monitoredParts: null,
+              files: [],
+            });
+          }
         }
-        return { ...stored.get(input.externalId) };
+      },
+      monitorEvent: async (externalId) => {
+        const event = stored.get(externalId);
+        if (!event) {
+          return undefined;
+        }
+        if (!event.hasFile && !event.monitored) {
+          event.monitored = true;
+        }
+        return { ...event };
       },
       parts: async () => definitions,
       setMonitoredParts: async (id, parts) => {
@@ -172,6 +188,7 @@ async function main() {
         }),
       },
       () => manager,
+      { attempts: 1, delayMs: 0 },
     );
     const statusOf = async (requestId, person) =>
       (
@@ -201,7 +218,8 @@ async function main() {
       (error) => error.getResponse().code === "PARTS_REQUIRED",
     );
 
-    // Pedirr created the event, so it monitors exactly the requested part and searches it alone.
+    // Sportarr imports the event unmonitored; Pedirr starts its monitoring, so it monitors
+    // exactly the requested part and searches it alone.
     await worker.run(id);
     assert.deepEqual(partWrites, [{ id: 20, parts: "Main Card" }]);
     assert.deepEqual(searches, ["20:Main Card"]);
