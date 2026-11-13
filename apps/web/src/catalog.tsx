@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, type Item, type Page, type User } from "./api";
+import { api, client, mayRequestSeasons, type Item, type Page, type User } from "./api";
 import { Artwork, ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
 export function Discover({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -228,6 +228,8 @@ export function CatalogDetail({ user }: { user: User }) {
   const [page, setPage] = useState(1);
   const [order, setOrder] = useState("desc");
   const valid = ["league", "season", "event", "team"].includes(kind);
+  // Seasons are offered only to users with the season grant; the server enforces it too.
+  const mayRequest = kind !== "season" || mayRequestSeasons(user);
   const detail = useQuery({
     queryKey: ["detail", kind, id],
     queryFn: () => api<Item>(`/catalog/${kind}s/${encodeURIComponent(id)}`),
@@ -250,7 +252,7 @@ export function CatalogDetail({ user }: { user: User }) {
         reason?: string;
         request?: { id: string; status: string };
       }>(`/requests/lookup?kind=${kind}&identifier=${encodeURIComponent(id)}`),
-    enabled: valid && ["season", "event"].includes(kind),
+    enabled: valid && mayRequest && ["season", "event"].includes(kind),
     staleTime: 15000,
   });
   const request = useMutation({
@@ -305,7 +307,11 @@ export function CatalogDetail({ user }: { user: User }) {
         </div>
         {["season", "event"].includes(kind) && (
           <div className="request-box">
-            {availability.isPending ? (
+            {!mayRequest ? (
+              <p role="status" className="notice">
+                {t("seasonRequestsNotAllowed")}
+              </p>
+            ) : availability.isPending ? (
               <Loading />
             ) : availability.error ? (
               <>
