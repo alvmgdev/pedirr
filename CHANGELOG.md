@@ -4,6 +4,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 
 ## Unreleased
 
+- Parts are offered only when Sportarr knows them: for events it already holds, with their real parts (a Fight Night has no Early Prelims, weekly wrestling has none), and for seasons of leagues it holds. Before, an event Sportarr did not hold yet offered generic fight-card parts, even for wrestling. Such events are now requested whole.
 - A request page offers "Follow this request" (or "Request parts" for a request with parts) to people who do not follow it yet; before, they had to find the event in the catalog.
 - "Report a problem" and "Follow this request" sit at the top right of a request page, with the request's other actions; reporting opens a dialog, and your issues about the request are listed below it.
 - Request pages say "1 subscriber" instead of "1 subscribers".
