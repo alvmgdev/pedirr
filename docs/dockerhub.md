@@ -1,6 +1,6 @@
 # Pedirr
 
-Sports content requests for [Sportarr](https://sportarr.net). Users browse the Sportarr Hub catalog, request whole seasons or single events, and Pedirr monitors and searches for them in your Sportarr instance once approved.
+Sports content requests for [Sportarr](https://sportarr.net). Users browse the Sportarr Hub catalog, request single events (or whole seasons, when an administrator allows it), and Pedirr monitors and searches for them in your Sportarr instance once approved.
 
 - Search leagues, teams, seasons and events, with a seven-day upcoming schedule
 - Season and event requests with deduplication, shared subscriptions and availability checks

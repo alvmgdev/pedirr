@@ -14,16 +14,16 @@ Deployment consists of app, worker, PostgreSQL, Redis, and a single migration ta
 
 ## Data model
 
-| Model                              | Responsibility and relationships                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| User / Session                     | Roles, approval overrides, locale/timezone; revocable hashed session tokens belong to users.                                         |
-| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                               |
-| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope.                             |
-| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr.                                                      |
-| Setting                            | Shared policies and encrypted integration credentials.                                                                               |
-| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                 |
-| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                   |
-| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent. |
+| Model                              | Responsibility and relationships                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| User / Session                     | Roles, approval overrides, season access (single events by default), locale/timezone; revocable hashed session tokens belong to users. |
+| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                 |
+| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope.                               |
+| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr.                                                        |
+| Setting                            | Shared policies and encrypted integration credentials.                                                                                 |
+| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                   |
+| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                     |
+| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent.   |
 
 The authoritative constraints, relations and indexes are in `prisma/schema.prisma`. Versioned migrations create these structures before application startup.
 
