@@ -66,8 +66,11 @@ export function Requests() {
               <div className="request-name">
                 <h2>{request.entity.title}</h2>
                 <p>{request.scope.season?.name ?? t("event")}</p>
+                {request.subscription?.parts.length ? (
+                  <p>{request.subscription.parts.join(", ")}</p>
+                ) : null}
               </div>
-              <Status value={request.status} />
+              <Status value={request.subscription?.status ?? request.status} />
             </Link>
           ))}
           {!result.data?.items.length && <p className="empty">{t("requestEmpty")}</p>}
@@ -104,6 +107,11 @@ export function RequestDetail({ user }: { user: User }) {
     return <ErrorMessage error={result.error} />;
   }
   const request = result.data!;
+  const pendingParts = request.parts.filter((part) => part.status === "PENDING");
+  const reviewable = request.status === "PENDING" || pendingParts.length > 0;
+  const mine = (name: string) =>
+    request.subscription !== null &&
+    (request.subscription.parts.length === 0 || request.subscription.parts.includes(name));
   const format = (date: string) =>
     new Intl.DateTimeFormat(i18n.language, {
       dateStyle: "medium",
@@ -126,13 +134,18 @@ export function RequestDetail({ user }: { user: User }) {
           />
         </div>
         <div className="detail-copy">
-          <Status value={request.status} />
+          <Status value={request.subscription?.status ?? request.status} />
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
           <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
         </div>
-        {user.role === "ADMIN" && request.status === "PENDING" && (
+        {user.role === "ADMIN" && reviewable && (
           <div className="request-box">
+            {pendingParts.length > 0 && (
+              <p>
+                {t("pendingParts", { parts: pendingParts.map((part) => part.name).join(", ") })}
+              </p>
+            )}
             <button
               disabled={review.isPending}
               onClick={() => review.mutate({ decision: "approve", version: request.version })}
@@ -170,6 +183,44 @@ export function RequestDetail({ user }: { user: User }) {
           {t("integrationError")}
         </p>
       )}
+      {request.parts.length > 0 && (
+        <section className="request-parts">
+          <h2>{t("parts")}</h2>
+          <ul>
+            {request.parts.map((part) => {
+              const events = request.events ?? [];
+              const covering = events.filter((event) => event.parts.includes(part.name));
+              const available = covering.filter((event) =>
+                event.availableParts.includes(part.name),
+              ).length;
+              const downloading = covering.some((event) =>
+                event.downloadingParts.includes(part.name),
+              );
+              const state =
+                part.status !== "APPROVED"
+                  ? part.status
+                  : covering.length > 0 && available === covering.length
+                    ? "AVAILABLE"
+                    : downloading
+                      ? "DOWNLOADING"
+                      : "APPROVED";
+              return (
+                <li key={part.name}>
+                  <span className="part-name">{part.name}</span>
+                  {mine(part.name) && <span className="part-mine">{t("yourPart")}</span>}
+                  <Status value={state} />
+                  {request.scope.kind === "season" && covering.length > 0 && (
+                    <span className="muted">
+                      {t("partEvents", { available, count: covering.length })}
+                    </span>
+                  )}
+                  {part.rejectionReason && <p>{part.rejectionReason}</p>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       <div className="workspace-columns">
         <section>
           <h2>{t("progress")}</h2>
@@ -178,7 +229,13 @@ export function RequestDetail({ user }: { user: User }) {
               {request.events.map((event) => (
                 <div className="progress-row" key={event.id}>
                   <h3>{event.metadata.name}</h3>
-                  <p>{t(event.available ? "available" : "waiting")}</p>
+                  <p>
+                    {event.parts.length > 0 && request.parts.length > 0
+                      ? event.availableParts.length
+                        ? t("partsOnDisk", { parts: event.availableParts.join(", ") })
+                        : t("waiting")
+                      : t(event.available ? "available" : "waiting")}
+                  </p>
                   <progress max={100} value={event.progress} aria-label={event.metadata.name} />
                 </div>
               ))}

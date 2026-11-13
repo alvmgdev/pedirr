@@ -2,8 +2,16 @@ import { useState } from "react";
 import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, mayRequestSeasons, type Item, type Page, type User } from "./api";
-import { Artwork, ErrorMessage, Fixture, Loading, Pager, Status } from "./ui";
+import {
+  api,
+  client,
+  mayRequestSeasons,
+  type Item,
+  type Page,
+  type PartOptions,
+  type User,
+} from "./api";
+import { Artwork, ErrorMessage, Fixture, Loading, Pager, PartsDialog, Status } from "./ui";
 export function Discover({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -255,14 +263,27 @@ export function CatalogDetail({ user }: { user: User }) {
     enabled: valid && mayRequest && ["season", "event"].includes(kind),
     staleTime: 15000,
   });
+  // Events split into parts (e.g. fight cards) ask which parts to request.
+  const parts = useQuery({
+    queryKey: ["parts", kind, id],
+    queryFn: () =>
+      api<PartOptions>(`/requests/parts?kind=${kind}&identifier=${encodeURIComponent(id)}`),
+    enabled: valid && mayRequest && ["season", "event"].includes(kind),
+    staleTime: 15000,
+  });
+  const [choosing, setChoosing] = useState(false);
+  const byParts = parts.data?.supported === true;
   const request = useMutation({
-    mutationFn: () =>
+    mutationFn: (chosen?: string[]) =>
       api<{ request: { id: string } | null; available?: boolean }>("/requests", "POST", {
         kind,
         identifier: id,
+        ...(chosen ? { parts: chosen } : {}),
       }),
     onSuccess: (result) => {
+      setChoosing(false);
       void client.invalidateQueries({ queryKey: ["requests"] });
+      void client.invalidateQueries({ queryKey: ["parts", kind, id] });
       if (result.request) {
         navigate("/requests/" + result.request.id);
       } else if (result.available) {
@@ -331,10 +352,10 @@ export function CatalogDetail({ user }: { user: User }) {
                 <Link to={"/requests/" + availability.data.request!.id}>{t("requested")}</Link>
                 <button
                   className="quiet"
-                  disabled={request.isPending}
-                  onClick={() => request.mutate()}
+                  disabled={request.isPending || parts.isPending}
+                  onClick={() => (byParts ? setChoosing(true) : request.mutate(undefined))}
                 >
-                  {t("followRequest")}
+                  {t(byParts ? "addParts" : "followRequest")}
                 </button>
               </>
             ) : availability.data?.state === "unknown" &&
@@ -349,7 +370,10 @@ export function CatalogDetail({ user }: { user: User }) {
               </>
             ) : (
               <>
-                <button disabled={request.isPending} onClick={() => request.mutate()}>
+                <button
+                  disabled={request.isPending || parts.isPending}
+                  onClick={() => (byParts ? setChoosing(true) : request.mutate(undefined))}
+                >
                   {t(
                     request.isPending
                       ? "requestBusy"
@@ -364,7 +388,19 @@ export function CatalogDetail({ user }: { user: User }) {
                 )}
               </>
             )}
-            <ErrorMessage error={request.error} />
+            {!choosing && <ErrorMessage error={request.error} />}
+            {choosing && byParts && (
+              <PartsDialog
+                parts={parts.data!.parts}
+                busy={request.isPending}
+                error={request.error}
+                onConfirm={(chosen) => request.mutate(chosen)}
+                onClose={() => {
+                  setChoosing(false);
+                  request.reset();
+                }}
+              />
+            )}
           </div>
         )}
       </header>

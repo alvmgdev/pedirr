@@ -26,9 +26,24 @@ for (const locale of ["en", "es"]) {
       version: 0,
       entity: { title: event.name },
       scope: { kind: "event", event },
-      _count: { subscribers: 1 },
+      _count: { subscribers: 2 },
+      parts: [
+        { name: "Main Card", status: "APPROVED", rejectionReason: null },
+        { name: "Prelims", status: "PENDING", rejectionReason: null },
+      ],
+      subscription: { parts: ["Main Card"], status: "AVAILABLE" },
       history: [],
-      events: [],
+      events: [
+        {
+          id: "request-event-1",
+          metadata: event,
+          available: true,
+          progress: 100,
+          parts: ["Prelims", "Main Card"],
+          availableParts: ["Main Card"],
+          downloadingParts: [],
+        },
+      ],
     };
     let signedIn = false;
     await page.addInitScript((value) => localStorage.setItem("pedirr.locale", value), locale);
@@ -49,6 +64,16 @@ for (const locale of ["en", "es"]) {
         body = event;
       } else if (path.endsWith("/requests/lookup")) {
         body = { state: "missing" };
+      } else if (path.endsWith("/requests/parts")) {
+        body = {
+          supported: true,
+          parts: [
+            { name: "Early Prelims", optional: false, selected: true, state: "none" },
+            { name: "Prelims", optional: false, selected: true, state: "requested" },
+            { name: "Main Card", optional: false, selected: true, state: "available" },
+            { name: "Post Show", optional: true, selected: false, state: "none" },
+          ],
+        };
       } else if (path.endsWith("/requests/request-1")) {
         body = request;
       } else if (path.endsWith("/requests")) {
@@ -130,6 +155,18 @@ for (const locale of ["en", "es"]) {
     ]) {
       await inspect(path);
     }
+    // The parts dialog is modal: checked on its own, then dismissed with Escape.
+    await page.goto("/catalog/event/event-1");
+    await page.locator(".request-box > button").first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    const dialogResults = await new AxeBuilder({ page })
+      .include(".parts-dialog")
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"])
+      .analyze();
+    expect(dialogResults.violations.map((item) => item.id)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
     await page.goto("/");
     await expect(page.locator("#main")).toBeVisible();
     await page.keyboard.press("Tab");

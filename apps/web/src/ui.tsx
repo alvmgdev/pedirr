@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { ApiError, type Item } from "./api";
+import { ApiError, type Item, type PartOption } from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
   const keys: Record<string, string> = {
@@ -23,6 +23,9 @@ export function ErrorMessage({ error }: { error: unknown }) {
     REQUEST_CHANGED: "requestChanged",
     INVALID_INPUT: "invalidInput",
     LAST_ADMIN: "lastAdmin",
+    INVALID_PARTS: "invalidParts",
+    PARTS_NOT_SUPPORTED: "invalidParts",
+    PARTS_REQUIRED: "invalidParts",
     SEASON_REQUESTS_NOT_ALLOWED: "seasonRequestsNotAllowed",
     EMAIL_UNAVAILABLE: "emailUnavailable",
     CONNECTION_FAILED: "connectionError",
@@ -160,5 +163,102 @@ export function Fixture({
         </time>
       ) : null}
     </Link>
+  );
+}
+
+/**
+ * Asks which parts of an event or season to request. Parts are listed in card order with their
+ * current state; parts already on disk cannot be requested again.
+ */
+export function PartsDialog({
+  parts,
+  busy,
+  error,
+  onConfirm,
+  onClose,
+}: {
+  parts: PartOption[];
+  busy: boolean;
+  error: unknown;
+  onConfirm: (parts: string[]) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [chosen, setChosen] = useState(
+    () =>
+      new Set(
+        parts
+          .filter((part) => part.selected && part.state !== "available")
+          .map((part) => part.name),
+      ),
+  );
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  const toggle = (name: string, on: boolean) => {
+    const next = new Set(chosen);
+    if (on) {
+      next.add(name);
+    } else {
+      next.delete(name);
+    }
+    setChosen(next);
+  };
+  return (
+    <dialog ref={dialog} className="parts-dialog" aria-labelledby="parts-title" onClose={onClose}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onConfirm(parts.filter((part) => chosen.has(part.name)).map((part) => part.name));
+        }}
+      >
+        <h2 id="parts-title">{t("chooseParts")}</h2>
+        <p>{t("choosePartsHelp")}</p>
+        <fieldset>
+          <legend className="sr-only">{t("parts")}</legend>
+          {parts.map((part, index) => {
+            const available = part.state === "available";
+            return (
+              <label key={part.name} className={"part-option part-" + part.state}>
+                <input
+                  aria-labelledby={`part-${index}`}
+                  aria-describedby={`part-${index}-state`}
+                  type="checkbox"
+                  checked={available || chosen.has(part.name)}
+                  disabled={available || busy}
+                  onChange={(event) => toggle(part.name, event.target.checked)}
+                />
+                <span className="part-name" id={`part-${index}`}>
+                  {part.name}
+                </span>
+                <span className="part-state" id={`part-${index}-state`}>
+                  {part.state === "none"
+                    ? part.optional
+                      ? t("partOptional")
+                      : ""
+                    : t(
+                        {
+                          requested: "partRequested",
+                          downloading: "partDownloading",
+                          available: "partAvailable",
+                        }[part.state],
+                      )}
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
+        <ErrorMessage error={error} />
+        <div className="dialog-actions">
+          <button type="button" className="quiet" onClick={() => dialog.current?.close()}>
+            {t("cancel")}
+          </button>
+          <button disabled={busy || chosen.size === 0}>
+            {t(busy ? "requestBusy" : "requestParts", { count: chosen.size })}
+          </button>
+        </div>
+      </form>
+    </dialog>
   );
 }

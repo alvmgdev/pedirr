@@ -146,6 +146,10 @@ export type RequestRecord = {
     league: Item;
   };
   _count: { subscribers: number };
+  /** Requested parts; empty when the whole event was requested. */
+  parts: { name: string; status: string; rejectionReason: string | null }[];
+  /** The viewer's own parts and status when they follow the request. */
+  subscription: { parts: string[]; status: string } | null;
   history?: {
     id: string;
     action: string;
@@ -157,8 +161,18 @@ export type RequestRecord = {
     metadata: Item;
     available: boolean;
     progress: number;
+    parts: string[];
+    availableParts: string[];
+    downloadingParts: string[];
   }[];
 };
+export type PartOption = {
+  name: string;
+  optional: boolean;
+  selected: boolean;
+  state: "none" | "requested" | "downloading" | "available";
+};
+export type PartOptions = { supported: boolean; parts: PartOption[] };
 
 export function setSession(user: User | null) {
   resetCsrfToken();
