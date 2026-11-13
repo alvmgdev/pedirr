@@ -6,3 +6,6 @@ coverage/
 
 test-results/
 playwright-report/
+
+# Local diagnostics captured from a Sportarr installation
+sportarr-diagnostico-*/
