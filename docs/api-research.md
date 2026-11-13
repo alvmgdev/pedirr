@@ -23,7 +23,7 @@ Authenticate with X-Api-Key, respecting the configured URL base. GET `/api/syste
 
 POST `/api/leagues` accepts externalId, name, sport, monitored, monitorType, rootFolderId, qualityProfileId, monitoredTeamIds. Team sports without selected teams may be created unmonitored. Root folder setup is mandatory. Responses can be 201 with a league or 200 with leagueId and monitored=false. A failed request may have committed a league: reconcile before retrying.
 
-Read GET `/api/leagues/{id}/events?showAll=true&page=1&pageSize=200` through all pages. Read GET `/api/events/{id}`. PUT `/api/events/{id}` accepts monitored=true as a partial update. POST `/api/events` accepts externalId, title, sport, internal leagueId, eventDate, season, monitored, searchOnAdd. POST `/api/event/{eventId}/automatic-search` queues a search. GET `/api/queue` returns eventId, status, progress and error information. Download completion alone is not availability: use imported event file state and monitored multipart coverage.
+Read GET `/api/leagues/{id}/events?showAll=true&page=1&pageSize=200` through all pages. Read GET `/api/events/{id}`. PUT `/api/events/{id}` accepts monitored=true as a partial update. POST `/api/events` accepts externalId, title, sport, internal leagueId, eventDate, season, monitored, searchOnAdd. Pedirr no longer uses it (see "Events must be imported by Sportarr"). POST `/api/event/{eventId}/automatic-search` queues a search. GET `/api/queue` returns eventId, status, progress and error information. Download completion alone is not availability: use imported event file state and monitored multipart coverage.
 
 Native write endpoints are source-verified but are not all covered by the stable read contract. Establish an explicit supported-version range with a real installation before claiming compatibility. Never enable all seasons to fulfill one event. Preserve existing manager settings.
 
@@ -50,3 +50,13 @@ The pinned `src/Version.cs` reports 4.1.11. Write compatibility currently admits
 Since November 2026 the maintainer has run Pedirr against a real Sportarr 4.1.11 installation. Event requests were approved, monitored, searched, downloaded, imported and reported as available, including UFC cards split into parts. That use exposed the event-level search repeatedly choosing the part already held, which led to per-part searches in 0.2.0.
 
 Not yet exercised against a live installation: choosing event parts per request and the optional Post Show (unreleased at the time of writing), and other Sportarr versions than 4.1.11.
+
+## Events must be imported by Sportarr, never created
+
+Found on a production installation on 13/11/2026 and reproduced against a Sportarr 4.1.11.1121 container with a fake Torznab indexer serving the real release titles.
+
+Sportarr's release matcher checks team names only when the event has `HomeTeamName` and `AwayTeamName`, and it searches and compares dates with `BroadcastDate`, falling back to the UTC `EventDate`. POST `/api/events` accepts neither team names nor a broadcast date, so an event created through it is bare. For a bare "Milwaukee Bucks vs Los Angeles Lakers", Sportarr approved `NBA.2026.11.10.Miami.Heat.vs.Utah.Jazz…` and a Bulls vs Spurs release of the same day; for the same event imported by Sportarr it rejected both ("Team names not found in release", "Date mismatch") and approved only the Bucks vs Lakers releases, including `MIL.vs.LAL`. With the imported NFL event it rejected the Bills vs Vikings release that production had grabbed and a "Condensed" cut.
+
+Team-sport leagues added without selected teams are not synchronized ("league added but not monitored (no events will be synced)"), so they hold no events until asked. POST `/api/leagues/{id}/refresh-events` with optional `{seasons:[…]}` queues the import (202) for unmonitored leagues too, imports every event when no team is selected (3,717 NBA events in under ten seconds), leaves them unmonitored, and answers 429 with `Retry-After` during a five-minute cooldown per league. The API event shows `homeTeamName: null` even for imported events, because that field comes from the local team relation; the names the matcher reads are stored on the event.
+
+A later refresh fills the broadcast date and round of an existing bare event but not its team names, and PUT `/api/events/{id}` cannot set them. A bare event is repaired only by deleting it and refreshing, which re-imports it complete. Pedirr therefore no longer calls POST `/api/events`.

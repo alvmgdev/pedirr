@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Wrong downloads for team sports and newly announced events. Pedirr created requested events in Sportarr by hand, without team names or the local air date, and Sportarr then accepted releases of other games (an NBA request downloaded another game of the night before) or searched with the wrong date. Sportarr now imports the events from its catalog itself and Pedirr only monitors them; while an event is being imported the request says so and nothing is searched. Events created by earlier versions that still have no file should be deleted in Sportarr once, so they are imported again complete.
+- An event nobody monitored yet gets exactly the requested parts when Pedirr starts monitoring it, also when Sportarr had imported it beforehand.
+
 ## 1.0.1 - 2026-11-13
 
 - Parts are offered only when Sportarr knows them: for events it already holds, with their real parts (a Fight Night has no Early Prelims, weekly wrestling has none), and for seasons of leagues it holds. Before, an event Sportarr did not hold yet offered generic fight-card parts, even for wrestling. Such events are now requested whole.
