@@ -6,6 +6,7 @@ Sports content requests for [Sportarr](https://sportarr.net). Users browse the S
 - Season and event requests with deduplication, shared subscriptions and availability checks
 - Fight cards requested by part (Early Prelims, Prelims, Main Card…), with each user's own status
 - Manual review or automatic approval by role and by user
+- Private issue reports with comments and a resolution workflow
 - Background fulfillment that never changes your existing league monitoring settings
 - Email (SMTP) and Discord notifications
 - English and Spanish interface; registration closed by default

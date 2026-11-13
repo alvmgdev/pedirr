@@ -85,7 +85,15 @@ docker compose run --rm --no-deps app node apps/server/test/integration/requests
 
 It checks simultaneous duplicate submissions, conflicting moderation, role/user policies, authorization, subscriber privacy and rollback when the outbox write fails, inside a disposable schema.
 
-`apps/server/test/integration/parts.cjs` runs the same way and covers requests with event parts end to end against a stateful fake Sportarr: per-user part status, add-only monitoring, per-part searches, part review and re-review, and unchanged whole-event and "Full Event" behaviour.
+`apps/server/test/integration/parts.cjs` and `apps/server/test/integration/issues.cjs` run the same way; the first and covers requests with event parts end to end against a stateful fake Sportarr: per-user part status, add-only monitoring, per-part searches, part review and re-review, and unchanged whole-event and "Full Event" behaviour; the second covers issue visibility, lifecycle rules, duplicates and notifications.
+
+## Issues
+
+Subscribers report problems about content they follow, and administrators answer and resolve them. POST `/api/v1/requests/{id}/issues` takes a `category` (`WRONG_CONTENT`, `MISSING_CONTENT`, `QUALITY`, `LANGUAGE`, `PLAYBACK` or `OTHER`), a `description` (up to 2000 characters), and optionally the affected `eventId` (an event of a season request) and `part`. Only subscribers of the request and administrators can report; anyone else gets `REQUEST_NOT_FOUND`. Reporting the same problem again while it is open or in progress returns `ISSUE_EXISTS` with the existing `issueId`. Users may report ten issues per hour.
+
+An issue is visible only to its reporter and to administrators; everyone else gets `ISSUE_NOT_FOUND`. GET `/api/v1/issues` lists them (`page`, `status`, `category`, `mine=true`, `request`), GET `/api/v1/issues/open` counts those awaiting attention (open issues for administrators, the user's own open or in-progress issues otherwise), and GET `/api/v1/issues/{id}` returns the issue with its timeline. Administrators see who reported an issue and who wrote each comment; reporters see "Administrator" instead of administrator addresses.
+
+POST `/api/v1/issues/{id}/comments` adds a comment. PATCH `/api/v1/issues/{id}` changes `status` (`OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`) with an optional `comment`, which is required when resolving. Administrators manage the whole lifecycle; reporters may close their open or in-progress issue and reopen a resolved or closed one. Other changes return `ISSUE_STATUS_NOT_ALLOWED`. Status changes appear in the timeline. New issues notify administrators (email and Discord); comments and status changes notify the other side of the conversation by email only. Issues are deleted with their request. Issues never change anything in Sportarr.
 
 ## Sportarr settings
 
@@ -123,7 +131,7 @@ GET/PUT `/api/v1/admin/settings/notifications` manages SMTP and Discord settings
 
 SMTP fields are `emailEnabled`, `smtpHost`, `smtpPort`, `smtpSecurity` (`tls`, `starttls`, or `plain`), `smtpUser`, optional `smtpPassword`, and `emailFrom`. Prefer TLS or mandatory STARTTLS; plain mode is for an explicitly configured local relay. Discord fields are `discordEnabled`, optional `discordWebhook`, and `discordLocale` (`en` or `es`). Only HTTPS Discord webhook URLs are accepted. Redirects are disabled and Discord mentions are suppressed.
 
-Subscribers receive status emails in their profile language. Administrators also receive newly created request emails. Discord receives one channel-wide message in its configured language. Enabling a channel does not send historical notices. Text-only emails avoid HTML injection and use stable Message-ID values. SMTP has connection/greeting/socket timeouts and cannot load files or URLs from message content.
+Subscribers receive status emails in their profile language. Administrators also receive newly created request emails and new issue emails; issue comments and status changes reach the other side of the conversation. Discord receives one channel-wide message in its configured language. Enabling a channel does not send historical notices. Text-only emails avoid HTML injection and use stable Message-ID values. SMTP has connection/greeting/socket timeouts and cannot load files or URLs from message content.
 
 Each recipient/channel/outbox event has a unique delivery record. Successful deliveries are skipped on retry; failures record sanitized codes and retry through BullMQ. The latest attempts are visible to administrators. Delivery is at least once: a process crash after provider acceptance but before the database acknowledgement can cause a duplicate. SMTP/Discord do not provide a shared transactional boundary with Pedirr. Tests use mocked Discord and a local SMTP fixture; no external recipients are contacted during tests.
 
