@@ -5,6 +5,8 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 ## Unreleased
 
 - A request page offers "Follow this request" (or "Request parts" for a request with parts) to people who do not follow it yet; before, they had to find the event in the catalog.
+- "Report a problem" and "Follow this request" sit at the top right of a request page, with the request's other actions; reporting opens a dialog, and your issues about the request are listed below it.
+- Request pages say "1 subscriber" instead of "1 subscribers".
 - The catalog says "You follow this request." instead of offering to follow a request the user already follows.
 
 ## 1.0.0 - 2026-11-13
