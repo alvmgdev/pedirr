@@ -78,7 +78,7 @@ export class RequestsController {
   }
   @Get("lookup") async lookup(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);
-    return this.requests.lookup(query);
+    return this.requests.lookup(query, req.viewer!);
   }
   @Get("parts") async parts(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);

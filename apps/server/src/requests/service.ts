@@ -133,11 +133,19 @@ export class RequestsService {
       include,
     });
   }
-  async lookup(input: RequestTarget) {
+  async lookup(input: RequestTarget, viewer: Viewer) {
     const target = await this.target(input);
     const existing = await this.existing(target);
     if (existing) {
-      return { state: "requested" as const, request: { id: existing.id, status: existing.status } };
+      const following = await this.infrastructure.db.requestSubscriber.findUnique({
+        where: { requestId_userId: { requestId: existing.id, userId: viewer.id } },
+      });
+      return {
+        state: "requested" as const,
+        request: { id: existing.id, status: existing.status },
+        // The viewer already follows it: there is nothing to follow, only more parts to ask for.
+        subscribed: following !== null,
+      };
     }
     return this.availability.check(target.scope as AvailabilityTarget);
   }

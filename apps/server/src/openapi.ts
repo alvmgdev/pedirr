@@ -252,7 +252,11 @@ const schemas: Record<string, SchemaObject> = {
   }),
   Availability: {
     oneOf: [
-      object({ state: enumeration("requested"), request: object({ id: uuid, status }) }),
+      object({
+        state: enumeration("requested"),
+        request: object({ id: uuid, status }),
+        subscribed: boolean,
+      }),
       object(
         {
           state: enumeration("available", "missing", "unknown"),

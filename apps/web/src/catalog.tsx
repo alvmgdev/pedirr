@@ -259,6 +259,7 @@ export function CatalogDetail({ user }: { user: User }) {
         state: "requested" | "available" | "missing" | "unknown";
         reason?: string;
         request?: { id: string; status: string };
+        subscribed?: boolean;
       }>(`/requests/lookup?kind=${kind}&identifier=${encodeURIComponent(id)}`),
     enabled: valid && mayRequest && ["season", "event"].includes(kind),
     staleTime: 15000,
@@ -350,13 +351,17 @@ export function CatalogDetail({ user }: { user: User }) {
               <>
                 <Status value={availability.data.request!.status} />
                 <Link to={"/requests/" + availability.data.request!.id}>{t("requested")}</Link>
-                <button
-                  className="quiet"
-                  disabled={request.isPending || parts.isPending}
-                  onClick={() => (byParts ? setChoosing(true) : request.mutate(undefined))}
-                >
-                  {t(byParts ? "addParts" : "followRequest")}
-                </button>
+                {availability.data.subscribed && !byParts ? (
+                  <p>{t("alreadyFollowing")}</p>
+                ) : (
+                  <button
+                    className="quiet"
+                    disabled={request.isPending || parts.isPending}
+                    onClick={() => (byParts ? setChoosing(true) : request.mutate(undefined))}
+                  >
+                    {t(byParts ? "addParts" : "followRequest")}
+                  </button>
+                )}
               </>
             ) : availability.data?.state === "unknown" &&
               availability.data.reason !== "not_configured" ? (

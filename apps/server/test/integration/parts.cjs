@@ -277,6 +277,16 @@ async function main() {
       parts: [],
     });
 
+    // The catalog knows whether the viewer already follows the request.
+    assert.equal(
+      (await requests.lookup({ kind: "event", identifier: "card" }, alice)).subscribed,
+      true,
+    );
+    assert.equal(
+      (await requests.lookup({ kind: "event", identifier: "card" }, admin)).subscribed,
+      false,
+    );
+
     // Approving the Prelims reopens the request without moving Alice backwards.
     request = await reload(id);
     await requests.moderate(id, { decision: "approve", version: request.version }, admin);
