@@ -2,7 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 1.0.0 - 2026-11-13
+
+First stable release.
+
+**Upgrading from 0.x:** back up PostgreSQL first (`docker compose exec -T postgres pg_dump -U pedirr pedirr > pedirr-backup.sql`) and keep `SETTINGS_ENCRYPTION_KEY`. Two database migrations (event parts and issues) run automatically before the API and worker start. Existing requests keep working as whole-event requests. Non-administrator users can no longer request whole seasons until an administrator allows it in their account. Nothing needs to change in `.env` or `compose.yaml`.
 
 - Season access per user. Users request single events by default and an administrator can allow whole seasons when creating or editing the account; administrators can always request seasons. **Existing users lose season access until an administrator grants it.** The server rejects season requests without the permission (`SEASON_REQUESTS_NOT_ALLOWED`), and the season page explains the limitation instead of offering the request.
 - Event parts. Requesting a fight card (or a season of them) opens a dialog to choose its parts, such as Early Prelims, Prelims and Main Card. The parts Sportarr monitors for the league come pre-selected, optional parts such as the Post Show do not, and each part shows whether it is already requested, downloading or in the library, without revealing who asked for it. Each user sees their own status for the parts they asked for, so another user's extra parts never move it backwards. New parts from a user without automatic approval wait for review, for that user only; a rejected part asked for again returns to review. Pedirr only adds the approved parts to Sportarr's monitoring, searches each of them separately, and never changes a "Full Event" event. Requests created earlier keep working as whole-event requests. Includes a database migration.
