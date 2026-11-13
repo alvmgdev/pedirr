@@ -1,6 +1,6 @@
 # Upstream API research
 
-Investigated before implementation on 2026-11-01. Sportarr source reference: `f3a6b02c927b11ca3893660fa6d1d6176f2df26a`. No private Sportarr installation has been tested.
+Investigated before implementation on 2026-11-01. Sportarr source reference: `f3a6b02c927b11ca3893660fa6d1d6176f2df26a`. This research used the source only; live validation came later and is recorded below.
 
 ## Sources
 
@@ -37,10 +37,16 @@ Checked against the Sportarr 4.1.11 source (`v4.1.11` tag) and unchanged in 4.1.
 
 ## Native write adapter verification
 
-The pinned `src/Version.cs` reports 4.1.11. Write compatibility currently admits 4.1 patch versions >= 11 and rejects other minor/major versions until their behavior is reviewed. This is a source-based compatibility gate, not a claim of live-instance testing.
+The pinned `src/Version.cs` reports 4.1.11. Write compatibility currently admits 4.1 patch versions >= 11 and rejects other minor/major versions until their behavior is reviewed. The gate was set from the source; Pedirr has since run against a live 4.1.11 installation (see Live validation).
 
 `LeagueAddService` may commit before failing later initialization. New Pedirr-owned league containers use `monitored=false`, `monitorType=None`, and no team selection. Existing leagues are returned without writes. Per-event monitoring uses only PUT `monitored=true`; existing profile, team, multipart, and season preferences remain untouched. Event creation uses `searchOnAdd=false`, allowing the worker to schedule searches separately and track retries.
 
 `CreateEventRequest` defines native event fields. POST `/api/events` can return a raw event or `{event,alreadyAdded}`; it also deduplicates by title/date. The adapter reads the clean event DTO afterward and requires exact external ID and league ID before accepting it. A timeout is reconciled using a complete event listing before retrying a write.
 
 `DownloadStatus` in `src/Sportarr.Data/Models/Download.cs` is an integer enum (Queued=0, Downloading=1, Paused=2, Completed=3, Failed=4, Warning=5, Importing=6, Imported=7, ImportPending=8, ImportWarning=9). Startup JSON options do not register a string enum converter. The adapter accepts those numeric values and their explicit names, and normalizes them to names. Imported file state, not these queue statuses, will determine availability.
+
+## Live validation
+
+Since November 2026 the maintainer has run Pedirr against a real Sportarr 4.1.11 installation. Event requests were approved, monitored, searched, downloaded, imported and reported as available, including UFC cards split into parts. That use exposed the event-level search repeatedly choosing the part already held, which led to per-part searches in 0.2.0.
+
+Not yet exercised against a live installation: choosing event parts per request and the optional Post Show (unreleased at the time of writing), and other Sportarr versions than 4.1.11.

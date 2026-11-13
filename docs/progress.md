@@ -53,7 +53,7 @@ Implementation and required verification are complete; see [the requirement-by-r
 
 A complete season is covered through HTTP approval, BullMQ and the native Sportarr HTTP adapter: all metadata pages are read, cancelled/inactive events are excluded, open seasons remain incomplete, closed imported seasons become available, and cross-season metadata is rejected before remote writes. Existing monitoring settings remain intact.
 
-Known validation limits: no real Sportarr installation or external email/Discord destination has been exercised. Native writes remain gated to the source-reviewed Sportarr 4.1 release line starting at 4.1.11. Upstream metadata quotas, update cadence and broadcast completeness are not guaranteed. No production-load benchmark or full manual accessibility certification is claimed.
+Known validation limits at MVP time: no real Sportarr installation or external email/Discord destination had been exercised. Since then Pedirr has run against a real Sportarr 4.1.11 installation (see [live validation](api-research.md#live-validation)); external email/Discord delivery is still unexercised. Native writes remain gated to the source-reviewed Sportarr 4.1 release line starting at 4.1.11. Upstream metadata quotas, update cadence and broadcast completeness are not guaranteed. No production-load benchmark or full manual accessibility certification is claimed.
 
 ## Maintenance
 
