@@ -31,6 +31,10 @@ The public contract was rechecked during adapter implementation. There is no doc
 
 Sportarr connection implementation rechecked the pinned source: `src/Program.cs` defines native `/api/system/status` with `appName=Sportarr` and the full version. `src/Endpoints/TagAndQualityProfileEndpoints.cs` defines `/api/qualityprofile`. The compatibility `/api/v3/system/status` advertises `appName=Sonarr`, so it is intentionally not used for native identity detection.
 
+## Event parts
+
+Checked against the Sportarr 4.1.11 source (`v4.1.11` tag) and unchanged in 4.1.12. GET `/api/config` returns `enableMultiPartEpisodes`. GET `/api/library/parts/{sport}` returns `{parts:[{name,partNumber}]}` for a sport (`Combat` is a fighting sport), and GET `/api/event/{id}/parts` returns the event-aware set (for example no Early Prelims on Fight Night style events; ACA and weekly wrestling have none). Both include the `Full Event` pseudo part with number 0, which Pedirr never offers. PUT `/api/events/{id}/parts` with `{monitoredParts:"Prelims,Main Card"}` replaces an event's monitored parts; `null` inherits the league and the value `Full Event` keeps one whole file. Sportarr judges completeness by part number against the effective monitored parts (event value, else league value, else all), ignores the optional `Post Show`, and treats a file with no part number (or part `Full Event`) as the whole event. Pedirr only adds parts to an existing value, never writes when the effective value is null (all parts), and never changes a `Full Event` event.
+
 ## Native write adapter verification
 
 The pinned `src/Version.cs` reports 4.1.11. Write compatibility currently admits 4.1 patch versions >= 11 and rejects other minor/major versions until their behavior is reviewed. This is a source-based compatibility gate, not a claim of live-instance testing.
