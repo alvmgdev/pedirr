@@ -94,6 +94,15 @@ function event(value: unknown): ManagerEvent {
     files: row.files.map(object),
   };
 }
+function partList(value: unknown): ManagerPart[] {
+  return array(object(value).parts, (row) => {
+    const data = object(row);
+    if (!Number.isSafeInteger(data.partNumber) || Number(data.partNumber) < 0) {
+      throw new Error("Invalid part");
+    }
+    return { name: text(data.name), number: Number(data.partNumber) };
+  });
+}
 function array<T>(value: unknown, parse: (row: unknown) => T): T[] {
   if (!Array.isArray(value)) {
     throw new Error("Invalid array");
@@ -267,15 +276,25 @@ export class SportarrClient extends ContentManager {
     );
   }
   parts(id: number): Promise<ManagerPart[]> {
-    return this.read(`event/${positiveId(id)}/parts`, (value) =>
-      array(object(value).parts, (row) => {
-        const data = object(row);
-        if (!Number.isSafeInteger(data.partNumber) || Number(data.partNumber) < 0) {
-          throw new Error("Invalid part");
-        }
-        return { name: text(data.name), number: Number(data.partNumber) };
-      }),
-    );
+    return this.read(`event/${positiveId(id)}/parts`, partList);
+  }
+  sportParts(sport: string): Promise<ManagerPart[]> {
+    return this.read(`library/parts/${encodeURIComponent(text(sport))}`, partList);
+  }
+  multiPartEnabled(): Promise<boolean> {
+    return this.read("config", (value) => {
+      const enabled = object(value).enableMultiPartEpisodes;
+      if (typeof enabled !== "boolean") {
+        throw new Error("Invalid config");
+      }
+      return enabled;
+    });
+  }
+  async setMonitoredParts(id: number, parts: string): Promise<ManagerEvent> {
+    await this.read(`events/${positiveId(id)}/parts`, (value) => value, "PUT", {
+      monitoredParts: text(parts),
+    });
+    return this.event(id);
   }
   queue(): Promise<QueueItem[]> {
     return this.read("queue", (value) =>

@@ -93,6 +93,10 @@ model Request {
   subscribers      RequestSubscriber[]
   history          RequestHistory[]
   events           RequestEvent[]
+  // Requested event parts (e.g. Main Card). None means the whole event, as before parts existed.
+  parts            RequestPart[]
+  // Season scope has ended and every event is final; per-user availability needs it.
+  closed           Boolean             @default(false)
 
   @@unique([entityId, scopeKey])
   @@index([status, updatedAt])
@@ -101,9 +105,13 @@ model Request {
 model RequestSubscriber {
   requestId String
   userId    String
-  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Parts this user asked for; empty means every part of the request.
+  parts     String[]      @default([])
+  // This user's view of the request, derived from their parts.
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
 
   @@id([requestId, userId])
 }
@@ -166,16 +174,37 @@ model NotificationDelivery {
 }
 
 model RequestEvent {
-  id         String    @id @default(uuid())
-  requestId  String
-  request    Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  externalId String
-  metadata   Json
-  remoteId   Int?
-  active     Boolean   @default(true)
-  available  Boolean   @default(false)
-  progress   Float     @default(0)
-  checkedAt  DateTime?
+  id               String    @id @default(uuid())
+  requestId        String
+  request          Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  externalId       String
+  metadata         Json
+  remoteId         Int?
+  active           Boolean   @default(true)
+  available        Boolean   @default(false)
+  progress         Float     @default(0)
+  checkedAt        DateTime?
+  // Parts Sportarr defines for this event; empty when it is a single file.
+  parts            String[]  @default([])
+  availableParts   String[]  @default([])
+  downloadingParts String[]  @default([])
+  downloading      Boolean   @default(false)
 
   @@unique([requestId, externalId])
+}
+
+/// One requested part of an event or season request. Its review state is shared by
+/// every subscriber who asked for it.
+model RequestPart {
+  id              String        @id @default(uuid())
+  requestId       String
+  request         Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  name            String
+  status          RequestStatus @default(PENDING)
+  reviewedBy      String?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([requestId, name])
 }

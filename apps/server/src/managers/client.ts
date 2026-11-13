@@ -36,6 +36,12 @@ export abstract class ContentManager {
   abstract search(id: number, part?: string): Promise<void>;
   /** Parts Sportarr defines for an event (number 0 is the full event). */
   abstract parts(id: number): Promise<ManagerPart[]>;
+  /** Part definitions of a sport, for events Sportarr does not hold yet. */
+  abstract sportParts(sport: string): Promise<ManagerPart[]>;
+  /** Whether Sportarr splits fighting events into parts at all. */
+  abstract multiPartEnabled(): Promise<boolean>;
+  /** Replaces an event's monitored parts with comma-separated part names. */
+  abstract setMonitoredParts(id: number, parts: string): Promise<ManagerEvent>;
   abstract queue(): Promise<QueueItem[]>;
   abstract testConnection(): Promise<ConnectionResult>;
   abstract leagues(): Promise<ManagerLeague[]>;

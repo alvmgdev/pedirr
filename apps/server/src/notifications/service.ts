@@ -19,13 +19,18 @@ export class Notifications {
     if (!event || !["request.created", "request.status"].includes(event.type)) {
       return;
     }
-    const payload = event.payload as { requestId: string; status: string };
+    // Requests with parts address only the subscribers whose own status changed.
+    const payload = event.payload as { requestId: string; status: string; userIds?: string[] };
     const request = await db.request.findUnique({
       where: { id: payload.requestId },
       include: {
         entity: true,
         subscribers: {
-          where: { createdAt: { lte: event.createdAt }, user: { active: true } },
+          where: {
+            createdAt: { lte: event.createdAt },
+            user: { active: true },
+            ...(Array.isArray(payload.userIds) ? { userId: { in: payload.userIds } } : {}),
+          },
           include: { user: { select: { email: true, locale: true } } },
         },
       },
