@@ -145,7 +145,7 @@ For frontend development use `npm run dev:web`. Vite listens on port 5173 and pr
 
 ## Availability before requesting
 
-GET `/api/v1/requests/lookup?kind=event&identifier=...` (or `kind=season`) returns `requested` with the existing request ID/status, `available`, `missing`, or `unknown` with a reason. The detail screen links existing requests, offers subscription without duplication, and removes the request action for available content.
+GET `/api/v1/requests/lookup?kind=event&identifier=...` (or `kind=season`) returns `requested` with the existing request ID/status and whether the caller already follows it (`subscribed`), `available`, `missing`, or `unknown` with a reason. The detail screen links existing requests, offers subscription without duplication (or says the user already follows it), and removes the request action for available content. A request page also lets someone who does not follow the request join it: directly for a whole-event request, or by choosing parts for a request with parts.
 
 POST `/api/v1/requests` repeats the availability check. Already imported content returns `{created:false,available:true,request:null}` without creating database records or background work. If a configured manager cannot be checked, the API returns HTTP 503 `AVAILABILITY_UNKNOWN`; an outage is never treated as evidence that content is missing. An unconfigured installation may still collect requests for an administrator.
 

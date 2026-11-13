@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- A request page offers "Follow this request" (or "Request parts" for a request with parts) to people who do not follow it yet; before, they had to find the event in the catalog.
+- The catalog says "You follow this request." instead of offering to follow a request the user already follows.
+
 ## 1.0.0 - 2026-11-13
 
 First stable release.
