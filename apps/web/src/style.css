@@ -875,7 +875,8 @@ th {
   overflow: hidden;
 }
 /* Parts of a fight card, listed in card order like a bout sheet. */
-.parts-dialog {
+.parts-dialog,
+.form-dialog {
   width: min(480px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   border: 1px solid var(--line);
@@ -884,15 +885,18 @@ th {
   color: var(--ink);
   padding: 28px;
 }
-.parts-dialog::backdrop {
+.parts-dialog::backdrop,
+.form-dialog::backdrop {
   background: rgb(16 16 20 / 80%);
 }
-.parts-dialog h2 {
+.parts-dialog h2,
+.form-dialog h2 {
   font-family: "Barlow Condensed", sans-serif;
   font-size: 30px;
   margin: 0 0 8px;
 }
-.parts-dialog p {
+.parts-dialog p,
+.form-dialog p {
   color: var(--muted);
   margin: 0 0 20px;
   max-width: 60ch;
@@ -940,6 +944,9 @@ th {
 .part-downloading .part-state,
 .part-requested .part-state {
   color: var(--accent);
+}
+.form-dialog .compact-form {
+  margin: 0;
 }
 .dialog-actions {
   display: flex;
@@ -1074,9 +1081,6 @@ th {
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
-}
-.follow-request {
-  margin-top: 16px;
 }
 .request-issues {
   margin-top: 48px;

@@ -11,7 +11,7 @@ import {
   type User,
 } from "./api";
 import { Artwork, ErrorMessage, Loading, Pager, PartsDialog, Status } from "./ui";
-import { RequestIssues } from "./issues";
+import { ReportIssue, RequestIssueList } from "./issues";
 export function Requests() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -146,45 +146,48 @@ export function RequestDetail({ user }: { user: User }) {
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
           <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
-          {!request.subscription && <FollowRequest request={request} user={user} />}
         </div>
-        {user.role === "ADMIN" && reviewable && (
-          <div className="request-box">
-            {pendingParts.length > 0 && (
-              <p>
-                {t("pendingParts", { parts: pendingParts.map((part) => part.name).join(", ") })}
-              </p>
-            )}
-            <button
-              disabled={review.isPending}
-              onClick={() => review.mutate({ decision: "approve", version: request.version })}
-            >
-              {t("approve")}
-            </button>
-            <button className="quiet" onClick={() => setReject(!reject)}>
-              {t("reject")}
-            </button>
-            {reject && (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  review.mutate({
-                    decision: "reject",
-                    version: request.version,
-                    reason: String(new FormData(event.currentTarget).get("reason")),
-                  });
-                }}
+        <div className="request-box">
+          {!request.subscription && <FollowRequest request={request} user={user} />}
+          {(request.subscription || user.role === "ADMIN") && <ReportIssue request={request} />}
+          {user.role === "ADMIN" && reviewable && (
+            <>
+              {pendingParts.length > 0 && (
+                <p>
+                  {t("pendingParts", { parts: pendingParts.map((part) => part.name).join(", ") })}
+                </p>
+              )}
+              <button
+                disabled={review.isPending}
+                onClick={() => review.mutate({ decision: "approve", version: request.version })}
               >
-                <label>
-                  {t("reason")}
-                  <textarea name="reason" required maxLength={1000} />
-                </label>
-                <button disabled={review.isPending}>{t("reject")}</button>
-              </form>
-            )}
-            <ErrorMessage error={review.error} />
-          </div>
-        )}
+                {t("approve")}
+              </button>
+              <button className="quiet" onClick={() => setReject(!reject)}>
+                {t("reject")}
+              </button>
+              {reject && (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    review.mutate({
+                      decision: "reject",
+                      version: request.version,
+                      reason: String(new FormData(event.currentTarget).get("reason")),
+                    });
+                  }}
+                >
+                  <label>
+                    {t("reason")}
+                    <textarea name="reason" required maxLength={1000} />
+                  </label>
+                  <button disabled={review.isPending}>{t("reject")}</button>
+                </form>
+              )}
+              <ErrorMessage error={review.error} />
+            </>
+          )}
+        </div>
       </header>
       {request.rejectionReason && <p className="notice">{request.rejectionReason}</p>}
       {request.integrationState === "error" && (
@@ -286,7 +289,7 @@ export function RequestDetail({ user }: { user: User }) {
         </section>
       </div>
       {(request.subscription || user.role === "ADMIN") && (
-        <RequestIssues request={request} user={user} />
+        <RequestIssueList request={request} user={user} />
       )}
     </>
   );
@@ -326,7 +329,7 @@ function FollowRequest({ request, user }: { request: RequestRecord; user: User }
   }
   const supported = options.data?.supported === true;
   return (
-    <div className="follow-request">
+    <>
       <button
         className="quiet"
         disabled={follow.isPending || (byParts && !supported)}
@@ -347,6 +350,6 @@ function FollowRequest({ request, user }: { request: RequestRecord; user: User }
           }}
         />
       )}
-    </div>
+    </>
   );
 }

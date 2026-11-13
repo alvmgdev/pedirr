@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -282,15 +282,9 @@ export function IssueDetail({ user }: { user: User }) {
   );
 }
 
-/**
- * Reporting form on a request the viewer follows, with the viewer's issues about it. The event
- * and part choices appear only when the request has them.
- */
-export function RequestIssues({ request, user }: { request: RequestRecord; user: User }) {
+/** The viewer's issues about a request, shown under the request when there are any. */
+export function RequestIssueList({ request, user }: { request: RequestRecord; user: User }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [eventId, setEventId] = useState("");
   const mine = useQuery({
     queryKey: ["issues", "request", request.id],
     queryFn: () =>
@@ -298,6 +292,54 @@ export function RequestIssues({ request, user }: { request: RequestRecord; user:
         `/issues?request=${request.id}${user.role === "ADMIN" ? "&mine=true" : ""}`,
       ),
   });
+  if (!mine.data?.items?.length) {
+    return null;
+  }
+  return (
+    <section className="request-issues">
+      <h2>{t("yourIssues")}</h2>
+      <ul className="issue-list">
+        {mine.data.items.map((issue) => (
+          <li key={issue.id}>
+            <Link to={"/issues/" + issue.id}>
+              <span className="issue-category">{t(issue.category)}</span>
+              <span className="issue-subject">
+                {[issue.event?.name, issue.part].filter(Boolean).join(" / ")}
+              </span>
+            </Link>
+            <Status value={issue.status} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * "Report a problem" for a request the viewer follows. The form opens in a dialog; the event
+ * and part choices appear only when the request has them.
+ */
+export function ReportIssue({ request }: { request: RequestRecord }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button className="quiet" onClick={() => setOpen(true)}>
+        {t("reportIssue")}
+      </button>
+      {open && <ReportIssueDialog request={request} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function ReportIssueDialog({ request, onClose }: { request: RequestRecord; onClose: () => void }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [eventId, setEventId] = useState("");
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
   const report = useMutation({
     mutationFn: (body: Record<string, string>) =>
       api<Issue>(`/requests/${request.id}/issues`, "POST", body),
@@ -319,101 +361,80 @@ export function RequestIssues({ request, user }: { request: RequestRecord; user:
       ? report.error.issueId
       : undefined;
   return (
-    <section className="request-issues">
-      <h2>{t("issues")}</h2>
-      {mine.data?.items?.length ? (
-        <ul className="issue-list">
-          {mine.data.items.map((issue) => (
-            <li key={issue.id}>
-              <Link to={"/issues/" + issue.id}>
-                <span className="issue-category">{t(issue.category)}</span>
-                <span className="issue-subject">
-                  {[issue.event?.name, issue.part].filter(Boolean).join(" / ")}
-                </span>
-              </Link>
-              <Status value={issue.status} />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {!open ? (
-        <button className="quiet" onClick={() => setOpen(true)}>
-          {t("reportIssue")}
-        </button>
-      ) : (
-        <form
-          className="panel compact-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            const body: Record<string, string> = {
-              category: String(data.get("category")),
-              description: String(data.get("description")),
-            };
-            for (const key of ["eventId", "part"]) {
-              if (data.get(key)) {
-                body[key] = String(data.get(key));
-              }
+    <dialog ref={dialog} className="form-dialog" aria-labelledby="report-title" onClose={onClose}>
+      <form
+        className="compact-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          const body: Record<string, string> = {
+            category: String(data.get("category")),
+            description: String(data.get("description")),
+          };
+          for (const key of ["eventId", "part"]) {
+            if (data.get(key)) {
+              body[key] = String(data.get(key));
             }
-            report.mutate(body);
-          }}
-        >
-          <label>
-            {t("issueCategory")}
-            <select name="category" required defaultValue="">
-              <option value="" disabled>
-                {t("chooseCategory")}
+          }
+          report.mutate(body);
+        }}
+      >
+        <h2 id="report-title">{t("reportIssue")}</h2>
+        <p>{t("issuesHelp")}</p>
+        <label>
+          {t("issueCategory")}
+          <select name="category" required defaultValue="">
+            <option value="" disabled>
+              {t("chooseCategory")}
+            </option>
+            {ISSUE_CATEGORIES.map((value) => (
+              <option key={value} value={value}>
+                {t(value)}
               </option>
-              {ISSUE_CATEGORIES.map((value) => (
-                <option key={value} value={value}>
-                  {t(value)}
+            ))}
+          </select>
+        </label>
+        {request.scope.kind === "season" && events.length > 0 && (
+          <label>
+            {t("event")}
+            <select
+              name="eventId"
+              value={eventId}
+              onChange={(event) => setEventId(event.target.value)}
+            >
+              <option value="">{t("allEvents")}</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.metadata.name}
                 </option>
               ))}
             </select>
           </label>
-          {request.scope.kind === "season" && events.length > 0 && (
-            <label>
-              {t("event")}
-              <select
-                name="eventId"
-                value={eventId}
-                onChange={(event) => setEventId(event.target.value)}
-              >
-                <option value="">{t("allEvents")}</option>
-                {events.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.metadata.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {parts.length > 0 && (
-            <label>
-              {t("issuePart")}
-              <select name="part" defaultValue="">
-                <option value="">{t("wholeEvent")}</option>
-                {parts.map((part) => (
-                  <option key={part}>{part}</option>
-                ))}
-              </select>
-            </label>
-          )}
+        )}
+        {parts.length > 0 && (
           <label>
-            {t("issueDescription")}
-            <textarea name="description" required maxLength={2000} rows={4} />
+            {t("issuePart")}
+            <select name="part" defaultValue="">
+              <option value="">{t("wholeEvent")}</option>
+              {parts.map((part) => (
+                <option key={part}>{part}</option>
+              ))}
+            </select>
           </label>
-          <p className="muted">{t("issuesHelp")}</p>
-          <ErrorMessage error={report.error} />
-          {existing && <Link to={"/issues/" + existing}>{t("openExistingIssue")}</Link>}
-          <div className="dialog-actions">
-            <button type="button" className="quiet" onClick={() => setOpen(false)}>
-              {t("cancel")}
-            </button>
-            <button disabled={report.isPending}>{t("sendReport")}</button>
-          </div>
-        </form>
-      )}
-    </section>
+        )}
+        <label>
+          {t("issueDescription")}
+          <textarea name="description" required maxLength={2000} rows={4} />
+        </label>
+        <ErrorMessage error={report.error} />
+        {existing && <Link to={"/issues/" + existing}>{t("openExistingIssue")}</Link>}
+        <div className="dialog-actions">
+          <button type="button" className="quiet" onClick={() => dialog.current?.close()}>
+            {t("cancel")}
+          </button>
+          <button disabled={report.isPending}>{t("sendReport")}</button>
+        </div>
+      </form>
+    </dialog>
   );
 }
