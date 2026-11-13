@@ -190,11 +190,17 @@ export function RequestDetail({ user }: { user: User }) {
         </div>
       </header>
       {request.rejectionReason && <p className="notice">{request.rejectionReason}</p>}
-      {request.integrationState === "error" && (
-        <p role="status" className="notice danger">
-          {t("integrationError")}
-        </p>
-      )}
+      {request.integrationState === "error" &&
+        (request.lastError === "EVENT_NOT_IMPORTED" ? (
+          // Not a failure: Sportarr is still importing the event from the Hub.
+          <p role="status" className="notice">
+            {t("awaitingImport")}
+          </p>
+        ) : (
+          <p role="status" className="notice danger">
+            {t("integrationError")}
+          </p>
+        ))}
       {request.parts.length > 0 && (
         <section className="request-parts">
           <h2>{t("parts")}</h2>

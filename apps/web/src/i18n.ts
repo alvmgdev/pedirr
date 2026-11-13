@@ -100,6 +100,8 @@ const en = {
   save: "Save changes",
   saved: "Changes saved",
   cancel: "Cancel",
+  awaitingImport:
+    "Sportarr is importing this event from the catalog. Pedirr will monitor and search it as soon as it is there.",
   yourIssues: "Your issues about this request",
   alreadyFollowing: "You follow this request.",
   requestPartsAction: "Request parts",
@@ -359,6 +361,8 @@ const es: Record<keyof typeof en, string> = {
   save: "Guardar cambios",
   saved: "Cambios guardados",
   cancel: "Cancelar",
+  awaitingImport:
+    "Sportarr está importando este evento del catálogo. Pedirr lo monitorizará y lo buscará en cuanto esté.",
   yourIssues: "Tus incidencias sobre esta petición",
   alreadyFollowing: "Ya sigues esta petición.",
   requestPartsAction: "Pedir partes",
