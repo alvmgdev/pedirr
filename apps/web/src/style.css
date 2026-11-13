@@ -124,7 +124,8 @@ time {
 }
 .brand {
   display: flex;
-  align-items: center;
+  /* The mark sits on the baseline like a letter, spanning the ascender height. */
+  align-items: baseline;
   gap: 10px;
   font-family: "Barlow Condensed", sans-serif;
   font-size: 38px;
@@ -133,8 +134,9 @@ time {
   letter-spacing: -0.5px;
 }
 .brand svg {
-  width: 30px;
-  height: 34px;
+  width: auto;
+  height: 0.74em;
+  flex-shrink: 0;
   color: var(--accent);
 }
 .app-shell {
