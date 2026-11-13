@@ -44,7 +44,13 @@ const requestProperties = {
   version: integer,
   createdAt: date,
   updatedAt: date,
+  closed: boolean,
+  parts: array(object({ name: string, status, rejectionReason: nullable(string) })),
   _count: object({ subscribers: integer }),
+};
+const subscription = {
+  ...nullable(object({ parts: array(string), status })),
+  description: "The viewer's own parts (empty for the whole request) and status.",
 };
 const schemas: Record<string, SchemaObject> = {
   PublicUser: object({
@@ -140,10 +146,11 @@ const schemas: Record<string, SchemaObject> = {
     ],
   },
   ContentRequest: object(requestProperties),
-  RequestListItem: object({ ...requestProperties, subscribed: boolean }),
+  RequestListItem: object({ ...requestProperties, subscribed: boolean, subscription }),
   RequestDetail: object({
     ...requestProperties,
     subscribed: boolean,
+    subscription,
     events: array(
       object({
         id: uuid,
@@ -151,6 +158,9 @@ const schemas: Record<string, SchemaObject> = {
         available: boolean,
         progress: { type: "number" },
         checkedAt: nullable(date),
+        parts: array(string),
+        availableParts: array(string),
+        downloadingParts: array(string),
       }),
     ),
     history: array(object({ id: uuid, action: string, details: json, createdAt: date })),
@@ -165,6 +175,17 @@ const schemas: Record<string, SchemaObject> = {
       }),
     ],
   },
+  PartOptions: object({
+    supported: boolean,
+    parts: array(
+      object({
+        name: string,
+        optional: boolean,
+        selected: boolean,
+        state: enumeration("none", "requested", "downloading", "available"),
+      }),
+    ),
+  }),
   Availability: {
     oneOf: [
       object({ state: enumeration("requested"), request: object({ id: uuid, status }) }),
@@ -264,6 +285,7 @@ const responses: Record<string, Schema> = {
   "GET requests": page(ref("RequestListItem"), 30),
   "POST requests": ref("CreateRequestResult"),
   "GET requests/lookup": ref("Availability"),
+  "GET requests/parts": ref("PartOptions"),
   "GET requests/{id}": ref("RequestDetail"),
   "POST requests/{id}/review": ref("ContentRequest"),
   "GET admin/settings/sportarr": ref("SportarrSettingsResult"),

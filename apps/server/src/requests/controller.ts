@@ -1,14 +1,41 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsInt, IsString, Matches, Max, MaxLength, Min, ValidateIf } from "class-validator";
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from "class-validator";
 import { Type } from "class-transformer";
 import { RequestStatus } from "@prisma/client";
 import { Admin, AuthRequest, AuthService } from "../auth";
 import { RequestsService } from "./service";
 
-export class CreateRequest {
+export class RequestTargetQuery {
   @ApiProperty({ enum: ["season", "event"] }) @IsIn(["season", "event"]) kind!: "season" | "event";
   @ApiProperty() @Matches(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,199}$/) identifier!: string;
+}
+export class CreateRequest extends RequestTargetQuery {
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description:
+      "Event parts to request (names from GET /requests/parts). Omit for the whole event.",
+  })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  parts?: string[];
 }
 export class RequestList {
   @ApiProperty({ required: false, default: 1 })
@@ -49,9 +76,13 @@ export class RequestsController {
   @Get() list(@Query() query: RequestList, @Req() req: AuthRequest) {
     return this.requests.list(req.viewer!, query.page, query.status, query.mine === "true");
   }
-  @Get("lookup") async lookup(@Query() query: CreateRequest, @Req() req: AuthRequest) {
+  @Get("lookup") async lookup(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);
     return this.requests.lookup(query);
+  }
+  @Get("parts") async parts(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
+    await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);
+    return this.requests.partOptions(query, req.viewer!);
   }
   @Get(":id") detail(@Param("id", ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     return this.requests.detail(id, req.viewer!);

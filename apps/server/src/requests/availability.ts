@@ -3,6 +3,15 @@ import { MetadataItem, MetadataProvider } from "../metadata/provider";
 import { SportarrSettings } from "../settings/sportarr";
 import { SportarrClient } from "../managers/sportarr";
 import { imported } from "../jobs/fulfillment";
+import { ManagerPart } from "../managers/client";
+import {
+  defaultParts,
+  effectiveMonitoredParts,
+  heldParts,
+  isFullEventOnly,
+  queuedParts,
+  selectableParts,
+} from "./parts";
 
 export type AvailabilityTarget = {
   kind: "event" | "season";
@@ -14,6 +23,17 @@ export type AvailabilityResult = {
   state: "available" | "missing" | "unknown";
   reason?: "not_configured" | "unreachable" | "identity" | "incomplete";
 };
+/** What Sportarr knows about the parts of a request target. */
+export type PartsInfo =
+  | { supported: false }
+  | {
+      supported: true;
+      parts: ManagerPart[];
+      defaults: string[];
+      /** Event targets already in Sportarr: parts on disk and parts with queue work. */
+      held?: { whole: boolean; names: string[] };
+      queued?: { unknown: boolean; names: string[] };
+    };
 @Injectable()
 export class Availability {
   constructor(
@@ -130,6 +150,70 @@ export class Availability {
       return { state: "available" };
     } catch {
       return { state: "unknown", reason: "unreachable" };
+    }
+  }
+  /**
+   * Part choices for a target. Unsupported when Sportarr is unavailable, splits nothing into
+   * parts, or keeps this event or league as one "Full Event" file.
+   */
+  async parts(target: AvailabilityTarget): Promise<PartsInfo> {
+    let config;
+    try {
+      config = await this.settings.configuration();
+    } catch {
+      return { supported: false };
+    }
+    const sport = target.league.sportName;
+    if (typeof sport !== "string" || !sport || !target.league.shortId) {
+      return { supported: false };
+    }
+    try {
+      const manager = new SportarrClient(config);
+      if (!(await manager.multiPartEnabled())) {
+        return { supported: false };
+      }
+      const leagues = (await manager.leagues()).filter(
+        (league) => league.externalId === target.league.shortId,
+      );
+      if (leagues.length > 1) {
+        return { supported: false };
+      }
+      const league = leagues[0];
+      let stored;
+      if (target.kind === "event" && league && target.event?.shortId) {
+        const matches = (await manager.events(league.id)).filter(
+          (item) => item.externalId === target.event!.shortId && item.leagueId === league.id,
+        );
+        if (matches.length > 1) {
+          return { supported: false };
+        }
+        stored = matches[0];
+      }
+      const configured = effectiveMonitoredParts(stored?.monitoredParts, league?.monitoredParts);
+      if (isFullEventOnly(configured)) {
+        return { supported: false };
+      }
+      // Event-specific definitions (e.g. no Early Prelims on Fight Nights) need the stored event.
+      const parts = selectableParts(
+        stored ? await manager.parts(stored.id) : await manager.sportParts(sport),
+      );
+      if (!parts.length) {
+        return { supported: false };
+      }
+      const defaults = defaultParts(parts, configured);
+      if (!stored) {
+        return { supported: true, parts, defaults };
+      }
+      const activity = (await manager.queue()).filter((item) => item.eventId === stored.id);
+      return {
+        supported: true,
+        parts,
+        defaults,
+        held: heldParts(stored, parts),
+        queued: queuedParts(activity),
+      };
+    } catch {
+      return { supported: false };
     }
   }
 }
