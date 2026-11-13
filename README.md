@@ -14,7 +14,7 @@ Run `npm run db:migrate` before starting the API. In separate terminals, run `np
 
 ## Docker
 
-Copy `compose.yaml` and `.env.example` (as `.env`) to the installation directory. Replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up -d`. Compose pulls the published `docker.io/alvmgdev/pedirr` image (linux/amd64 and linux/arm64); set `PEDIRR_IMAGE` in `.env` to pin a release such as `docker.io/alvmgdev/pedirr:0.1.0`. One image runs the migrations, the API and the worker. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
+Copy `compose.yaml` and `.env.example` (as `.env`) to the installation directory. Replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up -d`. Compose pulls the published `docker.io/alvmgdev/pedirr` image (linux/amd64 and linux/arm64); set `PEDIRR_IMAGE` in `.env` to pin a release such as `docker.io/alvmgdev/pedirr:1.0.0` (or `:1.0` for its patch releases). One image runs the migrations, the API and the worker. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
 
 To upgrade, change the pinned version if any, then run `docker compose pull && docker compose up -d`. To build the image from a checkout instead, run `PEDIRR_IMAGE=pedirr:local docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 

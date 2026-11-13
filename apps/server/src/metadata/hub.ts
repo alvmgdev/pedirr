@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Infrastructure, logger } from "../infrastructure";
+import { appVersion } from "../config";
 import {
   EventFilters,
   MetadataItem,
@@ -169,7 +170,7 @@ export class HubProvider extends MetadataProvider {
         response = await fetch(url, {
           signal: AbortSignal.timeout(10000),
           redirect: "error",
-          headers: { Accept: "application/json", "User-Agent": "Pedirr/0.1" },
+          headers: { Accept: "application/json", "User-Agent": `Pedirr/${appVersion}` },
         });
       } catch {
         throw this.unavailable(10);

@@ -10,7 +10,7 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
-import { port, required, trustProxy } from "./config";
+import { appVersion, port, required, trustProxy } from "./config";
 import { logger } from "./infrastructure";
 
 async function bootstrap() {
@@ -46,7 +46,7 @@ async function bootstrap() {
     new DocumentBuilder()
       .setTitle("Pedirr API")
       .setDescription("Sports content requests and moderation")
-      .setVersion("1.0")
+      .setVersion(appVersion)
       .build(),
   );
   completeOpenApi(document, required("APP_ORIGIN"));

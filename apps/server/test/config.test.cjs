@@ -45,3 +45,8 @@ test("SEARCH_RETRY_MINUTES defaults to one hour and is bounded", () => {
     assert.throws(() => searchRetrySeconds(value), /SEARCH_RETRY_MINUTES/, value);
   }
 });
+test("the reported version is the package version", () => {
+  const { appVersion } = require("../dist/config");
+  assert.equal(appVersion, require("../package.json").version);
+  assert.match(appVersion, /^\d+\.\d+\.\d+(-[\w.]+)?$/);
+});

@@ -1,4 +1,11 @@
+import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
+import { join } from "node:path";
+
+/** Release version from apps/server/package.json, present in source runs and in the image. */
+export const appVersion: string = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf8"),
+).version;
 
 export function required(name: string): string {
   const value = process.env[name];
