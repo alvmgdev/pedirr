@@ -154,10 +154,13 @@ export class RequestsService {
     if (!info.supported) {
       return { supported: false, parts: [] };
     }
-    const existing = await this.infrastructure.db.request.findFirst({
-      where: { id: (await this.existing(target))?.id ?? "" },
-      include: { parts: true, events: { where: { active: true } } },
-    });
+    const found = await this.existing(target);
+    const existing = found
+      ? await this.infrastructure.db.request.findUnique({
+          where: { id: found.id },
+          include: { parts: true, events: { where: { active: true } } },
+        })
+      : null;
     const parts = info.parts.map(({ name }) => {
       const events = existing?.events ?? [];
       let state: PartState = "none";
