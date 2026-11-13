@@ -284,7 +284,10 @@ async function main() {
     const password = randomUUID();
     const passwordHash = await argon2.hash(password, passwordOptions);
     await db.user.create({ data: { email: "admin@example.invalid", passwordHash, role: "ADMIN" } });
-    await db.user.create({ data: { email: "user@example.invalid", passwordHash, locale: "es" } });
+    // The season scenario below needs the per-user season grant.
+    await db.user.create({
+      data: { email: "user@example.invalid", passwordHash, locale: "es", canRequestSeasons: true },
+    });
     const admin = (
       await call("auth/login", {
         method: "POST",
