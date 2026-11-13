@@ -31,7 +31,18 @@ export type ConnectionResult = {
 export abstract class ContentManager {
   abstract assertWriteCompatibility(): Promise<void>;
   abstract ensureLeague(input: LeagueInput): Promise<ManagerLeague>;
-  abstract ensureEvent(input: EventInput, existing: ManagerEvent[]): Promise<ManagerEvent>;
+  /**
+   * Monitors an event Sportarr already imported from the Hub. Returns undefined when Sportarr
+   * does not hold it yet: events are never created by hand, because a hand-made event lacks the
+   * team names and local air date Sportarr needs to tell releases of other games apart.
+   */
+  abstract monitorEvent(
+    externalId: string,
+    leagueId: number,
+    existing: ManagerEvent[],
+  ): Promise<ManagerEvent | undefined>;
+  /** Asks Sportarr to import a league's events from the Hub. Queued and rate limited upstream. */
+  abstract refreshEvents(leagueId: number, seasons: string[]): Promise<void>;
   /** Automatic search; with a part name, Sportarr searches only that event part. */
   abstract search(id: number, part?: string): Promise<void>;
   /** Parts Sportarr defines for an event (number 0 is the full event). */
@@ -52,16 +63,6 @@ export type LeagueInput = {
   name: string;
   sport: string;
   rootFolderId: number;
-  qualityProfileId: number;
-};
-export type EventInput = {
-  externalId: string;
-  title: string;
-  sport: string;
-  leagueId: number;
-  eventDate: string;
-  season: string | null;
-  seasonNumber: number | null;
   qualityProfileId: number;
 };
 export type QueueItem = { eventId: number; status: string; progress: number; part: string | null };
