@@ -10,6 +10,7 @@ const {
   partsRequestStatus,
   progressStatus,
   queuedParts,
+  requiredParts,
   selectableParts,
   subscriberStatus,
 } = require("../dist/requests/parts");
@@ -168,4 +169,22 @@ test("request status reviews parts first, then follows fulfillment of approved p
     "DOWNLOADING",
   );
   assert.equal(partsRequestStatus([{ name: "A", status: "APPROVED" }], "PENDING"), "APPROVED");
+});
+
+test("a requested Post Show is fetched when it appears but never blocks the other parts", () => {
+  assert.deepEqual(requiredParts(["Prelims", "Main Card", "Post Show"]), ["Prelims", "Main Card"]);
+  assert.deepEqual(requiredParts(["Post Show"]), ["Post Show"]);
+  const card = ["Early Prelims", "Prelims", "Main Card", "Post Show"];
+  const held = eventState({ parts: card, availableParts: ["Prelims", "Main Card"] });
+  assert.equal(progressStatus(["Prelims", "Main Card", "Post Show"], [held], true), "AVAILABLE");
+  // Asked for on its own, the Post Show is what the user is waiting for.
+  assert.equal(progressStatus(["Post Show"], [held], true), "APPROVED");
+  assert.equal(
+    progressStatus(
+      ["Post Show"],
+      [eventState({ parts: card, availableParts: ["Post Show"] })],
+      true,
+    ),
+    "AVAILABLE",
+  );
 });
