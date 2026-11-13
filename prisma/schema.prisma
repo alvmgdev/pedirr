@@ -40,6 +40,8 @@ model User {
   createdAt         DateTime            @default(now())
   sessions          Session[]
   subscriptions     RequestSubscriber[]
+  issues            Issue[]             @relation("IssueReporter")
+  issueComments     IssueComment[]
 }
 
 model Session {
@@ -95,6 +97,7 @@ model Request {
   events           RequestEvent[]
   // Requested event parts (e.g. Main Card). None means the whole event, as before parts existed.
   parts            RequestPart[]
+  issues           Issue[]
   // Season scope has ended and every event is final; per-user availability needs it.
   closed           Boolean             @default(false)
 
@@ -189,6 +192,7 @@ model RequestEvent {
   availableParts   String[]  @default([])
   downloadingParts String[]  @default([])
   downloading      Boolean   @default(false)
+  issues           Issue[]
 
   @@unique([requestId, externalId])
 }
@@ -207,4 +211,59 @@ model RequestPart {
   updatedAt       DateTime      @updatedAt
 
   @@unique([requestId, name])
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IssueCategory {
+  WRONG_CONTENT
+  MISSING_CONTENT
+  QUALITY
+  LANGUAGE
+  PLAYBACK
+  OTHER
+}
+
+/// A problem a subscriber reports about requested content. Only the reporter and
+/// administrators can see it.
+model Issue {
+  id             String         @id @default(uuid())
+  requestId      String
+  request        Request        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  reporterId     String
+  reporter       User           @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  // The affected event of a season request, and the affected part when the event has parts.
+  requestEventId String?
+  requestEvent   RequestEvent?  @relation(fields: [requestEventId], references: [id], onDelete: SetNull)
+  part           String?
+  category       IssueCategory
+  status         IssueStatus    @default(OPEN)
+  description    String
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  comments       IssueComment[]
+
+  @@index([reporterId, status, updatedAt])
+  @@index([status, updatedAt])
+  @@index([requestId])
+}
+
+/// A comment, a status change, or both, in an issue's timeline.
+model IssueComment {
+  id        String       @id @default(uuid())
+  issueId   String
+  issue     Issue        @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String?
+  status    IssueStatus?
+  createdAt DateTime     @default(now())
+
+  @@index([issueId, createdAt])
 }

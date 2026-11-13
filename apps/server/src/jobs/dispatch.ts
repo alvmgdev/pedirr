@@ -11,7 +11,7 @@ export async function dispatch(infrastructure: Infrastructure, queue: Queue) {
         { publishedAt: null, type: "request.fulfill" },
         {
           processedAt: null,
-          type: { in: ["request.created", "request.status"] },
+          type: { in: ["request.created", "request.status", "issue.created", "issue.updated"] },
           OR: [{ publishedAt: null }, { publishedAt: { lt: recoveryCutoff } }],
         },
       ],

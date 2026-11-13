@@ -8,6 +8,8 @@ import { CatalogController } from "./metadata/controller";
 import { HubProvider } from "./metadata/hub";
 import { MetadataProvider } from "./metadata/provider";
 import { UsersController, UsersService } from "./users";
+import { IssuesController } from "./issues/controller";
+import { IssuesService } from "./issues/service";
 import { Module } from "@nestjs/common";
 import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { Infrastructure } from "./infrastructure";
@@ -24,6 +26,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     SportarrSettings,
     NotificationSettings,
     RequestsService,
+    IssuesService,
     Availability,
     { provide: APP_GUARD, useClass: SecurityGuard },
   ],
@@ -31,6 +34,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     NotificationSettingsController,
     SportarrSettingsController,
     RequestsController,
+    IssuesController,
     CatalogController,
     HealthController,
     AuthController,

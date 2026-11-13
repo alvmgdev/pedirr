@@ -48,6 +48,37 @@ const requestProperties = {
   parts: array(object({ name: string, status, rejectionReason: nullable(string) })),
   _count: object({ subscribers: integer }),
 };
+const issueStatus = enumeration("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED");
+const issueProperties = {
+  id: uuid,
+  status: issueStatus,
+  category: enumeration(
+    "WRONG_CONTENT",
+    "MISSING_CONTENT",
+    "QUALITY",
+    "LANGUAGE",
+    "PLAYBACK",
+    "OTHER",
+  ),
+  part: nullable(string),
+  description: string,
+  createdAt: date,
+  updatedAt: date,
+  resolvedAt: nullable(date),
+  mine: boolean,
+  reporter: {
+    ...nullable(object({ id: uuid, email: { type: "string", format: "email" } })),
+    description: "Shown to administrators only.",
+  },
+  request: object({
+    id: uuid,
+    title: string,
+    kind: enumeration("event", "season"),
+    season: nullable(string),
+  }),
+  event: nullable(object({ id: uuid, name: nullable(string) })),
+  comments: integer,
+};
 const subscription = {
   ...nullable(object({ parts: array(string), status })),
   description: "The viewer's own parts (empty for the whole request) and status.",
@@ -175,6 +206,25 @@ const schemas: Record<string, SchemaObject> = {
       }),
     ],
   },
+  Issue: object(issueProperties),
+  IssueDetail: object({
+    ...issueProperties,
+    timeline: array(
+      object({
+        id: uuid,
+        body: nullable(string),
+        status: nullable(issueStatus),
+        createdAt: date,
+        author: nullable(
+          object({
+            role: enumeration("ADMIN", "USER"),
+            mine: boolean,
+            email: { ...nullable(string), description: "Shown to administrators only." },
+          }),
+        ),
+      }),
+    ),
+  }),
   PartOptions: object({
     supported: boolean,
     parts: array(
@@ -286,6 +336,12 @@ const responses: Record<string, Schema> = {
   "POST requests": ref("CreateRequestResult"),
   "GET requests/lookup": ref("Availability"),
   "GET requests/parts": ref("PartOptions"),
+  "POST requests/{id}/issues": ref("Issue"),
+  "GET issues": page(ref("Issue"), 30),
+  "GET issues/open": object({ open: integer }),
+  "GET issues/{id}": ref("IssueDetail"),
+  "POST issues/{id}/comments": ref("IssueDetail"),
+  "PATCH issues/{id}": ref("IssueDetail"),
   "GET requests/{id}": ref("RequestDetail"),
   "POST requests/{id}/review": ref("ContentRequest"),
   "GET admin/settings/sportarr": ref("SportarrSettingsResult"),
