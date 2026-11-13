@@ -18,6 +18,8 @@ export class ApiError extends Error {
     public code: string,
     public retryAfterSeconds?: number,
     public reason?: string,
+    /** The existing issue when the same problem was already reported. */
+    public issueId?: string,
   ) {
     super(code);
   }
@@ -86,6 +88,7 @@ async function send<T>(path: string, method: string, body?: unknown): Promise<T>
       error.code ?? (response.status === 400 ? "INVALID_INPUT" : "UNKNOWN"),
       error.retryAfterSeconds,
       error.reason,
+      typeof error.issueId === "string" ? error.issueId : undefined,
     );
   }
   return response.json();
@@ -173,6 +176,39 @@ export type PartOption = {
   state: "none" | "requested" | "downloading" | "available";
 };
 export type PartOptions = { supported: boolean; parts: PartOption[] };
+export const ISSUE_CATEGORIES = [
+  "WRONG_CONTENT",
+  "MISSING_CONTENT",
+  "QUALITY",
+  "LANGUAGE",
+  "PLAYBACK",
+  "OTHER",
+] as const;
+export type Issue = {
+  id: string;
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  category: (typeof ISSUE_CATEGORIES)[number];
+  part: string | null;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  mine: boolean;
+  /** Administrators only. */
+  reporter: { id: string; email: string } | null;
+  request: { id: string; title: string; kind: "event" | "season"; season: string | null };
+  event: { id: string; name: string | null } | null;
+  comments: number;
+};
+export type IssueDetail = Issue & {
+  timeline: {
+    id: string;
+    body: string | null;
+    status: Issue["status"] | null;
+    createdAt: string;
+    author: { role: "ADMIN" | "USER"; mine: boolean; email: string | null } | null;
+  }[];
+};
 
 export function setSession(user: User | null) {
   resetCsrfToken();

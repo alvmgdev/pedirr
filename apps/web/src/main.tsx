@@ -13,6 +13,7 @@ import { api, ApiError, client, setSession, type User } from "./api";
 import { Account, Language, LinkBrand, Login } from "./auth";
 import { CatalogDetail, Discover } from "./catalog";
 import { RequestDetail, Requests } from "./requests";
+import { IssueDetail, Issues } from "./issues";
 import { ErrorMessage, Loading } from "./ui";
 function App() {
   const { t, i18n } = useTranslation();
@@ -30,6 +31,13 @@ function App() {
       }
     },
     staleTime: 300000,
+  });
+  // Issues waiting for attention: open ones for administrators, the user's own active ones.
+  const openIssues = useQuery({
+    queryKey: ["issues", "open"],
+    queryFn: () => api<{ open: number }>("/issues/open"),
+    enabled: Boolean(me.data),
+    refetchInterval: 60000,
   });
   const logout = useMutation({
     mutationFn: () => api("/auth/logout", "POST"),
@@ -82,8 +90,27 @@ function App() {
               {t("discover")}
             </NavLink>
             <NavLink to="/requests">{t("requests")}</NavLink>
+            <NavLink to="/issues">
+              {t("issues")}
+              {Boolean(openIssues.data?.open) && (
+                <span className="nav-count">
+                  <span aria-hidden="true">{openIssues.data!.open}</span>
+                  <span className="sr-only">
+                    {t("openIssues", { count: openIssues.data!.open })}
+                  </span>
+                </span>
+              )}
+            </NavLink>
             <NavLink to="/account">{t("account")}</NavLink>
-            {user.role === "ADMIN" && <NavLink to="/admin">{t("admin")}</NavLink>}
+            {user.role === "ADMIN" && (
+              // Phones show the short label so five sections fit; the name stays complete.
+              <NavLink to="/admin" aria-label={t("admin")}>
+                <span className="label-long">{t("admin")}</span>
+                <span className="label-short" aria-hidden="true">
+                  {t("adminShort")}
+                </span>
+              </NavLink>
+            )}
           </nav>
           <div className="nav-bottom">
             <span>{user.email}</span>
@@ -110,6 +137,11 @@ function App() {
             <Route
               path="/requests/:id"
               element={<RequestDetail key={location.pathname} user={user} />}
+            />
+            <Route path="/issues" element={<Issues user={user} />} />
+            <Route
+              path="/issues/:id"
+              element={<IssueDetail key={location.pathname} user={user} />}
             />
             <Route path="/account" element={<Account user={user} />} />
             <Route
