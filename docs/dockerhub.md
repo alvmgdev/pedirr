@@ -4,6 +4,7 @@ Sports content requests for [Sportarr](https://sportarr.net). Users browse the S
 
 - Search leagues, teams, seasons and events, with a seven-day upcoming schedule
 - Season and event requests with deduplication, shared subscriptions and availability checks
+- Fight cards requested by part (Early Prelims, Prelims, Main Card…), with each user's own status
 - Manual review or automatic approval by role and by user
 - Background fulfillment that never changes your existing league monitoring settings
 - Email (SMTP) and Discord notifications

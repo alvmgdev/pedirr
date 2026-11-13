@@ -28,4 +28,6 @@ Verified against https://sportarr.net/openapi-partner.json: `/api/public/v1/sear
 
 ## Implementation review
 
+Event parts use a native modal dialog listed in card order, like a bout sheet: a hairline row per part with its name in Barlow Condensed and its state on the right (already requested in ticket gold, in the library in green and disabled, optional parts labelled). The checkbox is named by the part and described by its state. Request details list each part with its status and mark the viewer's own parts.
+
 The dark catalog uses real upstream imagery and neutral missing-image artwork. Sparse league and team groups share a row on desktop; mobile uses two artwork cards per row. Event labels include the year. The user directory contains navigation links only; creation and editing each have a dedicated route. Browser checks run against the production bundle to avoid development-module reloads during repeated route navigation.

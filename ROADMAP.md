@@ -23,7 +23,7 @@ Checked items are implemented; unchecked items are planned for the future and ha
 - [x] Availability check against Sportarr before requesting
 - [x] Manual review and automatic approval policies by role and by user
 - [x] Request tracking (pending, approved, rejected, downloading, available) with history
-- [ ] Choice of event parts (for example Early Prelims, Prelims, Main Card) when requesting events or seasons, with per-user status for each part
+- [x] Choice of event parts (for example Early Prelims, Prelims, Main Card) when requesting events or seasons, with per-user status for each part
 
 ## Sportarr integration
 
