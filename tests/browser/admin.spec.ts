@@ -173,3 +173,71 @@ test("notification form preserves saved secrets when fields are left blank", asy
   await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
   expect(saved).toBe(true);
 });
+
+/** A configured Sportarr whose lists either load or fail to. */
+async function savedSportarr(page: import("@playwright/test").Page, reachable: boolean) {
+  const tests: unknown[] = [];
+  await page.route("**/api/v1/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: admin });
+    }
+    if (path.endsWith("/auth/csrf")) {
+      return route.fulfill({ json: { token: "test-token" } });
+    }
+    if (path.endsWith("/sportarr/test")) {
+      tests.push(route.request().postDataJSON());
+      return reachable
+        ? route.fulfill({
+            json: {
+              version: "4.1.11.0",
+              rootFolders: [
+                { id: 1, path: "/media/other" },
+                { id: 3, path: "/media/sports" },
+              ],
+              qualityProfiles: [
+                { id: 2, name: "SD" },
+                { id: 4, name: "HD-1080p" },
+              ],
+            },
+          })
+        : route.fulfill({ status: 502, json: { code: "SPORTARR_UNREACHABLE" } });
+    }
+    return route.fulfill({
+      json: {
+        configured: true,
+        url: "http://sportarr:8989",
+        hasApiKey: true,
+        rootFolderId: 3,
+        qualityProfileId: 4,
+        rootFolderPath: "/media/sports",
+        qualityProfileName: "HD-1080p",
+      },
+    });
+  });
+  return tests;
+}
+
+test("saved Sportarr choices show their names as soon as the page opens", async ({ page }) => {
+  const tests = await savedSportarr(page, true);
+  await page.goto("/admin?tab=sportarr");
+  // Sportarr's lists are asked for with the saved URL and key, without pressing anything.
+  await expect(page.getByRole("status")).toContainText("Connection successful");
+  expect(tests).toEqual([{ url: "http://sportarr:8989" }]);
+  await expect(page.getByLabel("Library folder").locator("option:checked")).toHaveText(
+    "/media/sports",
+  );
+  await expect(page.getByLabel("Quality profile").locator("option:checked")).toHaveText("HD-1080p");
+});
+
+test("saved Sportarr choices keep their saved names when Sportarr is down", async ({ page }) => {
+  await savedSportarr(page, false);
+  await page.goto("/admin?tab=sportarr");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByLabel("Library folder").locator("option:checked")).toHaveText(
+    "/media/sports (saved)",
+  );
+  await expect(page.getByLabel("Quality profile").locator("option:checked")).toHaveText(
+    "HD-1080p (saved)",
+  );
+});

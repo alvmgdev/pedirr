@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -433,9 +433,13 @@ function Policies() {
   );
 }
 type SportarrConfig = {
+  configured: boolean;
   url: string;
   rootFolderId: number | null;
   qualityProfileId: number | null;
+  /** Names as they were when saved, for display while Sportarr's lists load. */
+  rootFolderPath: string | null;
+  qualityProfileName: string | null;
   hasApiKey: boolean;
 };
 type Connection = {
@@ -460,6 +464,18 @@ function SportarrSettings() {
       client.setQueryData(["sportarr-settings"], value);
     },
   });
+  // The saved settings only hold IDs; ask Sportarr for its folders and profiles right away, so
+  // the form shows their names without pressing "Test connection" first.
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (settings.data?.configured && !loaded.current) {
+      loaded.current = true;
+      test.mutate({ url: settings.data.url });
+    }
+  }, [settings.data, test]);
+  /** The saved choice while Sportarr's lists are not available: its saved name, if known. */
+  const saved = (name: string | null) =>
+    name ? t("savedName", { name }) : t(test.isPending ? "loading" : "currentSelection");
   const credentials = (form: HTMLFormElement) => {
     const data = new FormData(form);
     return {
@@ -514,10 +530,18 @@ function SportarrSettings() {
         )}
         <label>
           {t("rootFolder")}
-          <select name="rootFolderId" defaultValue={settings.data!.rootFolderId ?? ""} required>
+          <select
+            name="rootFolderId"
+            defaultValue={settings.data!.rootFolderId ?? ""}
+            // Remount when the lists arrive so the saved choice stays selected.
+            key={connection ? "loaded" : "saved"}
+            required
+          >
             <option value="">{t("selectOption")}</option>
             {!connection && settings.data!.rootFolderId && (
-              <option value={settings.data!.rootFolderId}>{t("currentSelection")}</option>
+              <option value={settings.data!.rootFolderId}>
+                {saved(settings.data!.rootFolderPath)}
+              </option>
             )}
             {connection?.rootFolders.map((root) => (
               <option key={root.id} value={root.id}>
@@ -531,11 +555,14 @@ function SportarrSettings() {
           <select
             name="qualityProfileId"
             defaultValue={settings.data!.qualityProfileId ?? ""}
+            key={connection ? "loaded" : "saved"}
             required
           >
             <option value="">{t("selectOption")}</option>
             {!connection && settings.data!.qualityProfileId && (
-              <option value={settings.data!.qualityProfileId}>{t("currentSelection")}</option>
+              <option value={settings.data!.qualityProfileId}>
+                {saved(settings.data!.qualityProfileName)}
+              </option>
             )}
             {connection?.qualityProfiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
