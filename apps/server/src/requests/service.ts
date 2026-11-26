@@ -2,7 +2,7 @@ import { Availability, AvailabilityTarget } from "./availability";
 import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./parts";
 import { refreshSubscribers } from "./subscribers";
 import { isExpired, quota, weeklyLimitReached } from "./quota";
-import { planAllows, planNotAllowed } from "../plans";
+import { planAllows, planNotAllowed, userAccess } from "../plans";
 import {
   BadRequestException,
   ConflictException,
@@ -135,13 +135,9 @@ export class RequestsService {
       include,
     });
   }
-  /** Whether the user's plan includes the target's league; administrators may request anything. */
+  /** Whether what the user may request includes the target's league. */
   private async allowed(userId: string, target: Awaited<ReturnType<RequestsService["target"]>>) {
-    const user = await this.infrastructure.db.user.findUnique({
-      where: { id: userId },
-      select: { role: true, plan: { select: { allContent: true, grants: true } } },
-    });
-    return user?.role === "ADMIN" || planAllows(user?.plan, target.scope.league);
+    return planAllows(await userAccess(this.infrastructure.db, userId), target.scope.league);
   }
   async lookup(input: RequestTarget, viewer: Viewer) {
     const target = await this.target(input);
@@ -263,15 +259,12 @@ export class RequestsService {
     return this.infrastructure.db.$transaction(async (tx) => {
       // Canonical upstream identity serializes aliases and overlapping season requests.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`hub:${target.kind}:${target.entity.id}`}))`;
-      const user = await tx.user.findUnique({
-        where: { id: viewer.id },
-        include: { plan: { include: { grants: true } } },
-      });
+      const user = await tx.user.findUnique({ where: { id: viewer.id } });
       if (!user?.active || isExpired(user)) {
         throw new ForbiddenException();
       }
       // Checked against the stored plan, so a plan change applies at once; following counts too.
-      if (user.role !== "ADMIN" && !planAllows(user.plan, target.scope.league)) {
+      if (!planAllows(await userAccess(tx, user.id), target.scope.league)) {
         throw planNotAllowed();
       }
       if (input.kind === "season" && !mayRequestSeasons(user)) {
