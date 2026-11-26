@@ -92,7 +92,6 @@ const schemas: Record<string, SchemaObject> = {
     locale: enumeration("en", "es"),
     timezone: string,
     autoApprove: nullable(boolean),
-    canRequestSeasons: boolean,
     weeklyRequestLimit: {
       ...nullable(integer),
       description: "New requests allowed in any seven days; null means no limit.",

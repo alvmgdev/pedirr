@@ -300,10 +300,7 @@ async function main() {
     const password = randomUUID();
     const passwordHash = await argon2.hash(password, passwordOptions);
     await db.user.create({ data: { email: "admin@example.invalid", passwordHash, role: "ADMIN" } });
-    // The season scenario below needs the per-user season grant.
-    await db.user.create({
-      data: { email: "user@example.invalid", passwordHash, locale: "es", canRequestSeasons: true },
-    });
+    await db.user.create({ data: { email: "user@example.invalid", passwordHash, locale: "es" } });
     const admin = (
       await call("auth/login", {
         method: "POST",
@@ -543,10 +540,17 @@ async function main() {
     assert.equal(smtp.messages.length, 7);
     // Exercise a complete season through the same authenticated API and native HTTP adapter.
     imported = false;
+    // Only administrators request whole seasons.
+    await call("requests", {
+      method: "POST",
+      cookie: user,
+      body: { kind: "season", identifier: season.id },
+      status: 403,
+    });
     const seasonRequest = (
       await call("requests", {
         method: "POST",
-        cookie: user,
+        cookie: admin,
         body: { kind: "season", identifier: season.id },
         status: 201,
       })

@@ -20,7 +20,7 @@ export type Moderation = { decision: "approve" | "reject"; version: number; reas
 const seasonRequestsNotAllowed = () =>
   new ForbiddenException({
     code: "SEASON_REQUESTS_NOT_ALLOWED",
-    message: "Your account can request single events only",
+    message: "Only administrators can request whole seasons",
   });
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 const include = {
