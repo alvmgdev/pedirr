@@ -273,6 +273,7 @@ export function CatalogDetail({ user }: { user: User }) {
         reason?: string;
         request?: { id: string; status: string };
         subscribed?: boolean;
+        visible?: boolean;
       }>(`/requests/lookup?kind=${kind}&identifier=${encodeURIComponent(id)}`),
     enabled: valid && mayRequest && ["season", "event"].includes(kind),
     staleTime: 15000,
@@ -371,7 +372,10 @@ export function CatalogDetail({ user }: { user: User }) {
             ) : availability.data?.state === "requested" ? (
               <>
                 <Status value={availability.data.request!.status} />
-                <Link to={"/requests/" + availability.data.request!.id}>{t("requested")}</Link>
+                {/* Requested elsewhere: its state shows, but it opens once followed. */}
+                {availability.data.visible !== false && (
+                  <Link to={"/requests/" + availability.data.request!.id}>{t("requested")}</Link>
+                )}
                 {availability.data.subscribed && !byParts ? (
                   <p>{t("alreadyFollowing")}</p>
                 ) : (

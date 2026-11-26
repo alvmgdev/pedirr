@@ -94,6 +94,8 @@ const en = {
   resellerPanelIntro: "Create your clients' accounts and choose what each can request.",
   clientAddressHint:
     "Give this address to your clients: they sign in there with the account you create.",
+  issueReadOnly:
+    "You can follow your clients' issues here; the platform answers and resolves them.",
   yourPackage: "Your package",
   noPackageYet: "You have no package yet, so there are no plans to give. Ask the platform.",
   clientsTitle: "Clients",
@@ -516,6 +518,8 @@ const es: Record<keyof typeof en, string> = {
   resellerPanelIntro: "Crea las cuentas de tus clientes y elige qué puede pedir cada uno.",
   clientAddressHint:
     "Pásales esta dirección a tus clientes: entran por ahí con la cuenta que les crees.",
+  issueReadOnly:
+    "Aquí puedes seguir las incidencias de tus clientes; las responde y resuelve la plataforma.",
   yourPackage: "Tu paquete",
   noPackageYet: "Aún no tienes paquete, así que no hay planes que dar. Pídelo a la plataforma.",
   clientsTitle: "Clientes",

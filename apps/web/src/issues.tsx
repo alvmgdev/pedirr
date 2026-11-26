@@ -164,6 +164,8 @@ export function IssueDetail({ user }: { user: User }) {
   }
   const issue = result.data!;
   const admin = user.role === "ADMIN";
+  // A reseller's administrator reads its clients' issues; the platform answers them.
+  const readOnly = !admin && !issue.mine;
   const finished = issue.status === "RESOLVED" || issue.status === "CLOSED";
   // Administrators manage the lifecycle; reporters close active issues and reopen finished ones.
   const actions: Issue["status"][] = admin
@@ -222,61 +224,72 @@ export function IssueDetail({ user }: { user: User }) {
               </li>
             ))}
           </ol>
-          <form
-            className="compact-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = event.currentTarget;
-              comment.mutate(String(new FormData(form).get("body")), {
-                onSuccess: () => form.reset(),
-              });
-            }}
-          >
-            <label>
-              {t("comment")}
-              <textarea name="body" required maxLength={2000} rows={4} />
-            </label>
-            <ErrorMessage error={comment.error} />
-            <button disabled={comment.isPending}>{t("addComment")}</button>
-          </form>
-        </section>
-        <section className="sidebar-note">
-          <h2>{t("status")}</h2>
-          <div className="issue-actions">
-            {actions.map((status) => (
-              <button
-                key={status}
-                className={status === "RESOLVED" ? "" : "quiet"}
-                disabled={change.isPending}
-                aria-expanded={status === action}
-                onClick={() =>
-                  status === "IN_PROGRESS"
-                    ? change.mutate({ status })
-                    : setAction(action === status ? null : status)
-                }
-              >
-                {t(label[status])}
-              </button>
-            ))}
-          </div>
-          {action && (
+          {readOnly ? (
+            <p className="muted">{t("issueReadOnly")}</p>
+          ) : (
             <form
               className="compact-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                const note = String(new FormData(event.currentTarget).get("note") ?? "").trim();
-                change.mutate({ status: action, ...(note ? { comment: note } : {}) });
+                const form = event.currentTarget;
+                comment.mutate(String(new FormData(form).get("body")), {
+                  onSuccess: () => form.reset(),
+                });
               }}
             >
               <label>
-                {t(action === "RESOLVED" ? "resolutionNote" : "optionalNote")}
-                <textarea name="note" required={action === "RESOLVED"} maxLength={2000} rows={3} />
+                {t("comment")}
+                <textarea name="body" required maxLength={2000} rows={4} />
               </label>
-              <button disabled={change.isPending}>{t(label[action])}</button>
+              <ErrorMessage error={comment.error} />
+              <button disabled={comment.isPending}>{t("addComment")}</button>
             </form>
           )}
-          <ErrorMessage error={change.error} />
         </section>
+        {!readOnly && (
+          <section className="sidebar-note">
+            <h2>{t("status")}</h2>
+            <div className="issue-actions">
+              {actions.map((status) => (
+                <button
+                  key={status}
+                  className={status === "RESOLVED" ? "" : "quiet"}
+                  disabled={change.isPending}
+                  aria-expanded={status === action}
+                  onClick={() =>
+                    status === "IN_PROGRESS"
+                      ? change.mutate({ status })
+                      : setAction(action === status ? null : status)
+                  }
+                >
+                  {t(label[status])}
+                </button>
+              ))}
+            </div>
+            {action && (
+              <form
+                className="compact-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const note = String(new FormData(event.currentTarget).get("note") ?? "").trim();
+                  change.mutate({ status: action, ...(note ? { comment: note } : {}) });
+                }}
+              >
+                <label>
+                  {t(action === "RESOLVED" ? "resolutionNote" : "optionalNote")}
+                  <textarea
+                    name="note"
+                    required={action === "RESOLVED"}
+                    maxLength={2000}
+                    rows={3}
+                  />
+                </label>
+                <button disabled={change.isPending}>{t(label[action])}</button>
+              </form>
+            )}
+            <ErrorMessage error={change.error} />
+          </section>
+        )}
       </div>
     </>
   );
