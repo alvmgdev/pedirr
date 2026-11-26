@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   Get,
   HttpException,
+  NotFoundException,
   Injectable,
   Patch,
   Post,
@@ -23,7 +24,7 @@ import * as argon2 from "argon2";
 import { Infrastructure } from "./infrastructure";
 import { required } from "./config";
 import { isExpired } from "./requests/quota";
-import { PLATFORM_TENANT } from "./tenants";
+import { EnvironmentRequest, PLATFORM_TENANT } from "./tenants";
 
 export const Public = () => SetMetadata("public", true);
 export const Admin = () => SetMetadata("admin", true);
@@ -38,6 +39,8 @@ export const publicUserSelect = {
   weeklyRequestLimit: true,
   expiresAt: true,
   plan: { select: { id: true, name: true, allContent: true } },
+  tenantId: true,
+  tenant: { select: { code: true, name: true } },
 } as const;
 export type Viewer = {
   id: string;
@@ -50,14 +53,21 @@ export type Viewer = {
   weeklyRequestLimit: number | null;
   expiresAt: Date | null;
   plan: { id: string; name: string; allContent: boolean } | null;
+  tenantId: string;
+  tenant: { code: string | null; name: string };
 };
+/** The environment a request addresses: the platform, or a reseller by its code. */
+export type Environment = { id: string; code: string | null; name: string; active: boolean };
+/** The platform needs no lookup: it always exists, is always active and has no code. */
+const PLATFORM: Environment = { id: PLATFORM_TENANT, code: null, name: "Pedirr", active: true };
 /**
  * Whole seasons can grow into hundreds of downloads, so only administrators request them; users
  * request single events.
  */
 export const mayRequestSeasons = (user: Pick<Viewer, "role">) =>
   user.role === "ADMIN" || user.role === "RESELLER";
-export type AuthRequest = Request & { viewer?: Viewer; sessionHash?: string };
+export type AuthRequest = Request &
+  EnvironmentRequest & { viewer?: Viewer; sessionHash?: string; tenant?: Environment };
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 export const passwordOptions = {
   type: argon2.argon2id,
@@ -96,11 +106,32 @@ export class AuthService {
   private readonly secret = required("SESSION_SECRET");
   readonly origin = new URL(required("APP_ORIGIN")).origin;
   readonly secure = this.origin.startsWith("https:");
+  /** The platform's session cookie, for the whole site. */
   readonly cookieName = this.secure ? "__Host-pedirr_session" : "pedirr_session";
+  // A reseller's session cookie only travels under /<code>/, so environments never share one
+  // and a browser can be signed in to several at once.
+  private readonly resellerCookieName = this.secure
+    ? "__Secure-pedirr_reseller_session"
+    : "pedirr_reseller_session";
   constructor(readonly infrastructure: Infrastructure) {
     if (this.secret.length < 32) {
       throw new Error("SESSION_SECRET must contain at least 32 characters");
     }
+  }
+  cookie(tenant: Environment = PLATFORM) {
+    return tenant.code
+      ? { name: this.resellerCookieName, path: `/${tenant.code}/` }
+      : { name: this.cookieName, path: "/" };
+  }
+  /** The platform without a code; a reseller by its code, or null when no reseller has it. */
+  async environment(code?: string): Promise<Environment | null> {
+    if (!code) {
+      return PLATFORM;
+    }
+    return this.infrastructure.db.tenant.findUnique({
+      where: { code },
+      select: { id: true, code: true, name: true, active: true },
+    });
   }
   csrf(sessionHash = "") {
     const nonce = randomBytes(24).toString("hex");
@@ -141,7 +172,8 @@ export class AuthService {
     }
   }
   async resolve(req: AuthRequest) {
-    const token: unknown = req.cookies?.[this.cookieName];
+    const tenant = req.tenant ?? PLATFORM;
+    const token: unknown = req.cookies?.[this.cookie(tenant).name];
     if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
       return;
     }
@@ -154,18 +186,25 @@ export class AuthService {
       !session ||
       session.expiresAt < new Date() ||
       !session.user.active ||
-      isExpired(session.user)
+      isExpired(session.user) ||
+      // A session only works in its account's environment, and not while a reseller is disabled.
+      session.user.tenantId !== tenant.id ||
+      !tenant.active
     ) {
       return;
     }
     req.viewer = session.user;
     req.sessionHash = sessionHash;
   }
-  async login(email: string, password: string, res: Response) {
+  async login(email: string, password: string, res: Response, tenant: Environment = PLATFORM) {
+    if (!tenant.active) {
+      throw new ForbiddenException({
+        code: "TENANT_DISABLED",
+        message: "This service is not available",
+      });
+    }
     const user = await this.infrastructure.db.user.findUnique({
-      where: {
-        tenantId_email: { tenantId: PLATFORM_TENANT, email: email.trim().toLowerCase() },
-      },
+      where: { tenantId_email: { tenantId: tenant.id, email: email.trim().toLowerCase() } },
     });
     // Keep unknown-account and wrong-password responses identical.
     const valid = user
@@ -189,11 +228,12 @@ export class AuthService {
     await this.infrastructure.db.session.create({
       data: { tokenHash: digest(token), userId: user.id, expiresAt },
     });
-    res.cookie(this.cookieName, token, {
+    const cookie = this.cookie(tenant);
+    res.cookie(cookie.name, token, {
       httpOnly: true,
       secure: this.secure,
       sameSite: "lax",
-      path: "/",
+      path: cookie.path,
       expires: expiresAt,
     });
     return this.infrastructure.db.user.findUniqueOrThrow({
@@ -212,6 +252,14 @@ export class SecurityGuard implements CanActivate {
   ) {}
   async canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest<AuthRequest>();
+    const tenant = await this.auth.environment(req.environment);
+    if (!tenant) {
+      throw new NotFoundException({
+        code: "TENANT_NOT_FOUND",
+        message: "This address does not belong to any service",
+      });
+    }
+    req.tenant = tenant;
     await this.auth.resolve(req);
     const targets = [context.getHandler(), context.getClass()];
     const isPublic = this.reflector.getAllAndOverride<boolean>("public", targets);
@@ -252,15 +300,22 @@ export class AuthController {
   }
   @Public()
   @Get("auth/config")
-  async config(@Res({ passthrough: true }) res: Response) {
+  async config(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response) {
     res.setHeader("Cache-Control", "no-store");
-    return { registrationEnabled: await this.auth.registrationEnabled() };
+    const tenant = req.tenant!;
+    // Resellers create their clients' accounts; self-registration is the platform's for now.
+    return tenant.code
+      ? {
+          registrationEnabled: false,
+          environment: { code: tenant.code, name: tenant.name, active: tenant.active },
+        }
+      : { registrationEnabled: await this.auth.registrationEnabled(), environment: null };
   }
   @Public()
   @Post("auth/register")
   async register(@Body() input: Credentials, @Req() req: AuthRequest) {
     await this.auth.rate(`register:${req.ip}`, 5, 3600);
-    if (!(await this.auth.registrationEnabled())) {
+    if (req.tenant!.code || !(await this.auth.registrationEnabled())) {
       throw new ForbiddenException({
         code: "REGISTRATION_CLOSED",
         message: "Registration is disabled",
@@ -290,14 +345,16 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.auth.rate(`login:${req.ip}`, 15, 900);
-    await this.auth.rate(`login-email:${digest(input.email.toLowerCase())}`, 10, 900);
-    return this.auth.login(input.email, input.password, res);
+    const tenant = req.tenant!;
+    await this.auth.rate(`login-email:${tenant.id}:${digest(input.email.toLowerCase())}`, 10, 900);
+    return this.auth.login(input.email, input.password, res, tenant);
   }
   @Post("auth/logout")
   async logout(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response) {
     await this.auth.infrastructure.db.session.deleteMany({ where: { tokenHash: req.sessionHash } });
-    res.clearCookie(this.auth.cookieName, {
-      path: "/",
+    const cookie = this.auth.cookie(req.tenant);
+    res.clearCookie(cookie.name, {
+      path: cookie.path,
       httpOnly: true,
       secure: this.auth.secure,
       sameSite: "lax",

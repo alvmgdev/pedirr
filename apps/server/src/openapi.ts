@@ -104,6 +104,11 @@ const schemas: Record<string, SchemaObject> = {
       ...nullable(object({ id: uuid, name: string, allContent: boolean })),
       description: "What the user may request; null means everything.",
     },
+    tenantId: string,
+    tenant: {
+      ...object({ code: nullable(string), name: string }),
+      description: "The account's environment: the platform (no code) or a reseller.",
+    },
   }),
   Quota: object({
     limit: { ...nullable(integer), description: "Null when the viewer has no weekly limit." },
@@ -349,7 +354,13 @@ const responses: Record<string, Schema> = {
     worker: enumeration("ok"),
   }),
   "GET auth/csrf": ref("CsrfToken"),
-  "GET auth/config": object({ registrationEnabled: boolean }),
+  "GET auth/config": object({
+    registrationEnabled: boolean,
+    environment: {
+      ...nullable(object({ code: string, name: string, active: boolean })),
+      description: "The reseller addressed by /<code>/; null at the platform.",
+    },
+  }),
   "POST auth/register": ref("PublicUser"),
   "POST auth/login": ref("PublicUser"),
   "POST auth/logout": ref("Ok"),
@@ -420,7 +431,7 @@ export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAP
     },
   };
   document.info.description +=
-    "\n\nWrite requests require the exact configured Origin and x-csrf-token from GET /api/v1/auth/csrf. Refresh the token after login. Administrators manage settings and approvals. Errors may use a stable code or Nest validation messages; clients must also handle the HTTP status. Dates use ISO 8601; page numbers start at 1. Secrets are write-only.";
+    "\n\nA reseller's API is the same, served under /<code>/api/v1 with its own session cookie; an unknown code answers TENANT_NOT_FOUND. Write requests require the exact configured Origin and x-csrf-token from GET /api/v1/auth/csrf. Refresh the token after login. Administrators manage settings and approvals. Errors may use a stable code or Nest validation messages; clients must also handle the HTTP status. Dates use ISO 8601; page numbers start at 1. Secrets are write-only.";
   for (const [path, item] of Object.entries(document.paths)) {
     for (const method of ["get", "post", "put", "patch", "delete"] as const) {
       const operation: OperationObject | undefined = item?.[method];

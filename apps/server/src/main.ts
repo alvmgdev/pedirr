@@ -12,6 +12,7 @@ import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { appVersion, port, required, trustProxy } from "./config";
 import { logger } from "./infrastructure";
+import { environmentPrefix } from "./tenants";
 
 async function bootstrap() {
   required("DATABASE_URL");
@@ -36,6 +37,8 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  // Resellers' API lives under /<code>/api/...; this keeps the code and continues as /api/...
+  app.use(environmentPrefix);
   app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
