@@ -167,3 +167,96 @@ test("a reseller can be disabled and its administrator given a new password", as
     page.getByRole("link", { name: /Fight Club TV.*\/k7x2p\/.*Disabled/ }),
   ).toBeVisible();
 });
+
+test("the platform administrator sees every account with its environment", async ({ page }) => {
+  const clientId = "66666666-6666-4666-8666-666666666666";
+  const reseller = {
+    id: resellerId,
+    code: "k7x2p",
+    name: "Fight Club TV",
+    active: true,
+    maxUsers: null,
+    package: { id: packageId, name: "Starter" },
+    admin: { id: "owner", email: "owner@example.invalid" },
+    clients: 1,
+  };
+  const platformUser = {
+    ...admin,
+    id: "platform-user",
+    role: "USER",
+    email: "fan@example.invalid",
+  };
+  const resellerClient = {
+    ...admin,
+    id: clientId,
+    role: "USER",
+    email: "client@example.invalid",
+    tenantId: resellerId,
+    tenant: { code: "k7x2p", name: "Fight Club TV" },
+  };
+  const listed: string[] = [];
+  const writes: Record<string, unknown>[] = [];
+  await page.route("**/api/v1/**", (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname.replace("/api/v1", "");
+    const json = (body: unknown) => route.fulfill({ json: body });
+    if (path === "/auth/me") {
+      return json(admin);
+    }
+    if (path === "/auth/csrf") {
+      return json({ token: "fixture-token" });
+    }
+    if (path === "/admin/resellers") {
+      return json([reseller]);
+    }
+    if (path === `/admin/packages/${packageId}`) {
+      return json({
+        id: packageId,
+        name: "Starter",
+        plans: [{ id: planId, name: "Fights" }],
+        resellers: 1,
+      });
+    }
+    if (path === "/admin/plans") {
+      return json([...plans, { ...plans[0], id: "other", name: "Other" }]);
+    }
+    if (path === "/admin/users") {
+      listed.push(url.searchParams.get("tenant") ?? "");
+      const tenant = url.searchParams.get("tenant");
+      const items = [platformUser, resellerClient].filter(
+        (user) => !tenant || user.tenantId === tenant,
+      );
+      return json({ items, total: items.length });
+    }
+    if (path === `/admin/users/${clientId}`) {
+      if (request.method() === "PATCH") {
+        writes.push(request.postDataJSON());
+      }
+      return json(resellerClient);
+    }
+    return json({});
+  });
+  await page.goto("/admin?tab=users");
+  await expect(page.getByRole("link", { name: /fan@example.invalid.*Platform/ })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /client@example.invalid.*Fight Club TV/ }),
+  ).toBeVisible();
+  await page.getByLabel("Environment").selectOption({ label: "Fight Club TV" });
+  await expect(page.getByRole("link", { name: /fan@example.invalid/ })).toHaveCount(0);
+  expect(listed.at(-1)).toBe(resellerId);
+
+  await page.getByRole("link", { name: /client@example.invalid/ }).click();
+  // A reseller's client keeps its role and only gets plans of the reseller's package.
+  await expect(page.getByRole("combobox", { name: "Role" })).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/admin/users/${clientId}$`));
+  await expect(page.locator(".account-facts")).toContainText("Fight Club TV");
+  const plan = page.getByRole("combobox", { name: "Plan" });
+  await expect(plan).toHaveAccessibleDescription("Plans of the reseller's package (Starter).");
+  await expect(plan.locator("option")).toHaveText(["No plan: cannot request anything", "Fights"]);
+  await plan.selectOption({ label: "Fights" });
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
+  expect(writes[0]).toMatchObject({ planId });
+  expect(writes[0]).not.toHaveProperty("role");
+});

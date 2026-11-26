@@ -8,6 +8,8 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
+  tenantId: "platform",
+  tenant: { code: null, name: "Pedirr" },
 };
 
 async function seasonPage(page: Page, user: object) {

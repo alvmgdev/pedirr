@@ -39,6 +39,8 @@ export function ErrorMessage({ error }: { error: unknown }) {
     TENANT_NOT_FOUND: "unknownEnvironment",
     PLAN_NOT_ALLOWED: "notInPlan",
     PLAN_IN_PACKAGE: "planInPackageError",
+    PLAN_NOT_IN_PACKAGE: "planNotInPackage",
+    ROLE_NOT_ALLOWED: "roleNotAllowed",
     PACKAGE_NOT_FOUND: "packageNotFound",
     PACKAGE_IN_USE: "packageInUseError",
     PACKAGE_NAME_TAKEN: "packageNameTaken",

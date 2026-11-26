@@ -6,7 +6,7 @@ import { api, client, isExpired, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
 import { endOfDay, OptionalLimit, toDay } from "./fields";
 import { Plans, usePlans } from "./plans";
-import { Packages, Resellers } from "./resellers";
+import { Packages, Resellers, useResellerPlans, useResellers } from "./resellers";
 
 function Toggle({ name, checked }: { name: string; checked: boolean }) {
   const { t } = useTranslation();
@@ -18,9 +18,17 @@ function Toggle({ name, checked }: { name: string; checked: boolean }) {
   );
 }
 /** Which plan the user is on; "No plan" lets them request everything. */
+/**
+ * Which plan the user is on. At the platform, "No plan" lets them request everything; a
+ * reseller's clients only get plans of the reseller's package, and without one request nothing.
+ */
 function PlanSelect({ user }: { user?: User }) {
   const { t } = useTranslation();
-  const plans = usePlans();
+  const reseller = user?.tenant.code ? user.tenantId : undefined;
+  const platformPlans = usePlans(!reseller);
+  const resellerPlans = useResellerPlans(reseller);
+  const pending = reseller ? resellerPlans.pending : platformPlans.isPending;
+  const options = reseller ? resellerPlans.plans : (platformPlans.data ?? []);
   return (
     <label>
       {t("plan")}
@@ -28,20 +36,24 @@ function PlanSelect({ user }: { user?: User }) {
         name="planId"
         defaultValue={user?.plan?.id ?? ""}
         aria-describedby="plan-hint"
-        disabled={plans.isPending}
-        key={plans.isPending ? "loading" : "ready"}
+        disabled={pending}
+        key={pending ? "loading" : "ready"}
       >
-        <option value="">{t("noPlan")}</option>
-        {plans.data?.map((plan) => (
+        <option value="">{t(reseller ? "noPlanReseller" : "noPlan")}</option>
+        {options.map((plan) => (
           <option key={plan.id} value={plan.id}>
             {plan.name}
           </option>
         ))}
       </select>
       <span className="muted field-hint" id="plan-hint">
-        {t("planHint")}
+        {reseller
+          ? resellerPlans.packageName
+            ? t("planHintReseller", { name: resellerPlans.packageName })
+            : t("resellerWithoutPackage")
+          : t("planHint")}
       </span>
-      <ErrorMessage error={plans.error} />
+      <ErrorMessage error={reseller ? resellerPlans.error : platformPlans.error} />
     </label>
   );
 }
@@ -164,12 +176,19 @@ export function Administration({ user }: { user: User }) {
     </>
   );
 }
+/** Where an account lives: the platform or a reseller's name. */
+const environmentName = (user: User, platform: string) =>
+  user.tenant.code ? user.tenant.name : platform;
+
 function Users() {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
+  const [tenant, setTenant] = useState("");
+  const resellers = useResellers();
+  const path = `/admin/users?page=${page}${tenant ? `&tenant=${tenant}` : ""}`;
   const users = useQuery({
-    queryKey: ["users", page],
-    queryFn: () => api<{ items: User[]; total: number }>(`/admin/users?page=${page}`),
+    queryKey: ["users", page, tenant],
+    queryFn: () => api<{ items: User[]; total: number }>(path),
   });
   return (
     <>
@@ -179,6 +198,24 @@ function Users() {
           {t("createUser")}
         </Link>
       </div>
+      <label className="sort-control">
+        {t("environment")}
+        <select
+          value={tenant}
+          onChange={(event) => {
+            setTenant(event.currentTarget.value);
+            setPage(1);
+          }}
+        >
+          <option value="">{t("allEnvironments")}</option>
+          <option value="platform">{t("platform")}</option>
+          {resellers.data?.map((reseller) => (
+            <option key={reseller.id} value={reseller.id}>
+              {reseller.name}
+            </option>
+          ))}
+        </select>
+      </label>
       {users.isPending ? (
         <Loading />
       ) : users.error ? (
@@ -186,10 +223,11 @@ function Users() {
       ) : (
         <div className="user-list">
           {users.data?.items.map((user) => (
-            <Link className="user-row" key={user.id} to={`/admin/users/${user.id}`}>
+            <Link className="user-row account-row" key={user.id} to={`/admin/users/${user.id}`}>
               <strong>{user.email}</strong>
+              <span>{environmentName(user, t("platform"))}</span>
               <span>
-                {user.role === "ADMIN" ? t("ADMIN") : (user.plan?.name ?? t("noPlanShort"))}
+                {user.role === "USER" ? (user.plan?.name ?? t("noPlanShort")) : t(user.role)}
               </span>
               <span>{t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active")}</span>
               <span>{t("editUser")}</span>
@@ -203,6 +241,7 @@ function Users() {
 }
 function UserEditor({ user }: { user: User }) {
   const { t } = useTranslation();
+  const reseller = user.tenant.code !== null;
   const update = useMutation({
     mutationFn: (body: unknown) => api(`/admin/users/${user.id}`, "PATCH", body),
     onSuccess: () => {
@@ -219,7 +258,8 @@ function UserEditor({ user }: { user: User }) {
         const data = new FormData(event.currentTarget);
         const approval = data.get("autoApprove");
         update.mutate({
-          role: data.get("role"),
+          // A reseller's accounts keep their role.
+          ...(reseller ? {} : { role: data.get("role") }),
           active: data.has("active"),
           autoApprove: approval === "inherit" ? null : approval === "true",
           ...limits(data),
@@ -227,17 +267,31 @@ function UserEditor({ user }: { user: User }) {
       }}
     >
       <p>{user.email}</p>
+      <dl className="account-facts">
+        <div>
+          <dt>{t("environment")}</dt>
+          <dd>{environmentName(user, t("platform"))}</dd>
+        </div>
+        {reseller && (
+          <div>
+            <dt>{t("role")}</dt>
+            <dd>{t(user.role)}</dd>
+          </div>
+        )}
+      </dl>
       <div className="user-controls">
-        <label>
-          {t("role")}
-          <select name="role" defaultValue={user.role} aria-describedby="role-hint">
-            <option value="USER">{t("USER")}</option>
-            <option value="ADMIN">{t("ADMIN")}</option>
-          </select>
-          <span className="muted field-hint" id="role-hint">
-            {t("roleHint")}
-          </span>
-        </label>
+        {!reseller && (
+          <label>
+            {t("role")}
+            <select name="role" defaultValue={user.role} aria-describedby="role-hint">
+              <option value="USER">{t("USER")}</option>
+              <option value="ADMIN">{t("ADMIN")}</option>
+            </select>
+            <span className="muted field-hint" id="role-hint">
+              {t("roleHint")}
+            </span>
+          </label>
+        )}
         <label>
           {t("autoApprove")}
           <select

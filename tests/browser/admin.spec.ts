@@ -7,6 +7,8 @@ const admin = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
+  tenantId: "platform",
+  tenant: { code: null, name: "Pedirr" },
 };
 test("administrator tests Sportarr, selects defaults and saves without redisplaying the key", async ({
   page,
@@ -90,7 +92,7 @@ test("administrator can set policies and sees protection for the last administra
         policy = route.request().postDataJSON();
       }
       body = policy;
-    } else if (path.endsWith("/admin/plans")) {
+    } else if (path.endsWith("/admin/plans") || path.endsWith("/admin/resellers")) {
       body = [];
     } else if (path.endsWith("/admin/users")) {
       body = { items: [admin], total: 1 };

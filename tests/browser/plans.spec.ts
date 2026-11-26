@@ -9,6 +9,8 @@ const admin = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
+  tenantId: "platform",
+  tenant: { code: null, name: "Pedirr" },
   weeklyRequestLimit: null,
   expiresAt: null,
   plan: null,
@@ -83,6 +85,9 @@ async function adminApi(page: Page, plans: Record<string, unknown>[] = []) {
     }
     if (path === "/admin/users") {
       return json({ items: [user], total: 1 });
+    }
+    if (path === "/admin/resellers") {
+      return json([]);
     }
     if (path === `/admin/users/${userId}`) {
       if (method === "PATCH") {

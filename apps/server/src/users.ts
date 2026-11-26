@@ -19,6 +19,7 @@ import {
   IsIn,
   IsInt,
   IsUUID,
+  Matches,
   Max,
   Min,
   ValidateIf,
@@ -106,6 +107,13 @@ export class UserPage {
   @Min(1)
   @Max(1000000)
   page = 1;
+  @ApiProperty({
+    required: false,
+    description: 'Only accounts of this environment: "platform" or a reseller\'s ID.',
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== "")
+  @Matches(/^(platform|[0-9a-f-]{36})$/)
+  tenant?: string;
 }
 export class AccessPolicy {
   @ApiProperty() @IsBoolean() registrationEnabled!: boolean;
@@ -116,14 +124,14 @@ export class AccessPolicy {
 @Injectable()
 export class UsersService {
   constructor(private readonly infrastructure: Infrastructure) {}
-  // The platform administrator manages the platform's accounts; resellers manage their own.
-  async list(page: number) {
-    const where = { tenantId: PLATFORM_TENANT };
+  /** Every account, or those of one environment, with the environment each belongs to. */
+  async list(page: number, tenant?: string) {
+    const where = tenant ? { tenantId: tenant } : {};
     const [items, total] = await this.infrastructure.db.$transaction([
       this.infrastructure.db.user.findMany({
         where,
         select: publicUserSelect,
-        orderBy: { id: "asc" },
+        orderBy: [{ email: "asc" }, { id: "asc" }],
         skip: (page - 1) * 50,
         take: 50,
       }),
@@ -132,8 +140,8 @@ export class UsersService {
     return { items, total, page, pageSize: 50 };
   }
   async detail(id: string) {
-    const user = await this.infrastructure.db.user.findFirst({
-      where: { id, tenantId: PLATFORM_TENANT },
+    const user = await this.infrastructure.db.user.findUnique({
+      where: { id },
       select: publicUserSelect,
     });
     if (!user) {
@@ -168,9 +176,31 @@ export class UsersService {
     return this.infrastructure.db.$transaction(async (tx) => {
       // Serialize administrator changes with each other and initial provisioning.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(192837)`;
-      const user = await tx.user.findFirst({ where: { id, tenantId: PLATFORM_TENANT } });
+      const user = await tx.user.findUnique({
+        where: { id },
+        include: {
+          tenant: { select: { package: { select: { plans: { select: { id: true } } } } } },
+        },
+      });
       if (!user) {
         throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
+      }
+      if (user.tenantId !== PLATFORM_TENANT) {
+        // Platform administrators only exist at the platform; reseller accounts keep their role.
+        if (input.role !== undefined && input.role !== user.role) {
+          throw new BadRequestException({
+            code: "ROLE_NOT_ALLOWED",
+            message: "A reseller's accounts keep their role",
+          });
+        }
+        // A reseller's clients get plans of the reseller's package.
+        const plans = user.tenant.package?.plans ?? [];
+        if (input.planId && !plans.some((plan) => plan.id === input.planId)) {
+          throw new BadRequestException({
+            code: "PLAN_NOT_IN_PACKAGE",
+            message: "Choose a plan of the reseller's package",
+          });
+        }
       }
       if (
         user.active &&
@@ -238,7 +268,7 @@ export class UsersService {
 export class UsersController {
   constructor(private readonly users: UsersService) {}
   @Get("users") list(@Query() query: UserPage) {
-    return this.users.list(query.page);
+    return this.users.list(query.page, query.tenant || undefined);
   }
   @Get("users/:id") detail(@Param("id", ParseUUIDPipe) id: string) {
     return this.users.detail(id);
