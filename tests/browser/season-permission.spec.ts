@@ -8,7 +8,6 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: false,
 };
 
 async function seasonPage(page: Page, user: object) {
@@ -33,24 +32,23 @@ async function seasonPage(page: Page, user: object) {
   return lookups;
 }
 
-test("users without the season grant are offered single events only", async ({ page }) => {
+test("users browse seasons but request their events one by one", async ({ page }) => {
   const lookups = await seasonPage(page, viewer);
-  await expect(page.getByRole("status")).toContainText("Your account can request single events");
+  await expect(page.getByRole("status")).toContainText(
+    "Whole seasons are requested by administrators",
+  );
   await expect(page.getByRole("button", { name: "Request this season" })).toHaveCount(0);
   expect(lookups).toEqual([]);
 });
 
-test("granted users and administrators can request whole seasons", async ({ page }) => {
-  await seasonPage(page, { ...viewer, canRequestSeasons: true });
-  await expect(page.getByRole("button", { name: "Request this season" })).toBeVisible();
-  await page.unrouteAll({ behavior: "ignoreErrors" });
+test("administrators can request whole seasons", async ({ page }) => {
   await seasonPage(page, { ...viewer, role: "ADMIN" });
   await expect(page.getByRole("button", { name: "Request this season" })).toBeVisible();
 });
 
-test("administrators choose the season grant when creating and editing users", async ({ page }) => {
-  const writes: { method: string; body: unknown }[] = [];
-  const created = { ...viewer, id: "11111111-1111-4111-8111-111111111111" };
+test("the user form explains that only administrators request seasons", async ({ page }) => {
+  const writes: unknown[] = [];
+  const edited = { ...viewer, id: "11111111-1111-4111-8111-111111111111" };
   await page.route("**/api/v1/**", (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -61,28 +59,17 @@ test("administrators choose the season grant when creating and editing users", a
       return route.fulfill({ json: { token: "fixture-token" } });
     }
     if (request.method() !== "GET") {
-      writes.push({ method: request.method(), body: request.postDataJSON() });
-      Object.assign(created, request.postDataJSON());
+      writes.push(request.postDataJSON());
     }
-    if (path.endsWith("/admin/users") || path.endsWith(`/admin/users/${created.id}`)) {
-      return route.fulfill({ json: created });
-    }
-    return route.fulfill({ json: {} });
+    return route.fulfill({ json: path.endsWith(`/admin/users/${edited.id}`) ? edited : {} });
   });
-  await page.goto("/admin/users/new");
-  const grant = page.getByLabel("Can request whole seasons");
-  await expect(grant).not.toBeChecked();
-  await page.getByLabel("Email", { exact: true }).fill(created.email);
-  await page.getByLabel("Password", { exact: true }).fill("fixture-long-password");
-  await grant.check();
-  await page.getByRole("button", { name: "Create user" }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/users/${created.id}$`));
-  expect(writes[0]).toMatchObject({ method: "POST", body: { canRequestSeasons: true } });
-
-  const edit = page.getByLabel("Can request whole seasons");
-  await expect(edit).toBeChecked();
-  await edit.uncheck();
+  await page.goto(`/admin/users/${edited.id}`);
+  const role = page.getByRole("combobox", { name: "Role" });
+  await expect(role).toHaveAccessibleDescription(
+    "Users request single events. Administrators can also request whole seasons.",
+  );
+  await expect(page.getByLabel("Can request whole seasons")).toHaveCount(0);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
-  expect(writes[1]).toMatchObject({ method: "PATCH", body: { canRequestSeasons: false } });
+  expect(writes[0]).not.toHaveProperty("canRequestSeasons");
 });

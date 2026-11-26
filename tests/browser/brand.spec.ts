@@ -8,7 +8,6 @@ const user = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: false,
 };
 
 // The brand mark must span the wordmark's ascender height and sit on its baseline.

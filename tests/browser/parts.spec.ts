@@ -8,7 +8,6 @@ const admin = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: true,
 };
 const event = {
   id: "ufc-1",
