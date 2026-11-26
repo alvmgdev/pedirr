@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Infrastructure, logger } from "../infrastructure";
-import { appVersion } from "../config";
+import { appVersion, hubBudget } from "../config";
 import {
   EventFilters,
   MetadataItem,
@@ -82,10 +82,7 @@ export class HubProvider extends MetadataProvider {
   private readonly budget: number;
   constructor(private readonly infrastructure: Infrastructure) {
     super();
-    this.budget = Number(process.env.HUB_REQUESTS_PER_MINUTE ?? 20);
-    if (!Number.isSafeInteger(this.budget) || this.budget < 1 || this.budget > 1000) {
-      throw new Error("Invalid HUB_REQUESTS_PER_MINUTE");
-    }
+    this.budget = hubBudget();
   }
   private unavailable(seconds: number, reason = "upstream") {
     return new ServiceUnavailableException({

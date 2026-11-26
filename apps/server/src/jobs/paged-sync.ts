@@ -1,72 +1,89 @@
 import { Queue } from "bullmq";
+import { Prisma } from "@prisma/client";
+import { hubBudget } from "../config";
 import { Infrastructure } from "../infrastructure";
 import { MetadataItem, MetadataPage } from "../metadata/provider";
 
 /** Background copies use at most this share of the Hub budget, leaving the rest to people. */
 const BACKGROUND_SHARE = 0.3;
 const LOCK_SECONDS = 7200;
+/** One pace for every background copy, so copies running at once never add up past the share. */
+const PACE = "pedirr:index:pace";
+
+export const text = (value: unknown) => (typeof value === "string" && value !== "" ? value : null);
 
 /**
- * Pause between pages of a background copy: with the default budget of 20 calls a minute, one
- * call every 10 seconds.
+ * Pause between background pages: with the default budget of 20 calls a minute, one call every
+ * 10 seconds.
  */
-export function backgroundDelayMs(budget = Number(process.env.HUB_REQUESTS_PER_MINUTE ?? 20)) {
+export function backgroundDelayMs(budget = hubBudget()) {
   const share = Math.max(1, Math.floor(budget * BACKGROUND_SHARE));
   return Math.max(3000, Math.ceil(60000 / share));
 }
 
 export type PagedJob = { page?: number; startedAt?: number };
-export type PagedRun<T extends PagedJob> = {
+type PagedRun = {
   /** Queue job name. */
   name: string;
   /** Distinguishes runs sharing a job name; used for the lock and job IDs. */
   key: string;
-  /** What every page of a run needs (such as a date window), fixed when the run starts. */
-  start?: (now: number) => Partial<T>;
-  fetch: (page: number, job: T) => Promise<MetadataPage>;
-  store: (items: MetadataItem[], syncedAt: Date) => Promise<unknown>;
+  fetch: (page: number, startedAt: number) => Promise<MetadataPage>;
+  /** The write for one item; a page's writes run in one transaction. */
+  row: (item: MetadataItem, syncedAt: Date) => Prisma.PrismaPromise<unknown>;
   /** Runs after the last page, with the run's start, e.g. to remove what was not seen again. */
-  finish: (startedAt: Date, job: T, now: number) => Promise<Record<string, unknown>>;
+  finish: (startedAt: Date, now: number) => Promise<Record<string, unknown>>;
 };
 
 /**
- * Copies one page from Hub and queues the next after a pause, so a copy never holds the worker
- * for long. A run starts without a page and takes a lock: overlapping runs of the same key never
- * interleave, and a page of a superseded run stops. Rows are stamped with the time they were
- * written, so cleanup at the end only removes rows nobody wrote since the run began.
+ * Copies one page from Hub and queues the next, so a copy never holds the worker for long. A run
+ * starts without a page and takes a lock: overlapping runs of the same key never interleave, and
+ * a page of a superseded run stops. Every copy waits for the shared pace before calling Hub. Rows
+ * are stamped with the time they were written, so cleanup at the end only removes rows nobody
+ * wrote since the run began.
  */
 export async function pagedSync<T extends PagedJob>(
   infrastructure: Infrastructure,
   queue: Queue,
-  run: PagedRun<T>,
-  input: T,
+  run: PagedRun,
+  job: T,
   now = Date.now(),
 ) {
   const redis = infrastructure.redis;
   const lock = `pedirr:index:${run.key}`;
-  let job = input;
-  if (job.page === undefined || job.startedAt === undefined) {
-    job = { ...job, ...run.start?.(now), page: 1, startedAt: now };
-    if (!(await redis.set(lock, String(now), "EX", LOCK_SECONDS, "NX"))) {
+  let { page, startedAt } = job;
+  if (page === undefined || startedAt === undefined) {
+    page = 1;
+    startedAt = now;
+    if (!(await redis.set(lock, String(startedAt), "EX", LOCK_SECONDS, "NX"))) {
       return { skipped: "running" as const };
     }
-  } else if ((await redis.get(lock)) !== String(job.startedAt)) {
+  } else if ((await redis.get(lock)) !== String(startedAt)) {
     return { skipped: "superseded" as const };
   }
   await redis.expire(lock, LOCK_SECONDS);
-  const page = job.page!;
-  const result = await run.fetch(page, job);
-  await run.store(result.items, new Date(now));
+  const current = { ...job, page, startedAt };
+  const delay = backgroundDelayMs();
+  if (!(await redis.set(PACE, "1", "PX", delay, "NX"))) {
+    const wait = Math.max(1, await redis.pttl(PACE));
+    await queue.add(run.name, current, {
+      jobId: `${run.name}-${run.key}-${startedAt}-${page}-${now}`,
+      delay: wait,
+    });
+    return { page, waiting: wait };
+  }
+  const result = await run.fetch(page, startedAt);
+  const syncedAt = new Date(now);
+  await infrastructure.db.$transaction(result.items.map((item) => run.row(item, syncedAt)));
   if (result.page < result.totalPages) {
     await queue.add(
       run.name,
-      { ...job, page: page + 1 },
-      { jobId: `${run.name}-${run.key}-${job.startedAt}-${page + 1}`, delay: backgroundDelayMs() },
+      { ...current, page: page + 1 },
+      { jobId: `${run.name}-${run.key}-${startedAt}-${page + 1}`, delay },
     );
     return { page, next: page + 1 };
   }
   // Only a complete run cleans up; an interrupted one leaves the copy as it was.
-  const finished = await run.finish(new Date(job.startedAt!), job, now);
+  const finished = await run.finish(new Date(startedAt), now);
   await redis.del(lock);
   return { page, done: true as const, ...finished };
 }

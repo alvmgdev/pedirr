@@ -50,3 +50,12 @@ test("the reported version is the package version", () => {
   assert.equal(appVersion, require("../package.json").version);
   assert.match(appVersion, /^\d+\.\d+\.\d+(-[\w.]+)?$/);
 });
+
+test("the Hub budget defaults to 20 calls a minute and rejects nonsense", () => {
+  const { hubBudget } = require("../dist/config");
+  assert.equal(hubBudget(undefined), 20);
+  assert.equal(hubBudget("60"), 60);
+  for (const value of ["0", "1001", "1.5", "lots"]) {
+    assert.throws(() => hubBudget(value), /HUB_REQUESTS_PER_MINUTE/);
+  }
+});
