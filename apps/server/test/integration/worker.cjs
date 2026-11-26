@@ -368,6 +368,11 @@ async function main() {
     });
     assert.equal(saved.body.hasApiKey, true);
     assert.equal(saved.body.apiKey, undefined);
+    // The names are kept so the form can show them while Sportarr's lists load.
+    assert.deepEqual(
+      [saved.body.rootFolderPath, saved.body.qualityProfileName],
+      ["/sports", "Fixture profile"],
+    );
     assert.ok(
       !JSON.stringify((await db.setting.findUnique({ where: { key: "sportarr" } })).value).includes(
         "fixture-key",
