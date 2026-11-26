@@ -102,7 +102,21 @@ export type User = {
   timezone: string;
   autoApprove: boolean | null;
   canRequestSeasons: boolean;
+  /** New requests allowed in any seven days; null means no limit. */
+  weeklyRequestLimit: number | null;
+  /** When the account stops working; null means never. */
+  expiresAt: string | null;
 };
+/** The viewer's weekly limit and what is left of it; `limit` is null without a limit. */
+export type Quota = {
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string | null;
+};
+/** Limits and expiration apply to users only. */
+export const isExpired = (user: Pick<User, "role" | "expiresAt">) =>
+  user.role === "USER" && user.expiresAt !== null && Date.parse(user.expiresAt) <= Date.now();
 /** Administrators may always request whole seasons; other users need the grant. */
 export const mayRequestSeasons = (user: Pick<User, "role" | "canRequestSeasons">) =>
   user.role === "ADMIN" || user.canRequestSeasons;
