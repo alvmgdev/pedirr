@@ -186,7 +186,8 @@ const en = {
   rootFolder: "Library folder",
   qualityProfile: "Quality profile",
   selectOption: "Choose an option",
-  currentSelection: "Saved selection",
+  currentSelection: "Saved choice (Sportarr is not reachable to show its name)",
+  savedName: "{{name}} (saved)",
   sportarrHelp:
     "Test your connection to select a library folder and quality profile. Existing league settings are preserved.",
   emailEnabled: "Enable email notifications",
@@ -593,7 +594,8 @@ const es: Record<keyof typeof en, string> = {
   rootFolder: "Carpeta de biblioteca",
   qualityProfile: "Perfil de calidad",
   selectOption: "Elige una opción",
-  currentSelection: "Selección guardada",
+  currentSelection: "Elección guardada (Sportarr no responde para mostrar su nombre)",
+  savedName: "{{name}} (guardado)",
   sportarrHelp:
     "Prueba la conexión para elegir carpeta y perfil de calidad. Se conservan los ajustes de las ligas existentes.",
   emailEnabled: "Activar avisos por email",
