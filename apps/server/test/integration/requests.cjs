@@ -15,18 +15,14 @@ async function main() {
       stdio: "ignore",
     });
     const users = await Promise.all(
-      ["ADMIN", "USER", "USER"].map((role, index) =>
+      ["ADMIN", "USER", "USER", "ADMIN"].map((role, index) =>
         db.user.create({
-          data: {
-            email: `${index}@example.invalid`,
-            passwordHash: "unused",
-            role,
-            canRequestSeasons: true,
-          },
+          data: { email: `${index}@example.invalid`, passwordHash: "unused", role },
         }),
       ),
     );
-    const [admin, user, other] = users;
+    // Only administrators request whole seasons.
+    const [admin, user, other, colleague] = users;
     const league = {
       id: "league-uuid",
       name: "Example League",
@@ -53,8 +49,8 @@ async function main() {
       check: async () => ({ state: "missing" }),
     });
     const results = await Promise.all([
-      service.create({ kind: "season", identifier: "season-uuid" }, user),
-      service.create({ kind: "season", identifier: "alias" }, other),
+      service.create({ kind: "season", identifier: "season-uuid" }, admin),
+      service.create({ kind: "season", identifier: "alias" }, colleague),
     ]);
     assert.equal(results.filter((result) => result.created).length, 1);
     assert.equal(results[0].request.id, results[1].request.id);
@@ -110,14 +106,13 @@ async function main() {
     assert.equal(duplicate.created, false);
     assert.equal(duplicate.request.status, "REJECTED");
     const mine = await service.list(other, 1, undefined, true);
-    assert.equal(mine.total, 2);
+    assert.equal(mine.total, 1);
     assert.ok(mine.items.every((item) => item.subscribed && !("subscribers" in item)));
     // Force an outbox failure and verify the request and subscription roll back.
-    // Season requests need the grant; the stored user wins over a stale session copy.
+    // Users request single events only; the stored role wins over a stale session copy.
     const eventsOnly = await db.user.create({
       data: { email: "events-only@example.invalid", passwordHash: "unused" },
     });
-    assert.equal(eventsOnly.canRequestSeasons, false);
     const seasonDenied = (error) => error.getResponse().code === "SEASON_REQUESTS_NOT_ALLOWED";
     const before = await db.request.count();
     await assert.rejects(
@@ -127,7 +122,7 @@ async function main() {
     await assert.rejects(
       service.create(
         { kind: "season", identifier: "events-only-season" },
-        { ...eventsOnly, canRequestSeasons: true },
+        { ...eventsOnly, role: "ADMIN" },
       ),
       seasonDenied,
     );

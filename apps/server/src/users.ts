@@ -31,10 +31,6 @@ export class UserUpdate {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsBoolean()
   autoApprove?: boolean | null;
-  @ApiProperty({ required: false, description: "Allows requesting whole seasons." })
-  @ValidateIf((_, value) => value !== undefined)
-  @IsBoolean()
-  canRequestSeasons?: boolean;
   @ApiProperty({
     required: false,
     nullable: true,
@@ -68,10 +64,6 @@ export class UserCreate extends Credentials {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString({ strict: true })
   expiresAt?: string | null;
-  @ApiProperty({ required: false, default: false, description: "Allows requesting whole seasons." })
-  @ValidateIf((_, value) => value !== undefined)
-  @IsBoolean()
-  canRequestSeasons?: boolean;
 }
 export class UserPage {
   @ApiProperty({ required: false, default: 1 })
@@ -119,7 +111,6 @@ export class UsersService {
         data: {
           email: input.email.trim().toLowerCase(),
           passwordHash,
-          canRequestSeasons: input.canRequestSeasons ?? false,
           weeklyRequestLimit: input.weeklyRequestLimit ?? null,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
         },

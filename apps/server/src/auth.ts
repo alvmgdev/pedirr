@@ -34,7 +34,6 @@ export const publicUserSelect = {
   locale: true,
   timezone: true,
   autoApprove: true,
-  canRequestSeasons: true,
   weeklyRequestLimit: true,
   expiresAt: true,
 } as const;
@@ -46,13 +45,14 @@ export type Viewer = {
   locale: string;
   timezone: string;
   autoApprove: boolean | null;
-  canRequestSeasons: boolean;
   weeklyRequestLimit: number | null;
   expiresAt: Date | null;
 };
-/** Administrators may always request whole seasons; other users need the grant. */
-export const mayRequestSeasons = (user: Pick<Viewer, "role" | "canRequestSeasons">) =>
-  user.role === "ADMIN" || user.canRequestSeasons;
+/**
+ * Whole seasons can grow into hundreds of downloads, so only administrators request them; users
+ * request single events.
+ */
+export const mayRequestSeasons = (user: Pick<Viewer, "role">) => user.role === "ADMIN";
 export type AuthRequest = Request & { viewer?: Viewer; sessionHash?: string };
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 export const passwordOptions = {

@@ -25,25 +25,19 @@ test("an inactive season cannot silently expand to the whole league", async () =
     (error) => error.getResponse().code === "INVALID_TARGET",
   );
 });
-test("users without the season grant cannot request whole seasons", async () => {
+test("users cannot request whole seasons", async () => {
   const service = new RequestsService(
     { db: { $transaction: () => assert.fail("Must not write") } },
     { season: () => assert.fail("Must not query metadata") },
   );
   await assert.rejects(
-    service.create(
-      { kind: "season", identifier: "season" },
-      { role: "USER", canRequestSeasons: false },
-    ),
+    service.create({ kind: "season", identifier: "season" }, { role: "USER" }),
     (error) =>
       error.getStatus() === 403 && error.getResponse().code === "SEASON_REQUESTS_NOT_ALLOWED",
   );
 });
-test("granted users and administrators pass the season permission check", async () => {
-  for (const viewer of [
-    { role: "USER", canRequestSeasons: true },
-    { role: "ADMIN", canRequestSeasons: false },
-  ]) {
+test("administrators pass the season permission check", async () => {
+  for (const viewer of [{ role: "ADMIN" }]) {
     const service = new RequestsService(
       { db: { $transaction: () => assert.fail("Must not write") } },
       {
