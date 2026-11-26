@@ -10,6 +10,8 @@ function fixture(adminCount = 1) {
     $executeRaw: async () => 1,
     user: {
       findUnique: async () => user,
+      // Administrators only manage platform accounts.
+      findFirst: async ({ where }) => (where.tenantId === "platform" ? user : null),
       count: async () => adminCount,
       update: async ({ data }) => {
         user = { ...user, ...data };

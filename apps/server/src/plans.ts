@@ -86,10 +86,14 @@ const planSelect = {
     select: { kind: true, hubId: true, name: true },
     orderBy: [{ kind: "asc" as const }, { name: "asc" as const }],
   },
-  _count: { select: { users: true } },
+  _count: { select: { users: true, packages: true } },
 } satisfies Prisma.PlanSelect;
 type PlanRow = Prisma.PlanGetPayload<{ select: typeof planSelect }>;
-const present = ({ _count, ...plan }: PlanRow) => ({ ...plan, users: _count.users });
+const present = ({ _count, ...plan }: PlanRow) => ({
+  ...plan,
+  users: _count.users,
+  packages: _count.packages,
+});
 const notFound = () => new NotFoundException({ code: "PLAN_NOT_FOUND", message: "Plan not found" });
 const invalidGrant = () =>
   new BadRequestException({
@@ -230,6 +234,13 @@ export class PlansService {
         throw new ConflictException({
           code: "PLAN_IN_USE",
           message: "Move the plan's users to another plan before deleting it",
+        });
+      }
+      // Removing it would silently shrink what resellers sell.
+      if (plan._count.packages > 0) {
+        throw new ConflictException({
+          code: "PLAN_IN_PACKAGE",
+          message: "Remove the plan from its packages before deleting it",
         });
       }
       await tx.plan.delete({ where: { id } });

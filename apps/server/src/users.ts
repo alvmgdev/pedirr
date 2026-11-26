@@ -27,6 +27,7 @@ import { Type } from "class-transformer";
 import * as argon2 from "argon2";
 import { Admin, Credentials, passwordOptions, publicUserSelect, Viewer } from "./auth";
 import { Infrastructure } from "./infrastructure";
+import { PLATFORM_TENANT } from "./tenants";
 
 export class UserUpdate {
   @ApiProperty({ required: false, enum: ["ADMIN", "USER"] })
@@ -115,21 +116,24 @@ export class AccessPolicy {
 @Injectable()
 export class UsersService {
   constructor(private readonly infrastructure: Infrastructure) {}
+  // The platform administrator manages the platform's accounts; resellers manage their own.
   async list(page: number) {
+    const where = { tenantId: PLATFORM_TENANT };
     const [items, total] = await this.infrastructure.db.$transaction([
       this.infrastructure.db.user.findMany({
+        where,
         select: publicUserSelect,
         orderBy: { id: "asc" },
         skip: (page - 1) * 50,
         take: 50,
       }),
-      this.infrastructure.db.user.count(),
+      this.infrastructure.db.user.count({ where }),
     ]);
     return { items, total, page, pageSize: 50 };
   }
   async detail(id: string) {
-    const user = await this.infrastructure.db.user.findUnique({
-      where: { id },
+    const user = await this.infrastructure.db.user.findFirst({
+      where: { id, tenantId: PLATFORM_TENANT },
       select: publicUserSelect,
     });
     if (!user) {
@@ -164,7 +168,7 @@ export class UsersService {
     return this.infrastructure.db.$transaction(async (tx) => {
       // Serialize administrator changes with each other and initial provisioning.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(192837)`;
-      const user = await tx.user.findUnique({ where: { id } });
+      const user = await tx.user.findFirst({ where: { id, tenantId: PLATFORM_TENANT } });
       if (!user) {
         throw new NotFoundException({ code: "USER_NOT_FOUND", message: "User not found" });
       }
