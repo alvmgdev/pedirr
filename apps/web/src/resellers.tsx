@@ -222,14 +222,21 @@ function NewReseller() {
 }
 
 /** The address to give the reseller, with a button to copy it. */
-function Address({ code }: { code: string }) {
+export function Address({
+  code,
+  hint = "resellerAddressHint",
+}: {
+  code: string;
+  /** Who the address is for: the reseller (platform view) or its clients (reseller view). */
+  hint?: string;
+}) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const address = resellerAddress(code);
   return (
     <section className="panel address-panel">
       <h2>{t("resellerAddress")}</h2>
-      <p className="muted">{t("resellerAddressHint")}</p>
+      <p className="muted">{t(hint)}</p>
       <div className="address-row">
         <code>{address}</code>
         <button

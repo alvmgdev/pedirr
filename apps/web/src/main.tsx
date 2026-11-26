@@ -1,6 +1,7 @@
 import { Administration, UserDetail } from "./admin";
 import { PlanDetail } from "./plans";
 import { PackageDetail, ResellerDetail } from "./resellers";
+import { ClientDetail, ResellerPanel } from "./reseller-panel";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
@@ -109,7 +110,7 @@ function App() {
               )}
             </NavLink>
             <NavLink to="/account">{t("account")}</NavLink>
-            {user.role === "ADMIN" && (
+            {(user.role === "ADMIN" || user.role === "RESELLER") && (
               // Phones show the short label so five sections fit; the name stays complete.
               <NavLink to="/admin" aria-label={t("admin")}>
                 <span className="label-long">{t("admin")}</span>
@@ -167,7 +168,17 @@ function App() {
               path="/admin/packages/:id"
               element={<PackageDetail key={location.pathname} user={user} />}
             />
-            <Route path="/admin" element={<Administration user={user} />} />
+            <Route
+              path="/admin/clients/:id"
+              element={<ClientDetail key={location.pathname} user={user} />}
+            />
+            <Route
+              path="/admin"
+              element={
+                // A reseller's administrator manages its clients; the platform's, everything.
+                user.role === "RESELLER" ? <ResellerPanel /> : <Administration user={user} />
+              }
+            />
             <Route path="*" element={<h1>{t("notFound")}</h1>} />
           </Routes>
         </main>

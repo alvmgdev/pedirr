@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next";
 import { api, client, isExpired, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
-import { endOfDay, OptionalLimit, toDay } from "./fields";
+import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
 import { Packages, Resellers, useResellerPlans, useResellers } from "./resellers";
 
@@ -55,37 +55,6 @@ function PlanSelect({ user }: { user?: User }) {
       </span>
       <ErrorMessage error={reseller ? resellerPlans.error : platformPlans.error} />
     </label>
-  );
-}
-/** Reads the optional limits back from a user form; a switched-off limit is sent as null. */
-const limits = (data: FormData) => ({
-  planId: data.get("planId") ? String(data.get("planId")) : null,
-  weeklyRequestLimit: data.has("weeklyRequestLimitEnabled")
-    ? Number(data.get("weeklyRequestLimit"))
-    : null,
-  expiresAt: data.has("expiresAtEnabled") ? endOfDay(String(data.get("expiresAt"))) : null,
-});
-function UserLimits({ user }: { user?: User }) {
-  const { t } = useTranslation();
-  return (
-    <fieldset className="limits">
-      <legend>{t("limits")}</legend>
-      <p className="muted">{t("limitsHint")}</p>
-      <OptionalLimit
-        name="weeklyRequestLimit"
-        type="number"
-        value={
-          user?.weeklyRequestLimit === null || user?.weeklyRequestLimit === undefined
-            ? ""
-            : String(user.weeklyRequestLimit)
-        }
-      />
-      <OptionalLimit
-        name="expiresAt"
-        type="date"
-        value={user?.expiresAt ? toDay(user.expiresAt) : ""}
-      />
-    </fieldset>
   );
 }
 function Field({

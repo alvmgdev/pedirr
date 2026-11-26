@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { User } from "./api";
 
 /** A date input value (local calendar day) for an instant, and back as the end of that day. */
 export const toDay = (value: string) => {
@@ -56,5 +57,36 @@ export function OptionalLimit({
         </label>
       )}
     </div>
+  );
+}
+/** Reads the optional limits back from a user form; a switched-off limit is sent as null. */
+export const limits = (data: FormData) => ({
+  planId: data.get("planId") ? String(data.get("planId")) : null,
+  weeklyRequestLimit: data.has("weeklyRequestLimitEnabled")
+    ? Number(data.get("weeklyRequestLimit"))
+    : null,
+  expiresAt: data.has("expiresAtEnabled") ? endOfDay(String(data.get("expiresAt"))) : null,
+});
+export function UserLimits({ user }: { user?: User }) {
+  const { t } = useTranslation();
+  return (
+    <fieldset className="limits">
+      <legend>{t("limits")}</legend>
+      <p className="muted">{t("limitsHint")}</p>
+      <OptionalLimit
+        name="weeklyRequestLimit"
+        type="number"
+        value={
+          user?.weeklyRequestLimit === null || user?.weeklyRequestLimit === undefined
+            ? ""
+            : String(user.weeklyRequestLimit)
+        }
+      />
+      <OptionalLimit
+        name="expiresAt"
+        type="date"
+        value={user?.expiresAt ? toDay(user.expiresAt) : ""}
+      />
+    </fieldset>
   );
 }
