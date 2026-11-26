@@ -6,6 +6,7 @@ import { api, client, isExpired, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
 import { endOfDay, OptionalLimit, toDay } from "./fields";
 import { Plans, usePlans } from "./plans";
+import { Packages, Resellers } from "./resellers";
 
 function Toggle({ name, checked }: { name: string; checked: boolean }) {
   const { t } = useTranslation();
@@ -131,20 +132,26 @@ export function Administration({ user }: { user: User }) {
         <h1>{t("admin")}</h1>
       </header>
       <nav className="tabs admin-tabs" aria-label={t("admin")}>
-        {["users", "plans", "policies", "sportarr", "notifications"].map((item) => (
-          <button
-            key={item}
-            className={tab === item ? "selected" : ""}
-            onClick={() => setParams({ tab: item })}
-          >
-            {t(item)}
-          </button>
-        ))}
+        {["users", "resellers", "plans", "packages", "policies", "sportarr", "notifications"].map(
+          (item) => (
+            <button
+              key={item}
+              className={tab === item ? "selected" : ""}
+              onClick={() => setParams({ tab: item })}
+            >
+              {t(item)}
+            </button>
+          ),
+        )}
       </nav>
       {tab === "users" ? (
         <Users />
+      ) : tab === "resellers" ? (
+        <Resellers />
       ) : tab === "plans" ? (
         <Plans />
+      ) : tab === "packages" ? (
+        <Packages />
       ) : tab === "policies" ? (
         <Policies />
       ) : tab === "sportarr" ? (

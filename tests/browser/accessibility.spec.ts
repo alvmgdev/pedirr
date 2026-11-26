@@ -11,6 +11,22 @@ const plan = {
     { kind: "LEAGUE", hubId: "league-nba", name: "NBA" },
   ],
 };
+const pack = {
+  id: "44444444-4444-4444-8444-444444444444",
+  name: "Starter",
+  plans: [{ id: "33333333-3333-4333-8333-333333333333", name: "Fights" }],
+  resellers: 1,
+};
+const reseller = {
+  id: "55555555-5555-4555-8555-555555555555",
+  code: "k7x2p",
+  name: "Fight Club TV",
+  active: true,
+  maxUsers: 25,
+  package: { id: pack.id, name: pack.name },
+  admin: { id: "owner", email: "owner@example.invalid" },
+  clients: 3,
+};
 for (const locale of ["en", "es"]) {
   test(`main screens are accessible in ${locale}`, async ({ page }) => {
     test.setTimeout(120000);
@@ -124,6 +140,14 @@ for (const locale of ["en", "es"]) {
         body = { items: [user], total: 1, page: 1, pageSize: 50 };
       } else if (path.endsWith("/admin/users/admin-1")) {
         body = user;
+      } else if (path.endsWith(`/admin/resellers/${reseller.id}`)) {
+        body = reseller;
+      } else if (path.endsWith("/admin/resellers")) {
+        body = [reseller];
+      } else if (path.endsWith(`/admin/packages/${pack.id}`)) {
+        body = pack;
+      } else if (path.endsWith("/admin/packages")) {
+        body = [pack];
       } else if (path.endsWith("/admin/plans/sports")) {
         body = [
           { id: "sport-combat", name: "Combat" },
@@ -202,6 +226,11 @@ for (const locale of ["en", "es"]) {
       "/admin",
       "/admin/users/admin-1",
       "/admin/users/new",
+      "/admin?tab=resellers",
+      `/admin/resellers/${reseller.id}`,
+      "/admin/resellers/new",
+      "/admin?tab=packages",
+      `/admin/packages/${pack.id}`,
       "/admin?tab=plans",
       `/admin/plans/${plan.id}`,
       "/admin/plans/new",

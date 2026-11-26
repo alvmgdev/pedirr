@@ -1398,3 +1398,33 @@ th {
   letter-spacing: 0.02em;
   margin: 0 0 8px;
 }
+/* Five columns on wide screens; phones keep the stacked user-row layout. */
+@media (min-width: 651px) {
+  .reseller-row {
+    grid-template-columns: minmax(0, 1fr) 120px 150px 140px auto;
+  }
+}
+.reseller-row .code,
+.address-row code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.address-panel h2 {
+  margin-top: 0;
+}
+.address-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.address-row code {
+  background: var(--raised);
+  border-radius: 6px;
+  padding: 10px 14px;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 15px;
+}
+.reseller-row span.off {
+  color: #ffc4b5;
+}

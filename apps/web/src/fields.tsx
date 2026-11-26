@@ -16,11 +16,14 @@ export function OptionalLimit({
   name,
   type,
   value,
+  max = 1000,
 }: {
   /** Field name and translation key prefix (`<name>`, `<name>On`, `<name>Off`, `<name>Value`). */
   name: string;
   type: "number" | "date";
   value: string;
+  /** Largest number accepted. */
+  max?: number;
 }) {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(value !== "");
@@ -48,7 +51,7 @@ export function OptionalLimit({
             type={type}
             defaultValue={value}
             required
-            {...(type === "number" ? { min: 0, max: 1000, step: 1, inputMode: "numeric" } : {})}
+            {...(type === "number" ? { min: 0, max, step: 1, inputMode: "numeric" } : {})}
           />
         </label>
       )}

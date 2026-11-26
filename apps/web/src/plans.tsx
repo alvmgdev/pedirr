@@ -206,6 +206,8 @@ function PlanEditor({ plan }: { plan?: Plan }) {
         <div className="plan-delete">
           {plan.users > 0 ? (
             <p className="muted">{t("planInUse", { count: plan.users })}</p>
+          ) : plan.packages > 0 ? (
+            <p className="muted">{t("planInPackages", { count: plan.packages })}</p>
           ) : (
             <button
               type="button"
