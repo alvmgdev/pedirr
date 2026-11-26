@@ -1,19 +1,30 @@
 import { ServiceUnavailableException } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Infrastructure } from "../infrastructure";
-import { NotificationSettings } from "../settings/notifications";
+import { NotificationConfig, NotificationSettings } from "../settings/notifications";
+import { PLATFORM_TENANT } from "../tenants";
 import { DiscordChannel, EmailChannel, NotificationChannel, renderNotice } from "./channels";
 import { errorCode } from "../jobs/fulfillment";
 import { required } from "../config";
 import { OutboxEvent } from "@prisma/client";
 
 const NOTIFIED = ["request.created", "request.status", "issue.created", "issue.updated"];
+type Recipient = { email: string; locale: string; tenantId: string };
 type NoticeTarget = {
   title: string;
   status: string;
-  url: string;
-  users: { email: string; locale: string }[];
+  /** Where it opens, after the environment's address prefix. */
+  path: string;
+  users: Recipient[];
+  /** Environments whose Discord channel hears about it. */
+  channels: Set<string>;
 };
+/** Accounts read without their environment (older callers) belong to the platform. */
+const recipient = (user: { email: string; locale: string; tenantId?: string }): Recipient => ({
+  email: user.email,
+  locale: user.locale,
+  tenantId: user.tenantId ?? PLATFORM_TENANT,
+});
 const requestTitle = (request: { entity: { title: string }; scope: unknown }) => {
   const scope = request.scope as { kind?: string; season?: { name?: string } };
   return request.entity.title + (scope.kind === "season" ? ` · ${scope.season?.name ?? ""}` : "");
@@ -38,38 +49,66 @@ export class Notifications {
     if (!notice) {
       return;
     }
-    const { title, status, url, users } = notice;
-    const config = await this.settings.configuration();
-    const deliveries: { channel: "email" | "discord"; recipient: string; locale: string }[] = [];
-    if (config.emailEnabled && event.createdAt >= new Date(config.emailSince)) {
-      const recipients = new Map(users.map((user) => [user.email, user.locale]));
-      for (const [recipient, locale] of recipients) {
-        deliveries.push({ channel: "email", recipient, locale });
+    const { title, status, path, users, channels } = notice;
+    // Every environment delivers with its own settings and links to its own address: a
+    // reseller's people only ever hear from the reseller, the platform's from the platform.
+    const tenants = [...new Set([...users.map((user) => user.tenantId), ...channels])];
+    const prefixes = await this.prefixes(tenants);
+    const configs = new Map<string, NotificationConfig>();
+    for (const tenantId of tenants) {
+      configs.set(tenantId, await this.settings.configuration(tenantId));
+    }
+    const deliveries: {
+      channel: "email" | "discord";
+      recipient: string;
+      locale: string;
+      tenantId: string;
+    }[] = [];
+    for (const tenantId of tenants) {
+      const config = configs.get(tenantId)!;
+      if (config.emailEnabled && event.createdAt >= new Date(config.emailSince)) {
+        const recipients = new Map(
+          users
+            .filter((user) => user.tenantId === tenantId)
+            .map((user) => [user.email, user.locale]),
+        );
+        for (const [address, locale] of recipients) {
+          deliveries.push({ channel: "email", recipient: address, locale, tenantId });
+        }
+      }
+      // Discord channels hear about requests and new issues, not each issue update.
+      if (
+        channels.has(tenantId) &&
+        config.discordEnabled &&
+        event.type !== "issue.updated" &&
+        event.createdAt >= new Date(config.discordSince)
+      ) {
+        deliveries.push({
+          channel: "discord",
+          recipient: createHash("sha256").update(config.discordWebhook).digest("hex"),
+          locale: config.discordLocale,
+          tenantId,
+        });
       }
     }
-    // The shared Discord channel hears about requests and new issues, not each issue update.
-    if (
-      config.discordEnabled &&
-      event.type !== "issue.updated" &&
-      event.createdAt >= new Date(config.discordSince)
-    ) {
-      deliveries.push({
-        channel: "discord",
-        recipient: createHash("sha256").update(config.discordWebhook).digest("hex"),
-        locale: config.discordLocale,
-      });
-    }
+    const origin = new URL(required("APP_ORIGIN")).origin;
     let failure: unknown;
     for (const target of deliveries) {
       const record = await db.notificationDelivery.upsert({
         where: {
-          eventId_channel_recipient: {
+          eventId_channel_recipient_tenantId: {
             eventId,
             channel: target.channel,
             recipient: target.recipient,
+            tenantId: target.tenantId,
           },
         },
-        create: { eventId, channel: target.channel, recipient: target.recipient },
+        create: {
+          eventId,
+          channel: target.channel,
+          recipient: target.recipient,
+          tenantId: target.tenantId,
+        },
         update: {},
       });
       if (record.status === "sent") {
@@ -94,9 +133,9 @@ export class Notifications {
           data: { status: "sending", attempts: { increment: 1 }, lastError: null },
         });
         await (target.channel === "email" ? this.email : this.discord).send(
-          config,
+          configs.get(target.tenantId)!,
           target.recipient,
-          renderNotice(target.locale, title, status, url),
+          renderNotice(target.locale, title, status, origin + prefixes.get(target.tenantId) + path),
           record.id,
         );
         await db.notificationDelivery.update({
@@ -137,22 +176,25 @@ export class Notifications {
             user: { active: true },
             ...(Array.isArray(payload.userIds) ? { userId: { in: payload.userIds } } : {}),
           },
-          include: { user: { select: { email: true, locale: true } } },
+          include: { user: { select: { email: true, locale: true, tenantId: true } } },
         },
       },
     });
     if (!request) {
       return undefined;
     }
-    const users = request.subscribers.map((subscription) => subscription.user);
+    const users = request.subscribers.map((subscription) => recipient(subscription.user));
+    // The platform's channel hears about every request; a reseller's about its own people's.
+    const channels = new Set([PLATFORM_TENANT, ...users.map((user) => user.tenantId)]);
     if (event.type === "request.created") {
       users.push(...(await this.admins()));
     }
     return {
       title: requestTitle(request),
       status: payload.status,
-      url: `${new URL(required("APP_ORIGIN")).origin}/requests/${request.id}`,
+      path: `/requests/${request.id}`,
       users,
+      channels,
     };
   }
   private async issueNotice(event: OutboxEvent): Promise<NoticeTarget | undefined> {
@@ -166,7 +208,9 @@ export class Notifications {
       where: { id: payload.issueId },
       include: {
         request: { include: { entity: true } },
-        reporter: { select: { id: true, email: true, locale: true, active: true } },
+        reporter: {
+          select: { id: true, email: true, locale: true, active: true, tenantId: true },
+        },
       },
     });
     if (!issue) {
@@ -177,20 +221,39 @@ export class Notifications {
     const users =
       audience === "reporter"
         ? issue.reporter.active && issue.reporter.id !== payload.actorId
-          ? [issue.reporter]
+          ? [recipient(issue.reporter)]
           : []
         : await this.admins(payload.actorId);
     return {
       title: requestTitle(issue.request) + (issue.part ? ` · ${issue.part}` : ""),
       status: event.type === "issue.created" ? "OPEN" : (payload.status ?? "COMMENT"),
-      url: `${new URL(required("APP_ORIGIN")).origin}/issues/${issue.id}`,
+      path: `/issues/${issue.id}`,
       users,
+      // New issues reach the platform's channel and the reporter's reseller's.
+      channels: new Set([PLATFORM_TENANT, recipient(issue.reporter).tenantId]),
     };
   }
-  private admins(except?: string) {
-    return this.infrastructure.db.user.findMany({
+  /** Platform administrators, who approve requests and answer issues from every environment. */
+  private async admins(except?: string): Promise<Recipient[]> {
+    const admins = await this.infrastructure.db.user.findMany({
       where: { active: true, role: "ADMIN", ...(except ? { id: { not: except } } : {}) },
       select: { email: true, locale: true },
     });
+    return admins.map((admin) => ({ ...admin, tenantId: PLATFORM_TENANT }));
+  }
+  /** Each environment's address prefix: none for the platform, /<code> for a reseller. */
+  private async prefixes(tenantIds: string[]) {
+    const prefixes = new Map([[PLATFORM_TENANT, ""]]);
+    const resellers = tenantIds.filter((id) => id !== PLATFORM_TENANT);
+    if (resellers.length) {
+      const rows = await this.infrastructure.db.tenant.findMany({
+        where: { id: { in: resellers } },
+        select: { id: true, code: true },
+      });
+      for (const row of rows) {
+        prefixes.set(row.id, `/${row.code}`);
+      }
+    }
+    return prefixes;
   }
 }

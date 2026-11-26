@@ -188,9 +188,12 @@ model NotificationDelivery {
   status    String   @default("pending")
   attempts  Int      @default(0)
   lastError String?
+  // The environment whose settings delivered it; the same email may exist in several.
+  tenantId  String   @default("platform")
   createdAt DateTime @default(now())
 
-  @@unique([eventId, channel, recipient])
+  @@unique([eventId, channel, recipient, tenantId])
+  @@index([tenantId, createdAt])
 }
 
 model RequestEvent {

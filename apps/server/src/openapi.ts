@@ -372,6 +372,7 @@ const schemas: Record<string, SchemaObject> = {
     status: enumeration("pending", "sending", "sent", "failed"),
     attempts: integer,
     lastError: nullable(string),
+    tenantId: { ...string, description: "The environment whose settings sent it." },
     createdAt: date,
   }),
 };
@@ -472,6 +473,9 @@ const responses: Record<string, Schema> = {
   "GET admin/settings/notifications": ref("NotificationSettingsResult"),
   "PUT admin/settings/notifications": ref("NotificationSettingsResult"),
   "GET admin/settings/notifications/deliveries": array(ref("NotificationDelivery")),
+  "GET reseller/notifications": ref("NotificationSettingsResult"),
+  "PUT reseller/notifications": ref("NotificationSettingsResult"),
+  "GET reseller/notifications/deliveries": array(ref("NotificationDelivery")),
 };
 
 export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAPIObject {
