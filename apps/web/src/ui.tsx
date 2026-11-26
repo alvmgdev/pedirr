@@ -40,6 +40,8 @@ export function ErrorMessage({ error }: { error: unknown }) {
     PLAN_NOT_ALLOWED: "notInPlan",
     PLAN_IN_PACKAGE: "planInPackageError",
     PLAN_NOT_IN_PACKAGE: "planNotInPackage",
+    CLIENT_LIMIT_REACHED: "clientLimitReached",
+    CLIENT_NOT_FOUND: "clientNotFound",
     ROLE_NOT_ALLOWED: "roleNotAllowed",
     PACKAGE_NOT_FOUND: "packageNotFound",
     PACKAGE_IN_USE: "packageInUseError",

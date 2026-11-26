@@ -36,9 +36,8 @@ async function seasonPage(page: Page, user: object) {
 
 test("users browse seasons but request their events one by one", async ({ page }) => {
   const lookups = await seasonPage(page, viewer);
-  await expect(page.getByRole("status")).toContainText(
-    "Whole seasons are requested by administrators",
-  );
+  // The season's event list may still be loading next to it, so look for the notice itself.
+  await expect(page.getByText(/Whole seasons are requested by administrators/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Request this season" })).toHaveCount(0);
   expect(lookups).toEqual([]);
 });
