@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { api, ApiError, client, setSession, type User } from "./api";
+import { api, ApiError, client, setSession, type AuthConfig, type User } from "./api";
 import { ErrorMessage, formatDateTime, QuotaNote, useQuota } from "./ui";
 export function Language({ user }: { user?: User | null }) {
   const { t, i18n } = useTranslation();
@@ -36,9 +36,11 @@ export function Login() {
   // The server enforces the policy; this only hides an option that would be refused.
   const config = useQuery({
     queryKey: ["auth-config"],
-    queryFn: () => api<{ registrationEnabled: boolean }>("/auth/config"),
+    queryFn: () => api<AuthConfig>("/auth/config"),
   });
   const registrationOpen = config.data?.registrationEnabled === true;
+  const environment = config.data?.environment ?? null;
+  const unknown = config.error instanceof ApiError && config.error.code === "TENANT_NOT_FOUND";
   const register = registerSelected && registrationOpen;
   const action = useMutation({
     mutationFn: async (body: { email: string; password: string }) => {
@@ -66,6 +68,7 @@ export function Login() {
       <section className="login-story">
         <LinkBrand />
         <div>
+          {environment && <p className="environment-name">{environment.name}</p>}
           <h1>{t("welcome")}</h1>
           <p>{t("intro")}</p>
         </div>
@@ -76,52 +79,64 @@ export function Login() {
       </section>
       <div className="login-main">
         <Language />
-        <div className="login-form">
-          <h2>{t(register ? "register" : "login")}</h2>
-          <p>{t("loginHelp")}</p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const data = new FormData(event.currentTarget);
-              action.mutate({
-                email: String(data.get("email")),
-                password: String(data.get("password")),
-              });
-            }}
-          >
-            <label>
-              {t("email")}
-              <input name="email" type="email" autoComplete="email" required maxLength={254} />
-            </label>
-            <label>
-              {t("password")}
-              <input
-                name="password"
-                type="password"
-                autoComplete={register ? "new-password" : "current-password"}
-                required
-                minLength={12}
-                maxLength={128}
-              />
-            </label>
-            {register && <p className="muted">{t("passwordHint")}</p>}
-            <ErrorMessage error={action.error} />
-            <button disabled={action.isPending}>
-              {t(action.isPending ? "loading" : register ? "register" : "login")}
-            </button>
-          </form>
-          {registrationOpen && (
-            <button
-              className="text-button"
-              onClick={() => {
-                setRegister(!register);
-                action.reset();
+        {unknown ? (
+          <div className="login-form" role="alert">
+            <h2>{t("unknownEnvironment")}</h2>
+            <p>{t("unknownEnvironmentHelp")}</p>
+          </div>
+        ) : environment && !environment.active ? (
+          <div className="login-form" role="alert">
+            <h2>{t("environmentDisabled")}</h2>
+            <p>{t("environmentDisabledHelp", { name: environment.name })}</p>
+          </div>
+        ) : (
+          <div className="login-form">
+            <h2>{t(register ? "register" : "login")}</h2>
+            <p>{t("loginHelp")}</p>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const data = new FormData(event.currentTarget);
+                action.mutate({
+                  email: String(data.get("email")),
+                  password: String(data.get("password")),
+                });
               }}
             >
-              {t(register ? "login" : "register")}
-            </button>
-          )}
-        </div>
+              <label>
+                {t("email")}
+                <input name="email" type="email" autoComplete="email" required maxLength={254} />
+              </label>
+              <label>
+                {t("password")}
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete={register ? "new-password" : "current-password"}
+                  required
+                  minLength={12}
+                  maxLength={128}
+                />
+              </label>
+              {register && <p className="muted">{t("passwordHint")}</p>}
+              <ErrorMessage error={action.error} />
+              <button disabled={action.isPending}>
+                {t(action.isPending ? "loading" : register ? "register" : "login")}
+              </button>
+            </form>
+            {registrationOpen && (
+              <button
+                className="text-button"
+                onClick={() => {
+                  setRegister(!register);
+                  action.reset();
+                }}
+              >
+                {t(register ? "login" : "register")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );

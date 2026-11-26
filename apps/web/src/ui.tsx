@@ -35,6 +35,8 @@ export function ErrorMessage({ error }: { error: unknown }) {
     PARTS_REQUIRED: "invalidParts",
     SEASON_REQUESTS_NOT_ALLOWED: "seasonRequestsNotAllowed",
     WEEKLY_LIMIT_REACHED: "weeklyLimitReached",
+    TENANT_DISABLED: "environmentDisabled",
+    TENANT_NOT_FOUND: "unknownEnvironment",
     PLAN_NOT_ALLOWED: "notInPlan",
     PLAN_NOT_FOUND: "planNotFound",
     PLAN_IN_USE: "planInUseError",
