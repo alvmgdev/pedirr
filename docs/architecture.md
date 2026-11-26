@@ -14,21 +14,22 @@ Deployment consists of app, worker, PostgreSQL, Redis, and a single migration ta
 
 ## Data model
 
-| Model                              | Responsibility and relationships                                                                                                                                             |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| User / Session                     | Roles (only administrators request seasons), approval overrides, locale/timezone; revocable hashed session tokens belong to users.                                           |
-| Plan / PlanGrant                   | Content packages: which Hub sports and leagues users on a plan may request; users may have one plan.                                                                         |
-| HubLeague                          | Daily index of Hub's leagues with their sport, used to narrow the catalog for users on a plan.                                                                               |
-| HubEvent                           | Local copy of Hub's events from 7 days ago to 14 days ahead, for the paged schedule and plan search.                                                                         |
-| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                                                       |
-| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope. Subscribers keep their own parts and status.                        |
-| Issue / IssueComment               | Problems reported by subscribers about a request (optionally an event and part), private to the reporter and administrators, with a timeline of comments and status changes. |
-| RequestPart                        | One requested event part (e.g. Main Card) with its shared review status; none means the whole event.                                                                         |
-| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr, with each event's parts on disk and downloading.                                             |
-| Setting                            | Shared policies and encrypted integration credentials.                                                                                                                       |
-| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                                                         |
-| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                                                           |
-| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent.                                         |
+| Model                              | Responsibility and relationships                                                                                                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tenant / PlanPackage               | Environments: the platform (root of the domain) and resellers (`/<code>/`); a reseller's package of plans.                                                                                            |
+| User / Session                     | Environment, roles (platform administrator, reseller administrator, user; only administrators request seasons), approval overrides, locale/timezone; revocable hashed session tokens belong to users. |
+| Plan / PlanGrant                   | Content packages: which Hub sports and leagues users on a plan may request; users may have one plan.                                                                                                  |
+| HubLeague                          | Daily index of Hub's leagues with their sport, used to narrow the catalog for users on a plan.                                                                                                        |
+| HubEvent                           | Local copy of Hub's events from 7 days ago to 14 days ahead, for the paged schedule and plan search.                                                                                                  |
+| CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                                                                                |
+| Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope. Subscribers keep their own parts and status.                                                 |
+| Issue / IssueComment               | Problems reported by subscribers about a request (optionally an event and part), private to the reporter and administrators, with a timeline of comments and status changes.                          |
+| RequestPart                        | One requested event part (e.g. Main Card) with its shared review status; none means the whole event.                                                                                                  |
+| RequestHistory / RequestEvent      | Moderation/status history and the exact scoped events reconciled with Sportarr, with each event's parts on disk and downloading.                                                                      |
+| Setting                            | Shared policies and encrypted integration credentials.                                                                                                                                                |
+| OutboxEvent                        | Transactional work intent, queue publication and successful notification processing.                                                                                                                  |
+| NotificationDelivery               | Unique event/channel/recipient delivery attempts and confirmation.                                                                                                                                    |
+| ManagerBinding                     | Reserved manager/entity identity mapping for future adapters; native fulfillment currently records remote event IDs in RequestEvent.                                                                  |
 
 The authoritative constraints, relations and indexes are in `prisma/schema.prisma`. Versioned migrations create these structures before application startup.
 
