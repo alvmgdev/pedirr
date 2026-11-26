@@ -15,6 +15,15 @@ export function required(name: string): string {
   return value;
 }
 
+/** Calls a minute Pedirr allows itself to Sportarr Hub, shared by the whole installation. */
+export function hubBudget(raw = process.env.HUB_REQUESTS_PER_MINUTE): number {
+  const value = Number(raw ?? 20);
+  if (!Number.isSafeInteger(value) || value < 1 || value > 1000) {
+    throw new Error("Invalid HUB_REQUESTS_PER_MINUTE");
+  }
+  return value;
+}
+
 export function port(): number {
   const value = Number(process.env.PORT ?? 3000);
   if (!Number.isInteger(value) || value < 1 || value > 65535) {

@@ -6,7 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const Redis = require("ioredis");
 const { CatalogController } = require("../../dist/metadata/controller");
 const { CatalogAccess } = require("../../dist/metadata/access");
-const { LocalSchedule } = require("../../dist/metadata/schedule");
+const { Schedule } = require("../../dist/metadata/schedule");
 const { indexLeagues, leagueIndexStale } = require("../../dist/jobs/league-index");
 
 const code = (expected) => (error) => error.getResponse().code === expected;
@@ -88,6 +88,7 @@ async function main() {
     await redis.del("pedirr:index:leagues");
     let job = {};
     for (let step = 0; step < 10; step++) {
+      await redis.del("pedirr:index:pace");
       const result = await indexLeagues(infrastructure, metadata, queue, job, 1000);
       if (result.done) {
         break;
@@ -103,6 +104,7 @@ async function main() {
     assert.equal(await redis.get("pedirr:index:leagues"), null);
     // A run that finds another one going does nothing; a stale page of an old run stops.
     await redis.set("pedirr:index:leagues", "5000");
+    await redis.del("pedirr:index:pace");
     assert.deepEqual(await indexLeagues(infrastructure, metadata, queue, {}, 6000), {
       skipped: "running",
     });
@@ -116,6 +118,7 @@ async function main() {
     queued.length = 0;
     job = {};
     for (let step = 0; step < 10; step++) {
+      await redis.del("pedirr:index:pace");
       const result = await indexLeagues(infrastructure, metadata, queue, job, Date.now());
       if (result.done) {
         assert.equal(result.removed, 1);
@@ -150,7 +153,7 @@ async function main() {
       infrastructure,
       new CatalogAccess(infrastructure, metadata),
       // Not ready: no complete copy of the schedule yet, so Hub answers as before.
-      new LocalSchedule(infrastructure),
+      new Schedule(infrastructure, metadata),
     );
     const as = (viewer) => ({ viewer });
 

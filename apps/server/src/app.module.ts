@@ -8,7 +8,7 @@ import { CatalogController } from "./metadata/controller";
 import { HubProvider } from "./metadata/hub";
 import { MetadataProvider } from "./metadata/provider";
 import { CatalogAccess } from "./metadata/access";
-import { LocalSchedule } from "./metadata/schedule";
+import { Schedule } from "./metadata/schedule";
 import { UsersController, UsersService } from "./users";
 import { PlansController, PlansService } from "./plans";
 import { IssuesController } from "./issues/controller";
@@ -28,7 +28,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     UsersService,
     PlansService,
     CatalogAccess,
-    LocalSchedule,
+    Schedule,
     SportarrSettings,
     NotificationSettings,
     RequestsService,

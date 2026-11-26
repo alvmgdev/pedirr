@@ -2,6 +2,7 @@ const { test, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const { HubProvider, parsePage, retrySeconds } = require("../dist/metadata/hub");
 const { CatalogController } = require("../dist/metadata/controller");
+const { Schedule } = require("../dist/metadata/schedule");
 const originalFetch = global.fetch;
 afterEach(() => {
   global.fetch = originalFetch;
@@ -38,8 +39,9 @@ function fixture() {
 }
 /** Catalog access for viewers without a restrictive plan. */
 const unrestricted = { scope: async () => null, includes: () => true };
-/** No complete local copy of the schedule, so upcoming reads Hub. */
-const notReady = { ready: async () => false };
+/** A schedule without a complete local copy, so it reads Hub through `metadata`. */
+const hubSchedule = (metadata) =>
+  new Schedule({ db: { setting: { findUnique: async () => null } } }, metadata);
 test("search uses the documented contract and reuses shared cached results", async () => {
   const { provider, redis } = fixture();
   let calls = 0;
@@ -141,7 +143,7 @@ test("upcoming excludes past, cancelled, and undated entries while preserving pa
     { rate: async () => {} },
     {},
     unrestricted,
-    notReady,
+    hubSchedule(metadata),
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.deepEqual(
@@ -168,24 +170,25 @@ test("overlapping metadata reads share the completed cache entry across replicas
 test("upcoming preserves the broadcast-date margin and skips past-only pages with an explicit next cursor", async () => {
   const calls = [];
   const future = new Date(Date.now() + 3600000).toISOString();
-  const controller = new CatalogController(
-    {
-      events: async (filters) => {
-        calls.push(filters);
-        return {
-          page: filters.page,
-          totalPages: 4,
-          items:
-            filters.page === 1
-              ? [{ id: "past", scheduledStart: "2000-01-01T00:00:00Z" }]
-              : [{ id: "future", scheduledStart: future }],
-        };
-      },
+  const metadata = {
+    events: async (filters) => {
+      calls.push(filters);
+      return {
+        page: filters.page,
+        totalPages: 4,
+        items:
+          filters.page === 1
+            ? [{ id: "past", scheduledStart: "2000-01-01T00:00:00Z" }]
+            : [{ id: "future", scheduledStart: future }],
+      };
     },
+  };
+  const controller = new CatalogController(
+    metadata,
     { rate: async () => {} },
     {},
     unrestricted,
-    notReady,
+    hubSchedule(metadata),
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls[0].from, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
@@ -203,17 +206,18 @@ test("upcoming preserves the broadcast-date margin and skips past-only pages wit
 
 test("empty upcoming scans are bounded and do not report false exhaustion", async () => {
   let calls = 0;
-  const controller = new CatalogController(
-    {
-      events: async ({ page }) => {
-        calls++;
-        return { page, totalPages: 20, items: [] };
-      },
+  const metadata = {
+    events: async ({ page }) => {
+      calls++;
+      return { page, totalPages: 20, items: [] };
     },
+  };
+  const controller = new CatalogController(
+    metadata,
     { rate: async () => {} },
     {},
     unrestricted,
-    notReady,
+    hubSchedule(metadata),
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls, 5);

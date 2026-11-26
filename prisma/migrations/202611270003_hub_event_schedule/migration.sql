@@ -2,14 +2,14 @@
 -- CreateTable
 CREATE TABLE "HubEvent" (
     "id" TEXT NOT NULL,
-    "shortId" TEXT,
     "name" TEXT NOT NULL,
     "leagueId" TEXT,
-    "seasonId" TEXT,
     "homeTeamId" TEXT,
     "homeTeamName" TEXT,
+    "homeTeamBadgeUrl" TEXT,
     "awayTeamId" TEXT,
     "awayTeamName" TEXT,
+    "awayTeamBadgeUrl" TEXT,
     "scheduledStart" TIMESTAMP(3),
     "status" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,

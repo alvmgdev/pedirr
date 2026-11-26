@@ -5,12 +5,8 @@ const { PrismaClient } = require("@prisma/client");
 const Redis = require("ioredis");
 const { CatalogController } = require("../../dist/metadata/controller");
 const { CatalogAccess } = require("../../dist/metadata/access");
-const { LocalSchedule, SCHEDULE_PAGE_SIZE } = require("../../dist/metadata/schedule");
-const {
-  indexSchedule,
-  scheduleIndexStale,
-  SCHEDULE_SETTING,
-} = require("../../dist/jobs/schedule-index");
+const { Schedule, SCHEDULE_PAGE_SIZE, SCHEDULE_SETTING } = require("../../dist/metadata/schedule");
+const { indexSchedule, scheduleIndexStale } = require("../../dist/jobs/schedule-index");
 
 const HOUR = 3600000;
 const DAY = 24 * HOUR;
@@ -27,7 +23,7 @@ async function main() {
       env: { ...process.env, DATABASE_URL: url.href },
       stdio: "ignore",
     });
-    for (const key of ["schedule-full", "schedule-near"]) {
+    for (const key of ["schedule-full", "schedule-near", "pace"]) {
       await redis.del(`pedirr:index:${key}`);
     }
     const now = Date.now();
@@ -89,6 +85,8 @@ async function main() {
       queued.length = 0;
       let job = { window };
       for (let step = 0; step < 20; step++) {
+        // Pages run back to back here; the shared pace is checked on its own below.
+        await redis.del("pedirr:index:pace");
         const result = await indexSchedule(infrastructure, metadata, queue, job, when);
         if (result.done) {
           return result;
@@ -101,7 +99,7 @@ async function main() {
 
     // The whole window: 7 days back to 14 ahead, paged, with every page using the same window.
     assert.equal(await scheduleIndexStale(infrastructure), true);
-    const schedule = new LocalSchedule(infrastructure);
+    const schedule = new Schedule(infrastructure, metadata);
     assert.equal(await schedule.ready(), false);
     await run("full");
     const windows = new Set(calls.map((call) => `${call.from}..${call.to}`));
@@ -117,6 +115,15 @@ async function main() {
     assert.equal(stored.homeTeamName, "Los Angeles Lakers");
     assert.equal(stored.item.homeTeamBadgeUrl, "https://example.invalid/lakers.png");
 
+    // Background copies share one pace: a copy finding it taken waits its turn, page unchanged.
+    await redis.set("pedirr:index:pace", "1", "PX", 5000);
+    queued.length = 0;
+    const waiting = await indexSchedule(infrastructure, metadata, queue, { window: "near" });
+    assert.ok(waiting.waiting > 0 && waiting.waiting <= 5000);
+    assert.equal(queued.length, 1);
+    assert.equal(queued[0].data.page, 1);
+    assert.ok(queued[0].options.delay > 0);
+    await redis.del("pedirr:index:schedule-near");
     // The hourly run covers today and tomorrow, updates what changed and removes nothing.
     calls.length = 0;
     hub = hub.map((event) =>
@@ -234,22 +241,23 @@ async function main() {
     });
     assert.equal(await schedule.ready(), false);
     let hubAsked = false;
-    const fallback = new CatalogController(
-      {
-        events: async ({ page }) => {
-          hubAsked = true;
-          return { items: [], page, totalPages: 1 };
-        },
+    const hubOnly = {
+      events: async ({ page }) => {
+        hubAsked = true;
+        return { items: [], page, totalPages: 1 };
       },
+    };
+    const fallback = new CatalogController(
+      hubOnly,
       { rate: async () => {} },
       infrastructure,
       new CatalogAccess(infrastructure, {}),
-      schedule,
+      new Schedule(infrastructure, hubOnly),
     );
     await fallback.upcoming({ page: 1 }, as(free));
     assert.equal(hubAsked, true);
     console.log(
-      "Schedule integration passed: paged whole and hourly copies with one window per run, cleanup only on whole runs, readiness and staleness, schedule paging for everyone and for plans, plan search of teams and events, fallback to Hub.",
+      "Schedule integration passed: paged whole and hourly copies with one window per run, a shared background pace, cleanup only on whole runs, readiness and staleness, schedule paging for everyone and for plans, plan search of teams and events, fallback to Hub.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

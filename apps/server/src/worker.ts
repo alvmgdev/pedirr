@@ -59,28 +59,28 @@ async function main() {
   );
   await queue.upsertJobScheduler("dispatcher", { every: 60000 }, { name: "dispatch", data: {} });
   await queue.add("dispatch", {}, { jobId: `startup-${Date.now()}` });
-  // The league index lets the catalog be filtered by plan; refresh it daily and when missing.
-  await queue.upsertJobScheduler(
-    "league-index",
-    { every: LEAGUE_INDEX_EVERY_MS },
-    { name: LEAGUE_INDEX_JOB, data: {} },
+  /** Runs a job on a schedule, and once now when what it maintains is missing or stale. */
+  async function recurring(id: string, every: number, name: string, data: object, stale: boolean) {
+    await queue.upsertJobScheduler(id, { every }, { name, data });
+    if (stale) {
+      await queue.add(name, data, { jobId: `${id}-startup-${Date.now()}` });
+    }
+  }
+  // The league index and the local schedule narrow the catalog to plans and page "upcoming".
+  await recurring(
+    LEAGUE_INDEX_JOB,
+    LEAGUE_INDEX_EVERY_MS,
+    LEAGUE_INDEX_JOB,
+    {},
+    await leagueIndexStale(infrastructure),
   );
-  if (await leagueIndexStale(infrastructure)) {
-    await queue.add(LEAGUE_INDEX_JOB, {}, { jobId: `${LEAGUE_INDEX_JOB}-startup-${Date.now()}` });
-  }
-  // The local schedule pages and filters "upcoming" and lets users on a plan search events.
   for (const window of ["full", "near"] as const) {
-    await queue.upsertJobScheduler(
+    await recurring(
       `${SCHEDULE_INDEX_JOB}-${window}`,
-      { every: SCHEDULE_WINDOWS[window].everyMs },
-      { name: SCHEDULE_INDEX_JOB, data: { window } },
-    );
-  }
-  if (await scheduleIndexStale(infrastructure)) {
-    await queue.add(
+      SCHEDULE_WINDOWS[window].everyMs,
       SCHEDULE_INDEX_JOB,
-      { window: "full" },
-      { jobId: `${SCHEDULE_INDEX_JOB}-startup-${Date.now()}` },
+      { window },
+      window === "full" && (await scheduleIndexStale(infrastructure)),
     );
   }
   const beat = () =>
