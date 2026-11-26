@@ -327,6 +327,14 @@ const schemas: Record<string, SchemaObject> = {
     hasApiKey: boolean,
     rootFolderId: nullable(integer),
     qualityProfileId: nullable(integer),
+    rootFolderPath: {
+      ...nullable(string),
+      description: "The saved folder's path when it was saved; null for older settings.",
+    },
+    qualityProfileName: {
+      ...nullable(string),
+      description: "The saved profile's name when it was saved; null for older settings.",
+    },
   }),
   SportarrConnection: object({
     appName: enumeration("Sportarr"),

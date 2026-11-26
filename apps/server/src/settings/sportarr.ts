@@ -33,7 +33,13 @@ export class SportarrSettingsInput extends ConnectionInput {
   @ApiProperty() @IsInt() @Min(1) @Max(2147483647) rootFolderId!: number;
   @ApiProperty() @IsInt() @Min(1) @Max(2147483647) qualityProfileId!: number;
 }
-type StoredConfig = Omit<ManagerConfig, "apiKey"> & { encryptedApiKey: string };
+// The folder path and profile name are kept for display only; settings saved before they were
+// stored lack them.
+type StoredConfig = Omit<ManagerConfig, "apiKey"> & {
+  encryptedApiKey: string;
+  rootFolderPath?: string;
+  qualityProfileName?: string;
+};
 @Injectable()
 export class SportarrSettings {
   private readonly secrets = new SecretBox();
@@ -51,6 +57,8 @@ export class SportarrSettings {
           hasApiKey: true,
           rootFolderId: config.rootFolderId,
           qualityProfileId: config.qualityProfileId,
+          rootFolderPath: config.rootFolderPath ?? null,
+          qualityProfileName: config.qualityProfileName ?? null,
         }
       : {
           configured: false,
@@ -58,6 +66,8 @@ export class SportarrSettings {
           hasApiKey: false,
           rootFolderId: null,
           qualityProfileId: null,
+          rootFolderPath: null,
+          qualityProfileName: null,
         };
   }
   private unlock(config: StoredConfig) {
@@ -103,10 +113,9 @@ export class SportarrSettings {
   async save(input: SportarrSettingsInput) {
     const credentials = await this.credentials(input);
     const connection = await new SportarrClient(credentials).testConnection();
-    if (
-      !connection.rootFolders.some((root) => root.id === input.rootFolderId) ||
-      !connection.qualityProfiles.some((profile) => profile.id === input.qualityProfileId)
-    ) {
+    const root = connection.rootFolders.find((item) => item.id === input.rootFolderId);
+    const profile = connection.qualityProfiles.find((item) => item.id === input.qualityProfileId);
+    if (!root || !profile) {
       throw new BadRequestException({
         code: "INVALID_MANAGER_DEFAULTS",
         message: "Select an existing root folder and quality profile",
@@ -116,6 +125,8 @@ export class SportarrSettings {
       url: credentials.url,
       rootFolderId: input.rootFolderId,
       qualityProfileId: input.qualityProfileId,
+      rootFolderPath: root.path,
+      qualityProfileName: profile.name,
       encryptedApiKey: this.secrets.encrypt(credentials.apiKey, "sportarr.apiKey"),
     };
     await this.infrastructure.db.setting.upsert({
