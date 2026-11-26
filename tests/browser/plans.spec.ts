@@ -250,8 +250,14 @@ test("users on a plan search its leagues and see why other leagues are closed", 
     return route.fulfill({ json: { items: [] } });
   });
   await page.goto("/?q=uf");
-  await expect(page.getByText("Search covers your plan (Fights): its leagues")).toBeVisible();
+  await expect(
+    page.getByText("Search shows the leagues, teams and events your plan (Fights) includes."),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "UFC" })).toBeVisible();
+  // Older events live under their league, linked from the search.
+  await expect(page.getByText(/Can't find an older event\? Open its league/)).toBeVisible();
+  await page.getByRole("link", { name: "Open UFC" }).click();
+  await expect(page).toHaveURL(/\/catalog\/league\/league-ufc$/);
   await page.goto("/catalog/league/league-nba");
   await expect(page.getByRole("alert")).toHaveText("Your plan does not include this league.");
 });

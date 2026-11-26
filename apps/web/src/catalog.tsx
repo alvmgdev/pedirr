@@ -193,6 +193,24 @@ export function Discover({ user }: { user: User }) {
               )}
             </div>
           )}
+          {/* Searches return a limited number of events; older ones live under their league. */}
+          {query && !result.isPending && (
+            <aside className="search-hint">
+              <p>{t("olderEventsHint")}</p>
+              {results.some((item) => item.entityType === "league") && (
+                <p className="search-hint-links">
+                  {results
+                    .filter((item) => item.entityType === "league")
+                    .slice(0, 3)
+                    .map((league) => (
+                      <Link key={league.id} to={"/catalog/league/" + league.id}>
+                        {t("openLeague", { name: league.name })}
+                      </Link>
+                    ))}
+                </p>
+              )}
+            </aside>
+          )}
           {schedule && upcoming.hasNextPage && !upcoming.isPending && (
             <button
               className="quiet load-more"

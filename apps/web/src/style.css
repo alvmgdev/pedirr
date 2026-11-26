@@ -1447,3 +1447,19 @@ th {
   margin: 2px 0 0;
   font-weight: 600;
 }
+.search-hint {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.search-hint p {
+  margin: 0;
+}
+.search-hint .search-hint-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 8px;
+}
