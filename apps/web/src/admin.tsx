@@ -1,9 +1,11 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, isExpired, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
+import { endOfDay, OptionalLimit, toDay } from "./fields";
+import { Plans, usePlans } from "./plans";
 
 function Toggle({ name, checked }: { name: string; checked: boolean }) {
   const { t } = useTranslation();
@@ -14,61 +16,37 @@ function Toggle({ name, checked }: { name: string; checked: boolean }) {
     </label>
   );
 }
-/** A date input value (local calendar day) for an instant, and back as the end of that day. */
-const toDay = (value: string) => {
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-};
-const endOfDay = (day: string) => new Date(`${day}T23:59:59.999`).toISOString();
-/**
- * An optional limit: switched off it means no limit, switched on it asks for the value. The
- * explanation stays visible under the switch so it also works on touch screens.
- */
-function OptionalLimit({
-  name,
-  type,
-  value,
-}: {
-  name: "weeklyRequestLimit" | "expiresAt";
-  type: "number" | "date";
-  value: string;
-}) {
+/** Which plan the user is on; "No plan" lets them request everything. */
+function PlanSelect({ user }: { user?: User }) {
   const { t } = useTranslation();
-  const [enabled, setEnabled] = useState(value !== "");
-  const id = useId();
+  const plans = usePlans();
   return (
-    <div className="optional-limit">
-      <label className="check">
-        <input
-          name={name + "Enabled"}
-          type="checkbox"
-          checked={enabled}
-          aria-describedby={id + "-hint"}
-          onChange={(event) => setEnabled(event.currentTarget.checked)}
-        />
-        {t(name)}
-      </label>
-      <p className="muted" id={id + "-hint"}>
-        {t(name + (enabled ? "On" : "Off"))}
-      </p>
-      {enabled && (
-        <label>
-          {t(name + "Value")}
-          <input
-            name={name}
-            type={type}
-            defaultValue={value}
-            required
-            {...(type === "number" ? { min: 0, max: 1000, step: 1, inputMode: "numeric" } : {})}
-          />
-        </label>
-      )}
-    </div>
+    <label>
+      {t("plan")}
+      <select
+        name="planId"
+        defaultValue={user?.plan?.id ?? ""}
+        aria-describedby="plan-hint"
+        disabled={plans.isPending}
+        key={plans.isPending ? "loading" : "ready"}
+      >
+        <option value="">{t("noPlan")}</option>
+        {plans.data?.map((plan) => (
+          <option key={plan.id} value={plan.id}>
+            {plan.name}
+          </option>
+        ))}
+      </select>
+      <span className="muted field-hint" id="plan-hint">
+        {t("planHint")}
+      </span>
+      <ErrorMessage error={plans.error} />
+    </label>
   );
 }
 /** Reads the optional limits back from a user form; a switched-off limit is sent as null. */
 const limits = (data: FormData) => ({
+  planId: data.get("planId") ? String(data.get("planId")) : null,
   weeklyRequestLimit: data.has("weeklyRequestLimitEnabled")
     ? Number(data.get("weeklyRequestLimit"))
     : null,
@@ -153,7 +131,7 @@ export function Administration({ user }: { user: User }) {
         <h1>{t("admin")}</h1>
       </header>
       <nav className="tabs admin-tabs" aria-label={t("admin")}>
-        {["users", "policies", "sportarr", "notifications"].map((item) => (
+        {["users", "plans", "policies", "sportarr", "notifications"].map((item) => (
           <button
             key={item}
             className={tab === item ? "selected" : ""}
@@ -165,6 +143,8 @@ export function Administration({ user }: { user: User }) {
       </nav>
       {tab === "users" ? (
         <Users />
+      ) : tab === "plans" ? (
+        <Plans />
       ) : tab === "policies" ? (
         <Policies />
       ) : tab === "sportarr" ? (
@@ -201,7 +181,9 @@ function Users() {
           {users.data?.items.map((user) => (
             <Link className="user-row" key={user.id} to={`/admin/users/${user.id}`}>
               <strong>{user.email}</strong>
-              <span>{t(user.role)}</span>
+              <span>
+                {user.role === "ADMIN" ? t("ADMIN") : (user.plan?.name ?? t("noPlanShort"))}
+              </span>
               <span>{t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active")}</span>
               <span>{t("editUser")}</span>
             </Link>
@@ -261,6 +243,7 @@ function UserEditor({ user }: { user: User }) {
           </select>
         </label>
         <Toggle name="active" checked={user.active} />
+        <PlanSelect user={user} />
         <UserLimits user={user} />
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
@@ -327,6 +310,7 @@ export function UserDetail({ user }: { user: User }) {
             />
           </label>
           <p className="muted">{t("passwordHint")}</p>
+          <PlanSelect />
           <UserLimits />
           <ErrorMessage error={create.error} />
           <button disabled={create.isPending}>{t("createUser")}</button>

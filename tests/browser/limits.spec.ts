@@ -32,7 +32,7 @@ test("administrators switch the weekly limit and expiration on and off", async (
     if (path.endsWith("/admin/users") || path.endsWith(`/admin/users/${created.id}`)) {
       return route.fulfill({ json: created });
     }
-    return route.fulfill({ json: {} });
+    return route.fulfill({ json: path.endsWith("/admin/plans") ? [] : {} });
   });
   await page.goto("/admin/users/new");
   const weekly = page.getByRole("checkbox", { name: "Weekly request limit" });
@@ -111,7 +111,10 @@ test("users see what is left of their weekly limit", async ({ page }) => {
 test("an account without limits says so", async ({ page }) => {
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname;
-    return route.fulfill({ json: path.endsWith("/auth/me") ? viewer : {} });
+    const unlimited = { limit: null, used: 0, remaining: null, resetsAt: null };
+    return route.fulfill({
+      json: path.endsWith("/auth/me") ? viewer : path.endsWith("/requests/quota") ? unlimited : {},
+    });
   });
   await page.goto("/account");
   await expect(page.getByText("You can make as many requests as you want.")).toBeVisible();

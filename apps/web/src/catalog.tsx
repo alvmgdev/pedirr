@@ -266,7 +266,7 @@ export function CatalogDetail({ user }: { user: User }) {
     queryKey: ["availability", kind, id],
     queryFn: () =>
       api<{
-        state: "requested" | "available" | "missing" | "unknown";
+        state: "requested" | "available" | "missing" | "unknown" | "not_allowed";
         reason?: string;
         request?: { id: string; status: string };
         subscribed?: boolean;
@@ -356,6 +356,10 @@ export function CatalogDetail({ user }: { user: User }) {
                   {t("retry")}
                 </button>
               </>
+            ) : availability.data?.state === "not_allowed" ? (
+              <p role="status" className="notice">
+                {t("notInPlan")}
+              </p>
             ) : availability.data?.state === "available" ? (
               <>
                 <Status value="AVAILABLE" />

@@ -105,6 +105,17 @@ export type User = {
   weeklyRequestLimit: number | null;
   /** When the account stops working; null means never. */
   expiresAt: string | null;
+  /** What the user may request; null means everything. */
+  plan: { id: string; name: string } | null;
+};
+export type PlanGrant = { kind: "SPORT" | "LEAGUE"; hubId: string; name: string };
+/** A content package: which sports and leagues users on the plan may request. */
+export type Plan = {
+  id: string;
+  name: string;
+  allContent: boolean;
+  grants: PlanGrant[];
+  users: number;
 };
 /** The viewer's weekly limit and what is left of it; `limit` is null without a limit. */
 export type Quota = {
