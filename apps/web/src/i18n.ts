@@ -87,6 +87,11 @@ const en = {
   planInUse_other: "{{count}} users are on this plan. Move them to another plan to delete it.",
   deletePlan: "Delete plan",
   notInPlan: "Your plan does not include this league.",
+  unknownEnvironment: "This address does not exist",
+  unknownEnvironmentHelp:
+    "Check the link you were given to sign in, or ask whoever gave it to you.",
+  environmentDisabled: "This service is not available",
+  environmentDisabledHelp: "{{name}} is not available right now. Contact whoever gave you access.",
   planSearchNote:
     "Search covers your plan ({{name}}): its leagues, and their teams and events from 7 days ago to 14 days ahead. For other dates, open the league.",
   planNotFound: "That plan no longer exists. Reload the page.",
@@ -411,6 +416,12 @@ const es: Record<keyof typeof en, string> = {
   planInUse_other: "{{count}} usuarios tienen este plan. Pásalos a otro plan para poder borrarlo.",
   deletePlan: "Borrar plan",
   notInPlan: "Tu plan no incluye esta liga.",
+  unknownEnvironment: "Esta dirección no existe",
+  unknownEnvironmentHelp:
+    "Revisa el enlace que te dieron para entrar, o pregunta a quien te lo dio.",
+  environmentDisabled: "Este servicio no está disponible",
+  environmentDisabledHelp:
+    "{{name}} no está disponible ahora mismo. Contacta con quien te dio acceso.",
   planSearchNote:
     "La búsqueda cubre tu plan ({{name}}): sus ligas, y los equipos y eventos de esas ligas desde hace 7 días hasta dentro de 14. Para otras fechas, abre la liga.",
   planNotFound: "Ese plan ya no existe. Recarga la página.",

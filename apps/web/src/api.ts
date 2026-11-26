@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { apiBase } from "./environment";
 export const client = new QueryClient({
   defaultOptions: {
     queries: {
@@ -69,7 +70,7 @@ async function send<T>(path: string, method: string, body?: unknown): Promise<T>
   }
   let response: Response;
   try {
-    response = await fetch("/api/v1" + path, {
+    response = await fetch(apiBase + path, {
       method,
       headers,
       credentials: "same-origin",
@@ -107,6 +108,13 @@ export type User = {
   expiresAt: string | null;
   /** What the user may request; null means everything. */
   plan: { id: string; name: string; allContent: boolean } | null;
+  /** The account's environment: the platform (no code) or a reseller. */
+  tenant: { code: string | null; name: string };
+};
+/** What the sign-in page needs to know about the environment it is in. */
+export type AuthConfig = {
+  registrationEnabled: boolean;
+  environment: { code: string; name: string; active: boolean } | null;
 };
 export type PlanGrant = { kind: "SPORT" | "LEAGUE"; hubId: string; name: string };
 /** A content package: which sports and leagues users on the plan may request. */

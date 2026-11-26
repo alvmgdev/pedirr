@@ -1392,3 +1392,9 @@ th {
 .plan-delete p {
   margin: 0;
 }
+.login-story .environment-name {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px;
+}

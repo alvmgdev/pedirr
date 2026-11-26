@@ -16,6 +16,7 @@ import { CatalogDetail, Discover } from "./catalog";
 import { RequestDetail, Requests } from "./requests";
 import { IssueDetail, Issues } from "./issues";
 import { ErrorMessage, Loading } from "./ui";
+import { basename } from "./environment";
 function App() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -25,7 +26,11 @@ function App() {
       try {
         return await api<User>("/auth/me");
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
+        // Signed out, or an address that is no service: the sign-in page explains which.
+        if (
+          error instanceof ApiError &&
+          (error.status === 401 || error.code === "TENANT_NOT_FOUND")
+        ) {
           return null;
         }
         throw error;
@@ -164,7 +169,7 @@ function App() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={client}>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
