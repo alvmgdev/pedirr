@@ -224,8 +224,8 @@ export class HubProvider extends MetadataProvider {
     // Hub lists a few dozen sports, so one page covers them; they rarely change.
     return this.read("sports", { page: 1, page_size: 100 }, parsePage, 86400);
   }
-  leagues(page: number) {
-    return this.read("leagues", { page, page_size: 30 }, parsePage, 3600);
+  leagues(page: number, pageSize = 30) {
+    return this.read("leagues", { page, page_size: pageSize }, parsePage, 3600);
   }
   league(id: string) {
     return this.read(`leagues/${encodeURIComponent(id)}`, {}, parseItem);

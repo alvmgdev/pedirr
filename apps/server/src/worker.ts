@@ -10,6 +10,7 @@ import { HubProvider } from "./metadata/hub";
 import { SportarrSettings } from "./settings/sportarr";
 import { Fulfillment, errorCode } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
+import { LEAGUE_INDEX_EVERY_MS, LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
 
 async function main() {
   // Fail at startup rather than on the first search.
@@ -25,15 +26,16 @@ async function main() {
       removeOnFail: { age: 604800 },
     },
   });
+  const metadata = new HubProvider(infrastructure);
   const fulfillment = new Fulfillment(
     infrastructure,
-    new HubProvider(infrastructure),
+    metadata,
     new SportarrSettings(infrastructure),
   );
   const notifications = new Notifications(infrastructure, new NotificationSettings(infrastructure));
   const worker = new Worker(
     "pedirr-work",
-    createProcessor(infrastructure, queue, fulfillment, notifications),
+    createProcessor(infrastructure, queue, fulfillment, notifications, metadata),
     {
       connection,
       concurrency: 1,
@@ -56,6 +58,15 @@ async function main() {
   );
   await queue.upsertJobScheduler("dispatcher", { every: 60000 }, { name: "dispatch", data: {} });
   await queue.add("dispatch", {}, { jobId: `startup-${Date.now()}` });
+  // The league index lets the catalog be filtered by plan; refresh it daily and when missing.
+  await queue.upsertJobScheduler(
+    "league-index",
+    { every: LEAGUE_INDEX_EVERY_MS },
+    { name: LEAGUE_INDEX_JOB, data: {} },
+  );
+  if (await leagueIndexStale(infrastructure)) {
+    await queue.add(LEAGUE_INDEX_JOB, {}, { jobId: `${LEAGUE_INDEX_JOB}-startup-${Date.now()}` });
+  }
   const beat = () =>
     connection
       .set("pedirr:worker:heartbeat", String(Date.now()), "EX", 60)

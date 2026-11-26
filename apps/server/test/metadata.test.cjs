@@ -36,6 +36,8 @@ function fixture() {
   };
   return { provider: new HubProvider({ redis }), data, redis };
 }
+/** Catalog access for viewers without a restrictive plan. */
+const unrestricted = { scope: async () => null, includes: () => true };
 test("search uses the documented contract and reuses shared cached results", async () => {
   const { provider, redis } = fixture();
   let calls = 0;
@@ -132,7 +134,7 @@ test("upcoming excludes past, cancelled, and undated entries while preserving pa
       ],
     }),
   };
-  const controller = new CatalogController(metadata, { rate: async () => {} }, {});
+  const controller = new CatalogController(metadata, { rate: async () => {} }, {}, unrestricted);
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.deepEqual(
     result.items.map((item) => item.id),
@@ -174,6 +176,7 @@ test("upcoming preserves the broadcast-date margin and skips past-only pages wit
     },
     { rate: async () => {} },
     {},
+    unrestricted,
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls[0].from, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
@@ -200,6 +203,7 @@ test("empty upcoming scans are bounded and do not report false exhaustion", asyn
     },
     { rate: async () => {} },
     {},
+    unrestricted,
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls, 5);

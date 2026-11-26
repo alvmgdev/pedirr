@@ -16,6 +16,8 @@ import {
 import { AuthRequest, AuthService } from "../auth";
 import { Infrastructure } from "../infrastructure";
 import { MetadataProvider } from "./provider";
+import { CatalogAccess } from "./access";
+import { planNotAllowed } from "../plans";
 
 export class CatalogPage {
   @ApiProperty({ required: false, default: 1 })
@@ -72,21 +74,35 @@ export class CatalogController {
     private readonly metadata: MetadataProvider,
     private readonly auth: AuthService,
     private readonly infrastructure: Infrastructure,
+    private readonly access: CatalogAccess,
   ) {}
+  /** Fails like a request outside the plan would, so pages say why instead of "not found". */
+  private async requireLeague(req: AuthRequest, league: string | null | undefined) {
+    if (!(await this.access.allowsLeague(await this.access.scope(req.viewer!), league))) {
+      throw planNotAllowed();
+    }
+  }
   private limit(req: AuthRequest) {
     return this.auth.rate(`catalog:${req.viewer!.id}`, 90, 60);
   }
   @Get("search") async search(@Query() query: SearchQuery, @Req() req: AuthRequest) {
     await this.limit(req);
-    return this.metadata.search(query.q);
+    // Hub search results carry no league or sport, so users on a plan search the league index.
+    const scope = await this.access.scope(req.viewer!);
+    return scope ? this.access.searchLeagues(scope, query.q) : this.metadata.search(query.q);
   }
   @Get("leagues") async leagues(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
-    return this.metadata.leagues(query.page);
+    const scope = await this.access.scope(req.viewer!);
+    return scope ? this.access.leaguePage(scope, query.page) : this.metadata.leagues(query.page);
   }
   @Get("leagues/:id") async league(@Param() params: CatalogIdentifier, @Req() req: AuthRequest) {
     await this.limit(req);
-    return this.metadata.league(params.id);
+    const league = await this.metadata.league(params.id);
+    if (!this.access.includes(await this.access.scope(req.viewer!), league)) {
+      throw planNotAllowed();
+    }
+    return league;
   }
   @Get("leagues/:id/seasons") async seasons(
     @Param() params: CatalogIdentifier,
@@ -94,11 +110,14 @@ export class CatalogController {
     @Req() req: AuthRequest,
   ) {
     await this.limit(req);
+    await this.requireLeague(req, params.id);
     return this.metadata.seasons(params.id, query.page);
   }
   @Get("seasons/:id") async season(@Param() params: CatalogIdentifier, @Req() req: AuthRequest) {
     await this.limit(req);
-    return this.metadata.season(params.id);
+    const season = await this.metadata.season(params.id);
+    await this.requireLeague(req, season.leagueId);
+    return season;
   }
   @Get("teams/:id") async team(@Param() params: CatalogIdentifier, @Req() req: AuthRequest) {
     await this.limit(req);
@@ -112,11 +131,26 @@ export class CatalogController {
         message: "Start date must precede end date",
       });
     }
-    return this.metadata.events(query);
+    const scope = await this.access.scope(req.viewer!);
+    if (scope && query.league) {
+      await this.requireLeague(req, query.league);
+    }
+    if (scope && query.season) {
+      await this.requireLeague(req, (await this.metadata.season(query.season)).leagueId);
+    }
+    const result = await this.metadata.events(query);
+    if (!scope || query.league || query.season) {
+      return result;
+    }
+    // A team plays in several leagues; keep the events of leagues in the plan.
+    const leagues = await this.access.leagueIds(scope);
+    return { ...result, items: result.items.filter((item) => leagues.has(item.leagueId ?? "")) };
   }
   @Get("events/:id") async event(@Param() params: CatalogIdentifier, @Req() req: AuthRequest) {
     await this.limit(req);
-    return this.metadata.event(params.id);
+    const event = await this.metadata.event(params.id);
+    await this.requireLeague(req, event.leagueId);
+    return event;
   }
   @Get("upcoming") async upcoming(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
@@ -124,6 +158,8 @@ export class CatalogController {
     // Retain the broadcast-date margin while skipping past-only pages server-side.
     const from = new Date(now - 86400000).toISOString().slice(0, 10);
     const to = new Date(now + 7 * 86400000).toISOString().slice(0, 10);
+    const scope = await this.access.scope(req.viewer!);
+    const leagues = scope ? await this.access.leagueIds(scope) : null;
     // Skip exhausted pages without claiming that a partially scanned schedule is empty.
     for (let page = query.page; page < query.page + 5; page++) {
       const result = await this.metadata.events({ from, to, page, pageSize: 100 });
@@ -133,7 +169,8 @@ export class CatalogController {
           Date.parse(item.scheduledStart) >= now &&
           Date.parse(item.scheduledStart) <= now + 7 * 86400000 &&
           item.status !== "cancelled" &&
-          item.isActive !== false,
+          item.isActive !== false &&
+          (!leagues || leagues.has(item.leagueId ?? "")),
       );
       const hasMore = result.page < result.totalPages;
       if (items.length || !hasMore || page === query.page + 4) {
@@ -155,12 +192,18 @@ export class CatalogController {
       where: { id: { in: groups.map((group) => group.entityId) } },
       include: { identifiers: true },
     });
+    const scope = await this.access.scope(req.viewer!);
     return {
       basis: "local-requests",
-      items: groups.map((group) => ({
-        ...entities.find((entity) => entity.id === group.entityId)!,
-        requestCount: group._count._all,
-      })),
+      items: groups
+        .filter((group) => {
+          const entity = entities.find((item) => item.id === group.entityId);
+          return entity && this.access.includes(scope, entity.metadata as { id: string });
+        })
+        .map((group) => ({
+          ...entities.find((entity) => entity.id === group.entityId)!,
+          requestCount: group._count._all,
+        })),
     };
   }
 }

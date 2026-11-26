@@ -105,7 +105,7 @@ async function main() {
     const create = (email, data = {}) =>
       users.create({ email, password: "a-long-enough-password", ...data });
     const fighter = await create("fighter@example.invalid", { planId: fights.id });
-    assert.deepEqual(fighter.plan, { id: fights.id, name: "Fights" });
+    assert.deepEqual(fighter.plan, { id: fights.id, name: "Fights", allContent: false });
     const free = await create("free@example.invalid");
     assert.equal(free.plan, null);
     await assert.rejects(

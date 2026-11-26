@@ -306,3 +306,19 @@ model PlanGrant {
 
   @@unique([planId, kind, hubId])
 }
+
+/// Hub's leagues with their sport, refreshed daily by the worker. Hub search results do not say
+/// which sport a league belongs to, so catalog listings for users on a plan are built from here.
+model HubLeague {
+  id        String   @id
+  shortId   String?
+  name      String
+  sportId   String?
+  sportName String?
+  country   String?
+  logoUrl   String?
+  syncedAt  DateTime
+
+  @@index([sportId])
+  @@index([syncedAt])
+}
