@@ -19,6 +19,7 @@ import { MetadataProvider } from "./provider";
 import { CatalogAccess } from "./access";
 import { Schedule } from "./schedule";
 import { planNotAllowed } from "../plans";
+import { requestsVisibleTo } from "../requests/visibility";
 
 export class CatalogPage {
   @ApiProperty({ required: false, default: 1 })
@@ -172,7 +173,12 @@ export class CatalogController {
     await this.limit(req);
     const groups = await this.infrastructure.db.request.groupBy({
       by: ["entityId"],
-      where: { entity: { kind: "LEAGUE" }, status: { not: "REJECTED" } },
+      // Only requests the viewer's environment follows count, so resellers never see each other's.
+      where: {
+        entity: { kind: "LEAGUE" },
+        status: { not: "REJECTED" },
+        ...requestsVisibleTo(req.viewer!),
+      },
       _count: { _all: true },
       orderBy: { _count: { entityId: "desc" } },
       take: 12,

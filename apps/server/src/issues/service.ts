@@ -39,11 +39,17 @@ export class IssuesService {
   constructor(private readonly infrastructure: Infrastructure) {}
 
   /**
-   * Only the reporter and administrators may see an issue. Everyone else gets the same answer
-   * as for an issue that does not exist.
+   * The reporter and platform administrators may see an issue, and a reseller's administrator
+   * those of its clients (read only). Everyone else gets the same answer as for an issue that
+   * does not exist.
    */
   private visible(viewer: Viewer): Prisma.IssueWhereInput {
-    return viewer.role === "ADMIN" ? {} : { reporterId: viewer.id };
+    if (viewer.role === "ADMIN") {
+      return {};
+    }
+    return viewer.role === "RESELLER"
+      ? { OR: [{ reporterId: viewer.id }, { reporter: { tenantId: viewer.tenantId } }] }
+      : { reporterId: viewer.id };
   }
 
   private view(issue: IssueRecord, viewer: Viewer) {
@@ -60,7 +66,7 @@ export class IssuesService {
       resolvedAt: issue.resolvedAt,
       mine: issue.reporterId === viewer.id,
       // Administrators need to know who reported it; the reporter already knows.
-      reporter: viewer.role === "ADMIN" ? issue.reporter : null,
+      reporter: viewer.role === "USER" ? null : issue.reporter,
       request: {
         id: issue.request.id,
         title: issue.request.entity.title,
@@ -190,7 +196,7 @@ export class IssuesService {
       where:
         viewer.role === "ADMIN"
           ? { status: "OPEN" }
-          : { reporterId: viewer.id, status: { in: ["OPEN", "IN_PROGRESS"] } },
+          : { ...this.visible(viewer), status: { in: ["OPEN", "IN_PROGRESS"] } },
     });
     return { open: count };
   }
@@ -202,7 +208,7 @@ export class IssuesService {
         ...issueInclude,
         comments: {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          include: { author: { select: { id: true, email: true, role: true } } },
+          include: { author: { select: { id: true, email: true, role: true, tenantId: true } } },
         },
       },
     });
@@ -220,8 +226,13 @@ export class IssuesService {
           ? {
               role: comment.author.role,
               mine: comment.author.id === viewer.id,
-              // Users see "Administrator"; administrators see who wrote it.
-              email: viewer.role === "ADMIN" ? comment.author.email : null,
+              // Users see "Administrator"; administrators see who wrote it, and a reseller's
+              // administrator only its own people, never the platform's administrators.
+              email:
+                viewer.role === "ADMIN" ||
+                (viewer.role === "RESELLER" && comment.author.tenantId === viewer.tenantId)
+                  ? comment.author.email
+                  : null,
             }
           : null,
       })),
