@@ -8,7 +8,6 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: true,
 };
 const admin = { ...viewer, id: "admin", email: "admin@example.invalid", role: "ADMIN" };
 const event = { id: "ufc-334", name: "UFC 334", leagueId: "ufc" };

@@ -9,7 +9,6 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: false,
   weeklyRequestLimit: null,
   expiresAt: null,
 };

@@ -233,7 +233,6 @@ function UserEditor({ user }: { user: User }) {
           role: data.get("role"),
           active: data.has("active"),
           autoApprove: approval === "inherit" ? null : approval === "true",
-          canRequestSeasons: data.has("canRequestSeasons"),
           ...limits(data),
         });
       }}
@@ -242,10 +241,13 @@ function UserEditor({ user }: { user: User }) {
       <div className="user-controls">
         <label>
           {t("role")}
-          <select name="role" defaultValue={user.role}>
+          <select name="role" defaultValue={user.role} aria-describedby="role-hint">
             <option value="USER">{t("USER")}</option>
             <option value="ADMIN">{t("ADMIN")}</option>
           </select>
+          <span className="muted field-hint" id="role-hint">
+            {t("roleHint")}
+          </span>
         </label>
         <label>
           {t("autoApprove")}
@@ -259,7 +261,6 @@ function UserEditor({ user }: { user: User }) {
           </select>
         </label>
         <Toggle name="active" checked={user.active} />
-        <Toggle name="canRequestSeasons" checked={user.canRequestSeasons} />
         <UserLimits user={user} />
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
@@ -309,7 +310,6 @@ export function UserDetail({ user }: { user: User }) {
             create.mutate({
               email: data.get("email"),
               password: data.get("password"),
-              canRequestSeasons: data.has("canRequestSeasons"),
               ...limits(data),
             });
           }}
@@ -327,8 +327,6 @@ export function UserDetail({ user }: { user: User }) {
             />
           </label>
           <p className="muted">{t("passwordHint")}</p>
-          <Toggle name="canRequestSeasons" checked={false} />
-          <p className="muted">{t("canRequestSeasonsHint")}</p>
           <UserLimits />
           <ErrorMessage error={create.error} />
           <button disabled={create.isPending}>{t("createUser")}</button>

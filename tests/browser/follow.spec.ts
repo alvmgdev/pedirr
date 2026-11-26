@@ -8,7 +8,6 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
-  canRequestSeasons: false,
 };
 const event = { id: "ufc-334", name: "UFC 334", leagueId: "ufc" };
 const base = {
