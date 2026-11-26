@@ -190,7 +190,7 @@ test("users see when their plan does not include a league", async ({ page }) => 
     ...admin,
     id: userId,
     role: "USER",
-    plan: { id: planId, name: "Fights" },
+    plan: { id: planId, name: "Fights", allContent: false },
   };
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -214,4 +214,39 @@ test("users see when their plan does not include a league", async ({ page }) => 
   await page.goto("/account");
   await expect(page.getByText("Your plan: Fights")).toBeVisible();
   await expect(page.getByText("You can make as many requests as you want.")).toBeVisible();
+});
+
+test("users on a plan search its leagues and see why other leagues are closed", async ({
+  page,
+}) => {
+  const client = {
+    ...admin,
+    id: userId,
+    role: "USER",
+    plan: { id: planId, name: "Fights", allContent: false },
+  };
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: client });
+    }
+    if (path.endsWith("/catalog/search")) {
+      return route.fulfill({
+        json: {
+          query: "u",
+          total: 1,
+          results: [{ id: "league-ufc", name: "UFC", entityType: "league" }],
+        },
+      });
+    }
+    if (path.endsWith("/catalog/leagues/league-nba")) {
+      return route.fulfill({ status: 403, json: { code: "PLAN_NOT_ALLOWED" } });
+    }
+    return route.fulfill({ json: { items: [] } });
+  });
+  await page.goto("/?q=uf");
+  await expect(page.getByText("Search finds the leagues in your plan (Fights).")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "UFC" })).toBeVisible();
+  await page.goto("/catalog/league/league-nba");
+  await expect(page.getByRole("alert")).toHaveText("Your plan does not include this league.");
 });

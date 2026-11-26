@@ -135,6 +135,9 @@ export function Discover({ user }: { user: User }) {
             </nav>
           )}
           <p className="muted">{t("scheduleNote", { timezone: user.timezone })}</p>
+          {query && user.plan && !user.plan.allContent && (
+            <p className="muted">{t("planSearchNote", { name: user.plan.name })}</p>
+          )}
           {result.isPending ? (
             <>
               <Loading />
