@@ -27,21 +27,25 @@ enum EntityKind {
 }
 
 model User {
-  id                String              @id @default(uuid())
-  email             String              @unique
-  passwordHash      String
-  role              Role                @default(USER)
-  active            Boolean             @default(true)
-  locale            String              @default("en")
-  timezone          String              @default("UTC")
-  autoApprove       Boolean?
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  passwordHash       String
+  role               Role                @default(USER)
+  active             Boolean             @default(true)
+  locale             String              @default("en")
+  timezone           String              @default("UTC")
+  autoApprove        Boolean?
   // Single events are always allowed; whole seasons need this grant unless ADMIN.
-  canRequestSeasons Boolean             @default(false)
-  createdAt         DateTime            @default(now())
-  sessions          Session[]
-  subscriptions     RequestSubscriber[]
-  issues            Issue[]             @relation("IssueReporter")
-  issueComments     IssueComment[]
+  canRequestSeasons  Boolean             @default(false)
+  // New requests a user may start in any rolling seven days; null means no limit.
+  weeklyRequestLimit Int?
+  // The account stops working at this moment; null means it never expires.
+  expiresAt          DateTime?
+  createdAt          DateTime            @default(now())
+  sessions           Session[]
+  subscriptions      RequestSubscriber[]
+  issues             Issue[]             @relation("IssueReporter")
+  issueComments      IssueComment[]
 }
 
 model Session {
@@ -106,17 +110,21 @@ model Request {
 }
 
 model RequestSubscriber {
-  requestId String
-  userId    String
-  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requestId         String
+  userId            String
+  request           Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Parts this user asked for; empty means every part of the request.
-  parts     String[]      @default([])
+  parts             String[]      @default([])
   // This user's view of the request, derived from their parts.
-  status    RequestStatus @default(PENDING)
-  createdAt DateTime      @default(now())
+  status            RequestStatus @default(PENDING)
+  // This user started the request, so it uses one of their weekly requests. Following an
+  // existing request never does, and a rejected one gives it back.
+  countsTowardQuota Boolean       @default(false)
+  createdAt         DateTime      @default(now())
 
   @@id([requestId, userId])
+  @@index([userId, createdAt])
 }
 
 model RequestHistory {

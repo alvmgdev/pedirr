@@ -84,6 +84,9 @@ export class RequestsController {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);
     return this.requests.partOptions(query, req.viewer!);
   }
+  @Get("quota") quota(@Req() req: AuthRequest) {
+    return this.requests.quota(req.viewer!);
+  }
   @Get(":id") detail(@Param("id", ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     return this.requests.detail(id, req.viewer!);
   }
