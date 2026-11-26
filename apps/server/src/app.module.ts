@@ -1,6 +1,10 @@
 import { ApiExceptionFilter } from "./errors";
 import { Availability } from "./requests/availability";
-import { NotificationSettings, NotificationSettingsController } from "./settings/notifications";
+import {
+  NotificationSettings,
+  NotificationSettingsController,
+  ResellerNotificationSettingsController,
+} from "./settings/notifications";
 import { SportarrSettings, SportarrSettingsController } from "./settings/sportarr";
 import { RequestsController } from "./requests/controller";
 import { RequestsService } from "./requests/service";
@@ -44,6 +48,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
   ],
   controllers: [
     NotificationSettingsController,
+    ResellerNotificationSettingsController,
     SportarrSettingsController,
     RequestsController,
     IssuesController,
