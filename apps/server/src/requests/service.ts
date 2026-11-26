@@ -1,6 +1,7 @@
 import { Availability, AvailabilityTarget } from "./availability";
 import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./parts";
 import { refreshSubscribers } from "./subscribers";
+import { isExpired, quota, weeklyLimitReached } from "./quota";
 import {
   BadRequestException,
   ConflictException,
@@ -247,7 +248,7 @@ export class RequestsService {
       // Canonical upstream identity serializes aliases and overlapping season requests.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`hub:${target.kind}:${target.entity.id}`}))`;
       const user = await tx.user.findUnique({ where: { id: viewer.id } });
-      if (!user?.active) {
+      if (!user?.active || isExpired(user)) {
         throw new ForbiddenException();
       }
       if (input.kind === "season" && !mayRequestSeasons(user)) {
@@ -281,6 +282,12 @@ export class RequestsService {
           request: await tx.request.findUniqueOrThrow({ where: { id: existing.id }, include }),
         };
       }
+      // Only starting a request uses the weekly limit; serialize this user's concurrent ones.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`quota:${user.id}`}))`;
+      const current = await quota(tx, user);
+      if (current.remaining === 0) {
+        throw weeklyLimitReached(current);
+      }
       const status = approved ? "APPROVED" : "PENDING";
       const request = await tx.request.create({
         data: {
@@ -289,7 +296,9 @@ export class RequestsService {
           scope: json(target.scope),
           status,
           integrationState: approved ? "queued" : "idle",
-          subscribers: { create: { userId: user.id, parts: parts ?? [], status } },
+          subscribers: {
+            create: { userId: user.id, parts: parts ?? [], status, countsTowardQuota: true },
+          },
           ...(parts ? { parts: { create: parts.map((name) => ({ name, status })) } } : {}),
           history: {
             create: {
@@ -403,6 +412,10 @@ export class RequestsService {
       created: false,
       request: await tx.request.findUniqueOrThrow({ where: { id: existing.id }, include }),
     };
+  }
+  /** The viewer's weekly limit and what is left of it. */
+  quota(viewer: Viewer) {
+    return quota(this.infrastructure.db, viewer);
   }
   async list(viewer: Viewer, page: number, status?: RequestStatus, mine = false) {
     // Personal lists filter on the user's own status; the shared list on the request status,

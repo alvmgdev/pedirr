@@ -93,6 +93,23 @@ const schemas: Record<string, SchemaObject> = {
     timezone: string,
     autoApprove: nullable(boolean),
     canRequestSeasons: boolean,
+    weeklyRequestLimit: {
+      ...nullable(integer),
+      description: "New requests allowed in any seven days; null means no limit.",
+    },
+    expiresAt: {
+      ...nullable(date),
+      description: "When the account stops working; null means never.",
+    },
+  }),
+  Quota: object({
+    limit: { ...nullable(integer), description: "Null when the viewer has no weekly limit." },
+    used: integer,
+    remaining: nullable(integer),
+    resetsAt: {
+      ...nullable(date),
+      description: "When the next request frees up, once none are left.",
+    },
   }),
   Ok: object({ ok: { type: "boolean", enum: [true] } }),
   CsrfToken: object({
@@ -354,6 +371,7 @@ const responses: Record<string, Schema> = {
   "POST requests": ref("CreateRequestResult"),
   "GET requests/lookup": ref("Availability"),
   "GET requests/parts": ref("PartOptions"),
+  "GET requests/quota": ref("Quota"),
   "POST requests/{id}/issues": ref("Issue"),
   "GET issues": page(ref("Issue"), 30),
   "GET issues/open": object({ open: integer }),

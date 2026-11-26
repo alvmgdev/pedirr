@@ -22,6 +22,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import * as argon2 from "argon2";
 import { Infrastructure } from "./infrastructure";
 import { required } from "./config";
+import { isExpired } from "./requests/quota";
 
 export const Public = () => SetMetadata("public", true);
 export const Admin = () => SetMetadata("admin", true);
@@ -34,6 +35,8 @@ export const publicUserSelect = {
   timezone: true,
   autoApprove: true,
   canRequestSeasons: true,
+  weeklyRequestLimit: true,
+  expiresAt: true,
 } as const;
 export type Viewer = {
   id: string;
@@ -44,6 +47,8 @@ export type Viewer = {
   timezone: string;
   autoApprove: boolean | null;
   canRequestSeasons: boolean;
+  weeklyRequestLimit: number | null;
+  expiresAt: Date | null;
 };
 /** Administrators may always request whole seasons; other users need the grant. */
 export const mayRequestSeasons = (user: Pick<Viewer, "role" | "canRequestSeasons">) =>
@@ -141,7 +146,12 @@ export class AuthService {
       where: { tokenHash: sessionHash },
       include: { user: { select: publicUserSelect } },
     });
-    if (!session || session.expiresAt < new Date() || !session.user.active) {
+    if (
+      !session ||
+      session.expiresAt < new Date() ||
+      !session.user.active ||
+      isExpired(session.user)
+    ) {
       return;
     }
     req.viewer = session.user;
@@ -159,6 +169,13 @@ export class AuthService {
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
         message: "Invalid email or password",
+      });
+    }
+    // Only someone who knows the password learns that the account expired.
+    if (isExpired(user)) {
+      throw new ForbiddenException({
+        code: "ACCOUNT_EXPIRED",
+        message: "This account has expired. Contact an administrator.",
       });
     }
     const token = randomBytes(32).toString("hex");

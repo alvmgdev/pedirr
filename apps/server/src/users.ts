@@ -12,7 +12,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsBoolean, IsIn, IsInt, Max, Min, ValidateIf } from "class-validator";
+import { IsBoolean, IsDateString, IsIn, IsInt, Max, Min, ValidateIf } from "class-validator";
 import { Type } from "class-transformer";
 import * as argon2 from "argon2";
 import { Admin, Credentials, passwordOptions, publicUserSelect, Viewer } from "./auth";
@@ -35,8 +35,39 @@ export class UserUpdate {
   @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   canRequestSeasons?: boolean;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    minimum: 0,
+    maximum: 1000,
+    description: "New requests allowed in any seven days. Null means no limit.",
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  weeklyRequestLimit?: number | null;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    format: "date-time",
+    description: "When the account stops working. Null means it never expires.",
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsDateString({ strict: true })
+  expiresAt?: string | null;
 }
 export class UserCreate extends Credentials {
+  @ApiProperty({ required: false, nullable: true, minimum: 0, maximum: 1000 })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  weeklyRequestLimit?: number | null;
+  @ApiProperty({ required: false, nullable: true, format: "date-time" })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsDateString({ strict: true })
+  expiresAt?: string | null;
   @ApiProperty({ required: false, default: false, description: "Allows requesting whole seasons." })
   @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
@@ -89,6 +120,8 @@ export class UsersService {
           email: input.email.trim().toLowerCase(),
           passwordHash,
           canRequestSeasons: input.canRequestSeasons ?? false,
+          weeklyRequestLimit: input.weeklyRequestLimit ?? null,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
         },
         select: publicUserSelect,
       });
