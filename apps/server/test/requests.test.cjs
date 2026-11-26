@@ -36,8 +36,8 @@ test("users cannot request whole seasons", async () => {
       error.getStatus() === 403 && error.getResponse().code === "SEASON_REQUESTS_NOT_ALLOWED",
   );
 });
-test("administrators pass the season permission check", async () => {
-  for (const viewer of [{ role: "ADMIN" }]) {
+test("platform and reseller administrators pass the season permission check", async () => {
+  for (const viewer of [{ role: "ADMIN" }, { role: "RESELLER" }]) {
     const service = new RequestsService(
       { db: { $transaction: () => assert.fail("Must not write") } },
       {
@@ -56,4 +56,11 @@ test("ordinary users cannot invoke moderation through the service", async () => 
     service.moderate("request", { decision: "approve", version: 0 }, { role: "USER" }),
     (error) => error.getStatus() === 403,
   );
+});
+
+test("administrators of the platform and of resellers have no weekly limit", () => {
+  const { weeklyLimit } = require("../dist/requests/quota");
+  assert.equal(weeklyLimit({ role: "ADMIN", weeklyRequestLimit: 3 }), null);
+  assert.equal(weeklyLimit({ role: "RESELLER", weeklyRequestLimit: 3 }), null);
+  assert.equal(weeklyLimit({ role: "USER", weeklyRequestLimit: 3 }), 3);
 });

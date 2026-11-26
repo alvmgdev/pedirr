@@ -87,7 +87,7 @@ const schemas: Record<string, SchemaObject> = {
   PublicUser: object({
     id: uuid,
     email: { type: "string", format: "email" },
-    role: enumeration("ADMIN", "USER"),
+    role: enumeration("ADMIN", "RESELLER", "USER"),
     active: boolean,
     locale: enumeration("en", "es"),
     timezone: string,
@@ -260,7 +260,7 @@ const schemas: Record<string, SchemaObject> = {
         createdAt: date,
         author: nullable(
           object({
-            role: enumeration("ADMIN", "USER"),
+            role: enumeration("ADMIN", "RESELLER", "USER"),
             mine: boolean,
             email: { ...nullable(string), description: "Shown to administrators only." },
           }),

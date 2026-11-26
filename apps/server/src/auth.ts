@@ -23,6 +23,7 @@ import * as argon2 from "argon2";
 import { Infrastructure } from "./infrastructure";
 import { required } from "./config";
 import { isExpired } from "./requests/quota";
+import { PLATFORM_TENANT } from "./tenants";
 
 export const Public = () => SetMetadata("public", true);
 export const Admin = () => SetMetadata("admin", true);
@@ -41,7 +42,7 @@ export const publicUserSelect = {
 export type Viewer = {
   id: string;
   email: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "RESELLER" | "USER";
   active: boolean;
   locale: string;
   timezone: string;
@@ -54,7 +55,8 @@ export type Viewer = {
  * Whole seasons can grow into hundreds of downloads, so only administrators request them; users
  * request single events.
  */
-export const mayRequestSeasons = (user: Pick<Viewer, "role">) => user.role === "ADMIN";
+export const mayRequestSeasons = (user: Pick<Viewer, "role">) =>
+  user.role === "ADMIN" || user.role === "RESELLER";
 export type AuthRequest = Request & { viewer?: Viewer; sessionHash?: string };
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 export const passwordOptions = {
@@ -161,7 +163,9 @@ export class AuthService {
   }
   async login(email: string, password: string, res: Response) {
     const user = await this.infrastructure.db.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
+      where: {
+        tenantId_email: { tenantId: PLATFORM_TENANT, email: email.trim().toLowerCase() },
+      },
     });
     // Keep unknown-account and wrong-password responses identical.
     const valid = user
