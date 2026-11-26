@@ -88,7 +88,7 @@ const en = {
   deletePlan: "Delete plan",
   notInPlan: "Your plan does not include this league.",
   planSearchNote:
-    "Search finds the leagues in your plan ({{name}}). Open a league to see its seasons and events.",
+    "Search covers your plan ({{name}}): its leagues, and their teams and events from 7 days ago to 14 days ahead. For other dates, open the league.",
   planNotFound: "That plan no longer exists. Reload the page.",
   planInUseError: "Users are still on this plan. Move them to another plan first.",
   planNameTaken: "Another plan already has this name.",
@@ -412,7 +412,7 @@ const es: Record<keyof typeof en, string> = {
   deletePlan: "Borrar plan",
   notInPlan: "Tu plan no incluye esta liga.",
   planSearchNote:
-    "La búsqueda encuentra las ligas de tu plan ({{name}}). Abre una liga para ver sus temporadas y eventos.",
+    "La búsqueda cubre tu plan ({{name}}): sus ligas, y los equipos y eventos de esas ligas desde hace 7 días hasta dentro de 14. Para otras fechas, abre la liga.",
   planNotFound: "Ese plan ya no existe. Recarga la página.",
   planInUseError: "Todavía hay usuarios con este plan. Pásalos antes a otro plan.",
   planNameTaken: "Ya hay otro plan con este nombre.",
