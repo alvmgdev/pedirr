@@ -109,6 +109,7 @@ export type User = {
   /** What the user may request; null means everything. */
   plan: { id: string; name: string; allContent: boolean } | null;
   /** The account's environment: the platform (no code) or a reseller. */
+  tenantId: string;
   tenant: { code: string | null; name: string };
 };
 /** What the sign-in page needs to know about the environment it is in. */

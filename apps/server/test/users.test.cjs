@@ -5,13 +5,11 @@ const { UsersService, UserCreate, UserUpdate, AccessPolicy } = require("../dist/
 
 function fixture(adminCount = 1) {
   const revoked = [];
-  let user = { id: "admin-id", role: "ADMIN", active: true };
+  let user = { id: "admin-id", role: "ADMIN", active: true, tenantId: "platform", tenant: {} };
   const tx = {
     $executeRaw: async () => 1,
     user: {
       findUnique: async () => user,
-      // Administrators only manage platform accounts.
-      findFirst: async ({ where }) => (where.tenantId === "platform" ? user : null),
       count: async () => adminCount,
       update: async ({ data }) => {
         user = { ...user, ...data };

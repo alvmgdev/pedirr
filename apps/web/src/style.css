@@ -1428,3 +1428,22 @@ th {
 .reseller-row span.off {
   color: #ffc4b5;
 }
+@media (min-width: 651px) {
+  .account-row {
+    grid-template-columns: minmax(0, 1fr) 150px 160px 100px auto;
+  }
+}
+.account-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0 0 24px;
+}
+.account-facts dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+.account-facts dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}

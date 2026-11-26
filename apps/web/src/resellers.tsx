@@ -14,6 +14,28 @@ import {
 import { OptionalLimit } from "./fields";
 import { ErrorMessage, Loading } from "./ui";
 
+export const useResellers = (enabled = true) =>
+  useQuery({
+    queryKey: ["resellers"],
+    queryFn: () => api<Reseller[]>("/admin/resellers"),
+    enabled,
+  });
+/** The plans a reseller's package holds, for its clients. */
+export function useResellerPlans(tenantId: string | undefined) {
+  const resellers = useResellers(Boolean(tenantId));
+  const packageId = resellers.data?.find((item) => item.id === tenantId)?.package?.id;
+  const pack = useQuery({
+    queryKey: ["package", packageId],
+    queryFn: () => api<PlanPackage>(`/admin/packages/${packageId}`),
+    enabled: Boolean(packageId),
+  });
+  return {
+    pending: resellers.isPending || (Boolean(packageId) && pack.isPending),
+    error: resellers.error ?? pack.error,
+    plans: pack.data?.plans ?? [],
+    packageName: pack.data?.name ?? null,
+  };
+}
 const usePackages = () =>
   useQuery({ queryKey: ["packages"], queryFn: () => api<PlanPackage[]>("/admin/packages") });
 
@@ -23,10 +45,7 @@ const maxUsers = (data: FormData) =>
 
 export function Resellers() {
   const { t } = useTranslation();
-  const resellers = useQuery({
-    queryKey: ["resellers"],
-    queryFn: () => api<Reseller[]>("/admin/resellers"),
-  });
+  const resellers = useResellers();
   return (
     <>
       <div className="section-actions">

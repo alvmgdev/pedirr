@@ -173,17 +173,42 @@ async function main() {
     await assert.rejects(plans.remove(hoops.id), code("PLAN_IN_PACKAGE"));
     assert.equal((await plans.detail(hoops.id)).packages, 1);
 
-    // The platform administrator's user list holds platform accounts only.
-    const platformUsers = await users.list(1);
+    // The platform administrator sees every account with its environment, and can filter.
+    const everyone = await users.list(1);
+    // Same email in three environments; their order among themselves follows the ID.
     assert.deepEqual(
-      platformUsers.items.map((item) => item.email),
-      ["owner@example.invalid"],
+      everyone.items.map((item) => String(item.tenant.code)).sort(),
+      [String(null), generated.code, "hoops-plus"].sort(),
     );
-    assert.equal(platformUsers.items[0].tenant.code, null);
-    await assert.rejects(users.detail(owner.id), code("USER_NOT_FOUND"));
-    await assert.rejects(users.update(owner.id, { active: false }), code("USER_NOT_FOUND"));
+    assert.equal(everyone.total, 3);
+    assert.deepEqual(
+      (await users.list(1, "platform")).items.map((item) => item.tenant.code),
+      [null],
+    );
+    assert.deepEqual(
+      (await users.list(1, generated.id)).items.map((item) => item.role),
+      ["RESELLER"],
+    );
+    assert.equal((await users.detail(owner.id)).tenant.code, generated.code);
+    // A reseller's accounts keep their role, and its clients only get plans of its package.
+    await assert.rejects(users.update(owner.id, { role: "USER" }), code("ROLE_NOT_ALLOWED"));
+    await assert.rejects(users.update(owner.id, { role: "ADMIN" }), code("ROLE_NOT_ALLOWED"));
+    const clientAccount = await db.user.create({
+      data: { email: "client@example.invalid", passwordHash: "x", tenantId: generated.id },
+    });
+    const outside = await db.plan.create({ data: { name: "Outside", allContent: true } });
+    await assert.rejects(
+      users.update(clientAccount.id, { planId: outside.id }),
+      code("PLAN_NOT_IN_PACKAGE"),
+    );
+    assert.equal(
+      (await users.update(clientAccount.id, { planId: fights.id, weeklyRequestLimit: 3 })).plan
+        .name,
+      "Fights",
+    );
+    assert.equal((await users.update(clientAccount.id, { active: false })).active, false);
     console.log(
-      "Resellers integration passed: packages with unique names and existing plans, resellers created with their administrator, generated and custom codes, validation and atomic refusal, platform excluded, reseller sign-in, edits, disabling ends sessions, administrator password reset, deletion guards, platform-only user administration.",
+      "Resellers integration passed: packages with unique names and existing plans, resellers created with their administrator, generated and custom codes, validation and atomic refusal, platform excluded, reseller sign-in, edits, disabling ends sessions, administrator password reset, deletion guards, every account listed with its environment and filterable, reseller roles kept and package-only plans for reseller clients.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

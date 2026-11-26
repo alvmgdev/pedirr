@@ -38,6 +38,8 @@ for (const locale of ["en", "es"]) {
       locale,
       timezone: "Europe/Madrid",
       autoApprove: null,
+      tenantId: "platform",
+      tenant: { code: null, name: "Pedirr" },
     };
     const event = {
       id: "event-1",

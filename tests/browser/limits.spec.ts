@@ -9,6 +9,8 @@ const viewer = {
   locale: "en",
   timezone: "UTC",
   autoApprove: null,
+  tenantId: "platform",
+  tenant: { code: null, name: "Pedirr" },
   weeklyRequestLimit: null,
   expiresAt: null,
 };
