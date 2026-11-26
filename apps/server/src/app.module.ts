@@ -8,6 +8,7 @@ import { CatalogController } from "./metadata/controller";
 import { HubProvider } from "./metadata/hub";
 import { MetadataProvider } from "./metadata/provider";
 import { UsersController, UsersService } from "./users";
+import { PlansController, PlansService } from "./plans";
 import { IssuesController } from "./issues/controller";
 import { IssuesService } from "./issues/service";
 import { Module } from "@nestjs/common";
@@ -23,6 +24,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     Infrastructure,
     AuthService,
     UsersService,
+    PlansService,
     SportarrSettings,
     NotificationSettings,
     RequestsService,
@@ -39,6 +41,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     HealthController,
     AuthController,
     UsersController,
+    PlansController,
   ],
 })
 export class AppModule {}

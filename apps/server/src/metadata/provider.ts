@@ -32,6 +32,8 @@ export type EventFilters = {
 };
 export abstract class MetadataProvider {
   abstract search(query: string): Promise<MetadataSearch>;
+  /** Every sport Hub knows (a few dozen), for choosing what a plan includes. */
+  abstract sports(): Promise<MetadataPage>;
   abstract leagues(page: number): Promise<MetadataPage>;
   abstract league(id: string): Promise<MetadataItem>;
   abstract seasons(league: string, page: number): Promise<MetadataPage>;

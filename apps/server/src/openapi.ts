@@ -100,6 +100,10 @@ const schemas: Record<string, SchemaObject> = {
       ...nullable(date),
       description: "When the account stops working; null means never.",
     },
+    plan: {
+      ...nullable(object({ id: uuid, name: string })),
+      description: "What the user may request; null means everything.",
+    },
   }),
   Quota: object({
     limit: { ...nullable(integer), description: "Null when the viewer has no weekly limit." },
@@ -109,6 +113,15 @@ const schemas: Record<string, SchemaObject> = {
       ...nullable(date),
       description: "When the next request frees up, once none are left.",
     },
+  }),
+  Plan: object({
+    id: uuid,
+    name: string,
+    allContent: { ...boolean, description: "Every sport and league; grants are ignored." },
+    grants: array(object({ kind: enumeration("SPORT", "LEAGUE"), hubId: string, name: string })),
+    users: { ...integer, description: "Users on this plan." },
+    createdAt: date,
+    updatedAt: date,
   }),
   Ok: object({ ok: { type: "boolean", enum: [true] } }),
   CsrfToken: object({
@@ -268,6 +281,7 @@ const schemas: Record<string, SchemaObject> = {
   }),
   Availability: {
     oneOf: [
+      object({ state: enumeration("not_allowed") }),
       object({
         state: enumeration("requested"),
         request: object({ id: uuid, status }),
@@ -347,6 +361,12 @@ const responses: Record<string, Schema> = {
   "POST admin/users": ref("PublicUser"),
   "PATCH admin/users/{id}": ref("PublicUser"),
   "GET admin/policies": ref("AccessPolicy"),
+  "GET admin/plans": array(ref("Plan")),
+  "GET admin/plans/sports": array(object({ id: string, name: string })),
+  "GET admin/plans/{id}": ref("Plan"),
+  "POST admin/plans": ref("Plan"),
+  "PUT admin/plans/{id}": ref("Plan"),
+  "DELETE admin/plans/{id}": ref("Ok"),
   "PATCH admin/policies": ref("AccessPolicy"),
   "GET catalog/search": ref("MetadataSearch"),
   "GET catalog/leagues": ref("MetadataPage"),
