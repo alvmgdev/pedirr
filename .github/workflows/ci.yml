@@ -62,6 +62,7 @@ jobs:
       - run: node apps/server/test/integration/clients.cjs
       - run: node apps/server/test/integration/isolation.cjs
       - run: node apps/server/test/integration/tenant-notifications.cjs
+      - run: node apps/server/test/integration/http-isolation.cjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm audit --audit-level=moderate
