@@ -96,6 +96,8 @@ const en = {
     "Give this address to your clients: they sign in there with the account you create.",
   issueReadOnly:
     "You can follow your clients' issues here; the platform answers and resolves them.",
+  resellerNotificationsHint:
+    "Your clients and you are notified by email and Discord through these settings only. Without them, nobody of yours is notified.",
   yourPackage: "Your package",
   noPackageYet: "You have no package yet, so there are no plans to give. Ask the platform.",
   clientsTitle: "Clients",
@@ -520,6 +522,8 @@ const es: Record<keyof typeof en, string> = {
     "Pásales esta dirección a tus clientes: entran por ahí con la cuenta que les crees.",
   issueReadOnly:
     "Aquí puedes seguir las incidencias de tus clientes; las responde y resuelve la plataforma.",
+  resellerNotificationsHint:
+    "Tus clientes y tú recibís los avisos por email y Discord solo con esta configuración. Sin ella, nadie de los tuyos recibe avisos.",
   yourPackage: "Tu paquete",
   noPackageYet: "Aún no tienes paquete, así que no hay planes que dar. Pídelo a la plataforma.",
   clientsTitle: "Clientes",
