@@ -101,7 +101,7 @@ const schemas: Record<string, SchemaObject> = {
       description: "When the account stops working; null means never.",
     },
     plan: {
-      ...nullable(object({ id: uuid, name: string })),
+      ...nullable(object({ id: uuid, name: string, allContent: boolean })),
       description: "What the user may request; null means everything.",
     },
   }),

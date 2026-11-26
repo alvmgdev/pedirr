@@ -268,7 +268,7 @@ async function main() {
     const notifications = new Notifications(infrastructure, app.get(NotificationSettings));
     worker = new Worker(
       "work",
-      createProcessor(infrastructure, queue, fulfillment, notifications),
+      createProcessor(infrastructure, queue, fulfillment, notifications, metadata),
       { connection, prefix, concurrency: 1 },
     );
     const failed = [];

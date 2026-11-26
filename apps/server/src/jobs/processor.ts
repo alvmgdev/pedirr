@@ -3,12 +3,15 @@ import { Infrastructure } from "../infrastructure";
 import { Notifications } from "../notifications/service";
 import { dispatch } from "./dispatch";
 import { Fulfillment } from "./fulfillment";
+import { indexLeagues, LEAGUE_INDEX_JOB } from "./league-index";
+import { MetadataProvider } from "../metadata/provider";
 
 export function createProcessor(
   infrastructure: Infrastructure,
   queue: Queue,
   fulfillment: Fulfillment,
   notifications: Notifications,
+  metadata: MetadataProvider,
 ) {
   return async (job: Job) => {
     if (job.name === "dispatch") {
@@ -21,6 +24,9 @@ export function createProcessor(
         data: { processedAt: new Date() },
       });
       return;
+    }
+    if (job.name === LEAGUE_INDEX_JOB) {
+      return indexLeagues(infrastructure, metadata, queue, job.data);
     }
     if (job.name === "sync" && typeof job.data.requestId === "string") {
       return fulfillment.run(job.data.requestId);

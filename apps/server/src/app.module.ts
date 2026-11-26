@@ -7,6 +7,7 @@ import { RequestsService } from "./requests/service";
 import { CatalogController } from "./metadata/controller";
 import { HubProvider } from "./metadata/hub";
 import { MetadataProvider } from "./metadata/provider";
+import { CatalogAccess } from "./metadata/access";
 import { UsersController, UsersService } from "./users";
 import { PlansController, PlansService } from "./plans";
 import { IssuesController } from "./issues/controller";
@@ -25,6 +26,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     AuthService,
     UsersService,
     PlansService,
+    CatalogAccess,
     SportarrSettings,
     NotificationSettings,
     RequestsService,
