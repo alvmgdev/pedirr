@@ -188,8 +188,10 @@ const en = {
     "Check the link you were given to sign in, or ask whoever gave it to you.",
   environmentDisabled: "This service is not available",
   environmentDisabledHelp: "{{name}} is not available right now. Contact whoever gave you access.",
-  planSearchNote:
-    "Search covers your plan ({{name}}): its leagues, and their teams and events from 7 days ago to 14 days ahead. For other dates, open the league.",
+  planSearchNote: "Search shows the leagues, teams and events your plan ({{name}}) includes.",
+  olderEventsHint:
+    "Can't find an older event? Open its league and choose the season: all its events are there.",
+  openLeague: "Open {{name}}",
   planNotFound: "That plan no longer exists. Reload the page.",
   planInUseError: "Users are still on this plan. Move them to another plan first.",
   planNameTaken: "Another plan already has this name.",
@@ -617,7 +619,10 @@ const es: Record<keyof typeof en, string> = {
   environmentDisabledHelp:
     "{{name}} no está disponible ahora mismo. Contacta con quien te dio acceso.",
   planSearchNote:
-    "La búsqueda cubre tu plan ({{name}}): sus ligas, y los equipos y eventos de esas ligas desde hace 7 días hasta dentro de 14. Para otras fechas, abre la liga.",
+    "La búsqueda muestra las ligas, equipos y eventos que incluye tu plan ({{name}}).",
+  olderEventsHint:
+    "¿No encuentras un evento más antiguo? Abre su liga y elige la temporada: allí están todos sus eventos.",
+  openLeague: "Abrir {{name}}",
   planNotFound: "Ese plan ya no existe. Recarga la página.",
   planInUseError: "Todavía hay usuarios con este plan. Pásalos antes a otro plan.",
   planNameTaken: "Ya hay otro plan con este nombre.",
