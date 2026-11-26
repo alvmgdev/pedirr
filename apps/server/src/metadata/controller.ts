@@ -17,6 +17,7 @@ import { AuthRequest, AuthService } from "../auth";
 import { Infrastructure } from "../infrastructure";
 import { MetadataProvider } from "./provider";
 import { CatalogAccess } from "./access";
+import { LocalSchedule } from "./schedule";
 import { planNotAllowed } from "../plans";
 
 export class CatalogPage {
@@ -75,6 +76,7 @@ export class CatalogController {
     private readonly auth: AuthService,
     private readonly infrastructure: Infrastructure,
     private readonly access: CatalogAccess,
+    private readonly schedule: LocalSchedule,
   ) {}
   /** Fails like a request outside the plan would, so pages say why instead of "not found". */
   private async requireLeague(req: AuthRequest, league: string | null | undefined) {
@@ -87,9 +89,23 @@ export class CatalogController {
   }
   @Get("search") async search(@Query() query: SearchQuery, @Req() req: AuthRequest) {
     await this.limit(req);
-    // Hub search results carry no league or sport, so users on a plan search the league index.
     const scope = await this.access.scope(req.viewer!);
-    return scope ? this.access.searchLeagues(scope, query.q) : this.metadata.search(query.q);
+    if (!scope) {
+      return this.metadata.search(query.q);
+    }
+    // Hub search results carry no league or sport, so users on a plan search the league index
+    // and, once it is ready, the local schedule for events and the teams playing them.
+    const leagues = await this.access.searchLeagues(scope, query.q);
+    if (!(await this.schedule.ready())) {
+      return leagues;
+    }
+    const allowed = await this.access.leagueIds(scope);
+    const results = [
+      ...leagues.results,
+      ...(await this.schedule.searchTeams(allowed, query.q)),
+      ...(await this.schedule.searchEvents(allowed, query.q)),
+    ] as typeof leagues.results;
+    return { query: query.q, total: results.length, results };
   }
   @Get("leagues") async leagues(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
@@ -154,12 +170,16 @@ export class CatalogController {
   }
   @Get("upcoming") async upcoming(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
+    const scope = await this.access.scope(req.viewer!);
+    const leagues = scope ? await this.access.leagueIds(scope) : null;
+    // The local copy pages and filters in one query; Hub is the fallback until it is ready.
+    if (await this.schedule.ready()) {
+      return this.schedule.upcoming(leagues, query.page);
+    }
     const now = Date.now();
     // Retain the broadcast-date margin while skipping past-only pages server-side.
     const from = new Date(now - 86400000).toISOString().slice(0, 10);
     const to = new Date(now + 7 * 86400000).toISOString().slice(0, 10);
-    const scope = await this.access.scope(req.viewer!);
-    const leagues = scope ? await this.access.leagueIds(scope) : null;
     // Skip exhausted pages without claiming that a partially scanned schedule is empty.
     for (let page = query.page; page < query.page + 5; page++) {
       const result = await this.metadata.events({ from, to, page, pageSize: 100 });

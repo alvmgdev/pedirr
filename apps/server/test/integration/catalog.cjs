@@ -6,6 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const Redis = require("ioredis");
 const { CatalogController } = require("../../dist/metadata/controller");
 const { CatalogAccess } = require("../../dist/metadata/access");
+const { LocalSchedule } = require("../../dist/metadata/schedule");
 const { indexLeagues, leagueIndexStale } = require("../../dist/jobs/league-index");
 
 const code = (expected) => (error) => error.getResponse().code === expected;
@@ -84,7 +85,7 @@ async function main() {
     const queued = [];
     const queue = { add: async (name, data, options) => queued.push({ name, data, options }) };
     assert.equal(await leagueIndexStale(infrastructure), true);
-    await redis.del("pedirr:league-index:run");
+    await redis.del("pedirr:index:leagues");
     let job = {};
     for (let step = 0; step < 10; step++) {
       const result = await indexLeagues(infrastructure, metadata, queue, job, 1000);
@@ -99,9 +100,9 @@ async function main() {
       [1, 2, 3],
     );
     assert.ok(queued.every((item) => item.options.delay > 0));
-    assert.equal(await redis.get("pedirr:league-index:run"), null);
+    assert.equal(await redis.get("pedirr:index:leagues"), null);
     // A run that finds another one going does nothing; a stale page of an old run stops.
-    await redis.set("pedirr:league-index:run", "5000");
+    await redis.set("pedirr:index:leagues", "5000");
     assert.deepEqual(await indexLeagues(infrastructure, metadata, queue, {}, 6000), {
       skipped: "running",
     });
@@ -109,7 +110,7 @@ async function main() {
       await indexLeagues(infrastructure, metadata, queue, { page: 2, startedAt: 1000 }, 6000),
       { skipped: "superseded" },
     );
-    await redis.del("pedirr:league-index:run");
+    await redis.del("pedirr:index:leagues");
     // A complete run drops leagues Hub no longer lists.
     hubLeagues = leagues.slice(0, 4);
     queued.length = 0;
@@ -148,6 +149,8 @@ async function main() {
       { rate: async () => {} },
       infrastructure,
       new CatalogAccess(infrastructure, metadata),
+      // Not ready: no complete copy of the schedule yet, so Hub answers as before.
+      new LocalSchedule(infrastructure),
     );
     const as = (viewer) => ({ viewer });
 
