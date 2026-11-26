@@ -15,7 +15,7 @@ import {
 } from "class-validator";
 import { AuthRequest, AuthService } from "../auth";
 import { Infrastructure } from "../infrastructure";
-import { MetadataProvider } from "./provider";
+import { LeagueSearch, MetadataProvider } from "./provider";
 import { CatalogAccess } from "./access";
 import { Schedule } from "./schedule";
 import { planNotAllowed } from "../plans";
@@ -94,14 +94,31 @@ export class CatalogController {
     if (!scope) {
       return this.metadata.search(query.q);
     }
-    // Hub search results carry no league or sport, so users on a plan search the league index
-    // and the local schedule for the events of those leagues and the teams playing them.
-    const [leagues, allowed] = await Promise.all([
+    // Hub's main search does not say which league a result belongs to, so users on a plan
+    // search the league index, the local schedule, and Hub's league-aware search over the whole
+    // catalog, keeping what their plan includes. Hub being busy only loses the last part.
+    const [leagues, allowed, remote] = await Promise.all([
       this.access.searchLeagues(scope, query.q),
       this.access.leagueIds(scope),
+      this.searchWithLeagues(query.q),
     ]);
-    const results = [...leagues.results, ...(await this.schedule.search(allowed, query.q))];
+    const [local, fromHub] = await Promise.all([
+      this.schedule.search(allowed, query.q),
+      this.access.withinPlan(scope, remote),
+    ]);
+    const seen = new Set(local.map((item) => item.id));
+    const extra = [...fromHub.teams, ...fromHub.events]
+      .filter((item) => !seen.has(item.id))
+      .map((item) => ({ ...item, entityType: item.entityType as "team" | "event" }));
+    const results = [...leagues.results, ...local, ...extra];
     return { query: query.q, total: results.length, results };
+  }
+  private async searchWithLeagues(query: string): Promise<LeagueSearch> {
+    try {
+      return await this.metadata.searchWithLeagues(query);
+    } catch {
+      return { events: [], teams: [] };
+    }
   }
   @Get("leagues") async leagues(@Query() query: CatalogPage, @Req() req: AuthRequest) {
     await this.limit(req);
