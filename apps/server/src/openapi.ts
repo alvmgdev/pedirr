@@ -311,6 +311,10 @@ const schemas: Record<string, SchemaObject> = {
         state: enumeration("requested"),
         request: object({ id: uuid, status }),
         subscribed: boolean,
+        visible: {
+          ...boolean,
+          description: "Whether someone of the viewer's environment follows it, so it opens.",
+        },
       }),
       object(
         {

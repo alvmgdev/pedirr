@@ -245,7 +245,15 @@ async function main() {
       const entity = await db.catalogEntity.create({
         data: { kind: "LEAGUE", title: league.name, metadata: league },
       });
-      await db.request.create({ data: { entityId: entity.id, scopeKey: "season:x", scope: {} } });
+      // Followed at the platform, so platform users see them.
+      await db.request.create({
+        data: {
+          entityId: entity.id,
+          scopeKey: "season:x",
+          scope: {},
+          subscribers: { create: { userId: free.id } },
+        },
+      });
     }
     assert.deepEqual(
       (await controller.popular(as(fighter))).items.map((item) => item.title),

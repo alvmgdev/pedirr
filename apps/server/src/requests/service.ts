@@ -3,6 +3,7 @@ import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./p
 import { refreshSubscribers } from "./subscribers";
 import { isExpired, quota, weeklyLimitReached } from "./quota";
 import { planAllows, planNotAllowed, userAccess } from "../plans";
+import { followersVisibleTo, requestsVisibleTo } from "./visibility";
 import {
   BadRequestException,
   ConflictException,
@@ -30,8 +31,12 @@ const include = {
     select: { name: true, status: true, rejectionReason: true },
     orderBy: { createdAt: "asc" },
   },
-  _count: { select: { subscribers: true } },
 } as const;
+/** A request as shown, counting only the followers the viewer may know about. */
+const shown = (viewer: Pick<Viewer, "role" | "tenantId">) => ({
+  ...include,
+  _count: { select: { subscribers: { where: followersVisibleTo(viewer) } } },
+});
 const sameName = (left: string) => (right: { name: string } | string) =>
   partKey(typeof right === "string" ? right : right.name) === partKey(left);
 type PartState = "none" | "requested" | "downloading" | "available";
@@ -147,14 +152,21 @@ export class RequestsService {
     }
     const existing = await this.existing(target);
     if (existing) {
-      const following = await this.infrastructure.db.requestSubscriber.findUnique({
-        where: { requestId_userId: { requestId: existing.id, userId: viewer.id } },
-      });
+      const [following, known] = await Promise.all([
+        this.infrastructure.db.requestSubscriber.findUnique({
+          where: { requestId_userId: { requestId: existing.id, userId: viewer.id } },
+        }),
+        this.infrastructure.db.requestSubscriber.count({
+          where: { requestId: existing.id, ...followersVisibleTo(viewer) },
+        }),
+      ]);
       return {
         state: "requested" as const,
         request: { id: existing.id, status: existing.status },
         // The viewer already follows it: there is nothing to follow, only more parts to ask for.
         subscribed: following !== null,
+        // Only requests someone of the viewer's environment follows open for them.
+        visible: known > 0,
       };
     }
     return this.availability.check(target.scope as AvailabilityTarget);
@@ -278,7 +290,7 @@ export class RequestsService {
       const policy = await tx.setting.findUnique({ where: { key: `autoApprove.${user.role}` } });
       const approved = user.autoApprove ?? policy?.value === true;
       if (existing?.parts.length && parts) {
-        return this.addParts(tx, existing, user.id, parts, approved);
+        return this.addParts(tx, existing, user.id, parts, approved, viewer);
       }
       if (existing) {
         if (existing.parts.length) {
@@ -295,7 +307,10 @@ export class RequestsService {
         });
         return {
           created: false,
-          request: await tx.request.findUniqueOrThrow({ where: { id: existing.id }, include }),
+          request: await tx.request.findUniqueOrThrow({
+            where: { id: existing.id },
+            include: shown(viewer),
+          }),
         };
       }
       // Only starting a request uses the weekly limit; serialize this user's concurrent ones.
@@ -324,7 +339,7 @@ export class RequestsService {
             },
           },
         },
-        include,
+        include: shown(viewer),
       });
       await tx.outboxEvent.create({
         data: { type: "request.created", payload: { requestId: request.id, status } },
@@ -351,6 +366,7 @@ export class RequestsService {
     userId: string,
     parts: string[],
     approved: boolean,
+    viewer: Viewer,
   ) {
     const status = approved ? "APPROVED" : "PENDING";
     const added: string[] = [];
@@ -426,7 +442,10 @@ export class RequestsService {
     await refreshSubscribers(tx, existing.id);
     return {
       created: false,
-      request: await tx.request.findUniqueOrThrow({ where: { id: existing.id }, include }),
+      request: await tx.request.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: shown(viewer),
+      }),
     };
   }
   /** The viewer's weekly limit and what is left of it. */
@@ -438,14 +457,19 @@ export class RequestsService {
     // where new parts awaiting review also count as pending.
     const where: Prisma.RequestWhereInput = mine
       ? { subscribers: { some: { userId: viewer.id, ...(status ? { status } : {}) } } }
-      : status === "PENDING"
-        ? { OR: [{ status }, { parts: { some: { status: "PENDING" } } }] }
-        : { status };
+      : {
+          AND: [
+            requestsVisibleTo(viewer),
+            status === "PENDING"
+              ? { OR: [{ status }, { parts: { some: { status: "PENDING" } } }] }
+              : { status },
+          ],
+        };
     const [items, total] = await this.infrastructure.db.$transaction([
       this.infrastructure.db.request.findMany({
         where,
         include: {
-          ...include,
+          ...shown(viewer),
           subscribers: {
             where: { userId: viewer.id },
             select: { userId: true, parts: true, status: true },
@@ -471,13 +495,14 @@ export class RequestsService {
     };
   }
   async detail(id: string, viewer: Viewer) {
-    const request = await this.infrastructure.db.request.findUnique({
-      where: { id },
+    // A request nobody of the viewer's environment follows does not exist for them.
+    const request = await this.infrastructure.db.request.findFirst({
+      where: { AND: [{ id }, requestsVisibleTo(viewer)] },
       include: {
-        ...include,
-        // Administrators see every subscriber; users only their own subscription.
+        ...shown(viewer),
+        // Administrators see the subscribers they may know about; users only themselves.
         subscribers: {
-          where: viewer.role === "ADMIN" ? {} : { userId: viewer.id },
+          where: viewer.role === "USER" ? { userId: viewer.id } : followersVisibleTo(viewer),
           select: {
             userId: true,
             parts: true,
@@ -515,9 +540,10 @@ export class RequestsService {
       ...result,
       subscribed: own !== undefined,
       subscription: own ? { parts: own.parts, status: own.status } : null,
-      // Who asked for what, so administrators can review and answer; never shown to users.
+      // Who asked for what, so administrators can review and answer (a reseller's administrator
+      // for its own clients); never shown to users.
       subscribers:
-        viewer.role === "ADMIN"
+        viewer.role !== "USER"
           ? subscribers.map((subscriber) => ({
               email: subscriber.user.email,
               parts: subscriber.parts,
@@ -623,7 +649,7 @@ export class RequestsService {
         });
       }
       await refreshSubscribers(tx, id);
-      return tx.request.findUniqueOrThrow({ where: { id }, include });
+      return tx.request.findUniqueOrThrow({ where: { id }, include: shown(viewer) });
     });
   }
 }
