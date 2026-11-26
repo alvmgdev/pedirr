@@ -27,16 +27,20 @@ export const isExpired = (
 /** Requests the user started in the window that were not rejected for them, oldest first. */
 export async function quota(
   db: Prisma.TransactionClient,
-  user: Limited & { id: string },
+  userId: string,
   now = Date.now(),
 ): Promise<Quota> {
+  const user = await db.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { role: true, weeklyRequestLimit: true },
+  });
   const limit = weeklyLimit(user);
   if (limit === null) {
     return { limit: null, used: 0, remaining: null, resetsAt: null };
   }
   const charged = await db.requestSubscriber.findMany({
     where: {
-      userId: user.id,
+      userId,
       countsTowardQuota: true,
       status: { not: "REJECTED" },
       createdAt: { gt: new Date(now - QUOTA_WINDOW_MS) },

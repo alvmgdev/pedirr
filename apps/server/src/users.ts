@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -12,7 +13,16 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsBoolean, IsDateString, IsIn, IsInt, Max, Min, ValidateIf } from "class-validator";
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsUUID,
+  Max,
+  Min,
+  ValidateIf,
+} from "class-validator";
 import { Type } from "class-transformer";
 import * as argon2 from "argon2";
 import { Admin, Credentials, passwordOptions, publicUserSelect, Viewer } from "./auth";
@@ -52,6 +62,15 @@ export class UserUpdate {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString({ strict: true })
   expiresAt?: string | null;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    format: "uuid",
+    description: "What the user may request. Null means everything.",
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsUUID()
+  planId?: string | null;
 }
 export class UserCreate extends Credentials {
   @ApiProperty({ required: false, nullable: true, minimum: 0, maximum: 1000 })
@@ -64,7 +83,21 @@ export class UserCreate extends Credentials {
   @ValidateIf((_, value) => value !== undefined && value !== null)
   @IsDateString({ strict: true })
   expiresAt?: string | null;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    format: "uuid",
+    description: "What the user may request. Null means everything.",
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsUUID()
+  planId?: string | null;
 }
+/** A plan ID that does not exist fails the foreign key; say so instead of a server error. */
+const planMissing = (error: unknown) =>
+  (error as { code?: string }).code === "P2003"
+    ? new BadRequestException({ code: "PLAN_NOT_FOUND", message: "Plan not found" })
+    : error;
 export class UserPage {
   @ApiProperty({ required: false, default: 1 })
   @Type(() => Number)
@@ -113,6 +146,7 @@ export class UsersService {
           passwordHash,
           weeklyRequestLimit: input.weeklyRequestLimit ?? null,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+          planId: input.planId ?? null,
         },
         select: publicUserSelect,
       });
@@ -123,7 +157,7 @@ export class UsersService {
           message: "Email cannot be registered",
         });
       }
-      throw error;
+      throw planMissing(error);
     }
   }
   async update(id: string, input: UserUpdate) {
@@ -146,11 +180,11 @@ export class UsersService {
           });
         }
       }
-      const updated = await tx.user.update({
-        where: { id },
-        data: input,
-        select: publicUserSelect,
-      });
+      const updated = await tx.user
+        .update({ where: { id }, data: input, select: publicUserSelect })
+        .catch((error: unknown) => {
+          throw planMissing(error);
+        });
       if (input.active === false || (input.role !== undefined && input.role !== user.role)) {
         await tx.session.deleteMany({ where: { userId: id } });
       }

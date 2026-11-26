@@ -2,6 +2,7 @@ import { Availability, AvailabilityTarget } from "./availability";
 import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./parts";
 import { refreshSubscribers } from "./subscribers";
 import { isExpired, quota, weeklyLimitReached } from "./quota";
+import { planAllows, planNotAllowed } from "../plans";
 import {
   BadRequestException,
   ConflictException,
@@ -134,8 +135,20 @@ export class RequestsService {
       include,
     });
   }
+  /** Whether the user's plan includes the target's league; administrators may request anything. */
+  private async allowed(userId: string, target: Awaited<ReturnType<RequestsService["target"]>>) {
+    const user = await this.infrastructure.db.user.findUnique({
+      where: { id: userId },
+      select: { role: true, plan: { select: { allContent: true, grants: true } } },
+    });
+    return user?.role === "ADMIN" || planAllows(user?.plan, target.scope.league);
+  }
   async lookup(input: RequestTarget, viewer: Viewer) {
     const target = await this.target(input);
+    // Content outside the plan cannot be requested or followed, whoever asked for it.
+    if (!(await this.allowed(viewer.id, target))) {
+      return { state: "not_allowed" as const };
+    }
     const existing = await this.existing(target);
     if (existing) {
       const following = await this.infrastructure.db.requestSubscriber.findUnique({
@@ -159,6 +172,9 @@ export class RequestsService {
       throw seasonRequestsNotAllowed();
     }
     const target = await this.target(input);
+    if (!(await this.allowed(viewer.id, target))) {
+      return { supported: false, parts: [] };
+    }
     const found = await this.existing(target);
     // A whole-event request already covers every part: there is nothing to choose, only to follow.
     if (found && !found.parts.length) {
@@ -247,9 +263,16 @@ export class RequestsService {
     return this.infrastructure.db.$transaction(async (tx) => {
       // Canonical upstream identity serializes aliases and overlapping season requests.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`hub:${target.kind}:${target.entity.id}`}))`;
-      const user = await tx.user.findUnique({ where: { id: viewer.id } });
+      const user = await tx.user.findUnique({
+        where: { id: viewer.id },
+        include: { plan: { include: { grants: true } } },
+      });
       if (!user?.active || isExpired(user)) {
         throw new ForbiddenException();
+      }
+      // Checked against the stored plan, so a plan change applies at once; following counts too.
+      if (user.role !== "ADMIN" && !planAllows(user.plan, target.scope.league)) {
+        throw planNotAllowed();
       }
       if (input.kind === "season" && !mayRequestSeasons(user)) {
         throw seasonRequestsNotAllowed();
@@ -284,7 +307,7 @@ export class RequestsService {
       }
       // Only starting a request uses the weekly limit; serialize this user's concurrent ones.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`quota:${user.id}`}))`;
-      const current = await quota(tx, user);
+      const current = await quota(tx, user.id);
       if (current.remaining === 0) {
         throw weeklyLimitReached(current);
       }
@@ -415,7 +438,7 @@ export class RequestsService {
   }
   /** The viewer's weekly limit and what is left of it. */
   quota(viewer: Viewer) {
-    return quota(this.infrastructure.db, viewer);
+    return quota(this.infrastructure.db, viewer.id);
   }
   async list(viewer: Viewer, page: number, status?: RequestStatus, mine = false) {
     // Personal lists filter on the user's own status; the shared list on the request status,

@@ -39,6 +39,9 @@ model User {
   weeklyRequestLimit Int?
   // The account stops working at this moment; null means it never expires.
   expiresAt          DateTime?
+  // What the user may request; without a plan, everything.
+  planId             String?
+  plan               Plan?               @relation(fields: [planId], references: [id], onDelete: Restrict)
   createdAt          DateTime            @default(now())
   sessions           Session[]
   subscriptions      RequestSubscriber[]
@@ -272,4 +275,34 @@ model IssueComment {
   createdAt DateTime     @default(now())
 
   @@index([issueId, createdAt])
+}
+
+enum PlanGrantKind {
+  SPORT
+  LEAGUE
+}
+
+/// A content package: which sports and leagues users on the plan may request.
+model Plan {
+  id         String      @id @default(uuid())
+  name       String      @unique
+  // Every sport and league, whatever the grants say.
+  allContent Boolean     @default(false)
+  grants     PlanGrant[]
+  users      User[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+/// One sport or league a plan includes, by its Sportarr Hub ID.
+model PlanGrant {
+  id     String        @id @default(uuid())
+  planId String
+  plan   Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  kind   PlanGrantKind
+  hubId  String
+  // Hub's name when the grant was added, for display.
+  name   String
+
+  @@unique([planId, kind, hubId])
 }

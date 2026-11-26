@@ -36,6 +36,7 @@ export const publicUserSelect = {
   autoApprove: true,
   weeklyRequestLimit: true,
   expiresAt: true,
+  plan: { select: { id: true, name: true } },
 } as const;
 export type Viewer = {
   id: string;
@@ -47,6 +48,7 @@ export type Viewer = {
   autoApprove: boolean | null;
   weeklyRequestLimit: number | null;
   expiresAt: Date | null;
+  plan: { id: string; name: string } | null;
 };
 /**
  * Whole seasons can grow into hundreds of downloads, so only administrators request them; users
