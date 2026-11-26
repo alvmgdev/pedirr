@@ -42,7 +42,7 @@ const infrastructure = {
 };
 function publicUser() {
   const { passwordHash, ...result } = user;
-  return result;
+  return { tenantId: "platform", tenant: { code: null, name: "Pedirr" }, ...result };
 }
 class TestModule {}
 Module({
@@ -143,13 +143,14 @@ test("public configuration reports closed registration by default", async () => 
   const response = await fetch(base + "/auth/config");
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
-  assert.deepEqual(await response.json(), { registrationEnabled: false });
+  assert.deepEqual(await response.json(), { registrationEnabled: false, environment: null });
 });
 test("enabled registration is reported publicly and accepts new accounts", async () => {
   registrationSetting = { key: "registration", value: true };
   try {
     assert.deepEqual(await (await fetch(base + "/auth/config")).json(), {
       registrationEnabled: true,
+      environment: null,
     });
     const response = await fetch(base + "/auth/register", {
       method: "POST",
