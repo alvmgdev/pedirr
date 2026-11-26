@@ -124,7 +124,28 @@ export type Plan = {
   allContent: boolean;
   grants: PlanGrant[];
   users: number;
+  /** Packages that include the plan. */
+  packages: number;
 };
+/** Plans the platform gives resellers to assign to their clients. */
+export type PlanPackage = {
+  id: string;
+  name: string;
+  plans: { id: string; name: string }[];
+  resellers: number;
+};
+export type Reseller = {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+  maxUsers: number | null;
+  package: { id: string; name: string } | null;
+  admin: { id: string; email: string } | null;
+  clients: number;
+};
+/** Where a reseller's clients sign in. */
+export const resellerAddress = (code: string) => `${window.location.origin}/${code}/`;
 /** The viewer's weekly limit and what is left of it; `limit` is null without a limit. */
 export type Quota = {
   limit: number | null;
