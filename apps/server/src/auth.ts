@@ -28,6 +28,8 @@ import { EnvironmentRequest, PLATFORM_TENANT } from "./tenants";
 
 export const Public = () => SetMetadata("public", true);
 export const Admin = () => SetMetadata("admin", true);
+/** Routes for a reseller's administrator, always scoped to that reseller. */
+export const ResellerAdmin = () => SetMetadata("reseller", true);
 export const publicUserSelect = {
   id: true,
   email: true,
@@ -269,6 +271,12 @@ export class SecurityGuard implements CanActivate {
     if (
       this.reflector.getAllAndOverride<boolean>("admin", targets) &&
       req.viewer?.role !== "ADMIN"
+    ) {
+      throw new ForbiddenException();
+    }
+    if (
+      this.reflector.getAllAndOverride<boolean>("reseller", targets) &&
+      req.viewer?.role !== "RESELLER"
     ) {
       throw new ForbiddenException();
     }

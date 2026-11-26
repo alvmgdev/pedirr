@@ -30,6 +30,7 @@ import { Prisma } from "@prisma/client";
 import { Admin } from "./auth";
 import { Infrastructure } from "./infrastructure";
 import { MetadataProvider } from "./metadata/provider";
+import { PLATFORM_TENANT } from "./tenants";
 
 type Grant = { kind: "SPORT" | "LEAGUE"; hubId: string };
 export type PlanAccess = { allContent: boolean; grants: Grant[] } | null | undefined;
@@ -45,6 +46,45 @@ export function planAllows(plan: PlanAccess, league: { id: string; sportId?: unk
   return plan.grants.some((grant) =>
     grant.kind === "LEAGUE" ? grant.hubId === league.id : grant.hubId === league.sportId,
   );
+}
+const grantFields = { select: { kind: true, hubId: true } } as const;
+/** Allows nothing: a reseller's client without a plan, or a reseller without a package. */
+const NOTHING: PlanAccess = { allContent: false, grants: [] };
+/**
+ * What a user may request; null means everything. Platform administrators are unrestricted.
+ * Platform users without a plan may request everything; a reseller's clients need a plan of the
+ * reseller's package. A reseller administrator may request what its package's plans include.
+ */
+export async function userAccess(
+  db: Prisma.TransactionClient,
+  userId: string,
+): Promise<PlanAccess> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      tenantId: true,
+      plan: { select: { allContent: true, grants: grantFields } },
+      tenant: {
+        select: {
+          package: { select: { plans: { select: { allContent: true, grants: grantFields } } } },
+        },
+      },
+    },
+  });
+  if (!user) {
+    return NOTHING;
+  }
+  if (user.role === "ADMIN") {
+    return null;
+  }
+  if (user.role === "RESELLER") {
+    const plans = user.tenant.package?.plans ?? [];
+    return plans.some((plan) => plan.allContent)
+      ? null
+      : { allContent: false, grants: plans.flatMap((plan) => plan.grants) };
+  }
+  return user.plan ?? (user.tenantId === PLATFORM_TENANT ? null : NOTHING);
 }
 export const planNotAllowed = () =>
   new ForbiddenException({

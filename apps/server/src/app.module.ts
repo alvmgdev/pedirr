@@ -13,6 +13,7 @@ import { UsersController, UsersService } from "./users";
 import { PlansController, PlansService } from "./plans";
 import { PackagesController, PackagesService } from "./packages";
 import { ResellersController, ResellersService } from "./resellers";
+import { ClientsController, ClientsService } from "./clients";
 import { IssuesController } from "./issues/controller";
 import { IssuesService } from "./issues/service";
 import { Module } from "@nestjs/common";
@@ -31,6 +32,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     PlansService,
     PackagesService,
     ResellersService,
+    ClientsService,
     CatalogAccess,
     Schedule,
     SportarrSettings,
@@ -52,6 +54,7 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     PlansController,
     PackagesController,
     ResellersController,
+    ClientsController,
   ],
 })
 export class AppModule {}

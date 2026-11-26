@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Viewer } from "../auth";
 import { Infrastructure } from "../infrastructure";
+import { userAccess } from "../plans";
 import { MetadataItem, MetadataPage, MetadataSearch } from "./provider";
 import { MetadataProvider } from "./provider";
 
@@ -34,13 +35,7 @@ export class CatalogAccess {
     if (viewer.role === "ADMIN") {
       return null;
     }
-    const user = await this.infrastructure.db.user.findUnique({
-      where: { id: viewer.id },
-      select: {
-        plan: { select: { allContent: true, grants: { select: { kind: true, hubId: true } } } },
-      },
-    });
-    const plan = user?.plan;
+    const plan = await userAccess(this.infrastructure.db, viewer.id);
     if (!plan || plan.allContent) {
       return null;
     }
