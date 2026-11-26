@@ -90,6 +90,8 @@ test("administrator can set policies and sees protection for the last administra
         policy = route.request().postDataJSON();
       }
       body = policy;
+    } else if (path.endsWith("/admin/plans")) {
+      body = [];
     } else if (path.endsWith("/admin/users")) {
       body = { items: [admin], total: 1 };
     } else if (path.endsWith("/admin/users/admin-1")) {

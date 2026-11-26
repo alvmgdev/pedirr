@@ -151,6 +151,7 @@ function AccountLimits({ user }: { user: User }) {
   return (
     <section className="panel">
       <h2>{t("yourLimits")}</h2>
+      {user.plan && <p>{t("yourPlan", { name: user.plan.name })}</p>}
       {typeof user.weeklyRequestLimit !== "number" ? (
         <p>{t("quotaUnlimited")}</p>
       ) : (

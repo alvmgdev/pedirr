@@ -1,6 +1,16 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+const plan = {
+  id: "33333333-3333-4333-8333-333333333333",
+  name: "Fights",
+  allContent: false,
+  users: 0,
+  grants: [
+    { kind: "SPORT", hubId: "sport-combat", name: "Combat" },
+    { kind: "LEAGUE", hubId: "league-nba", name: "NBA" },
+  ],
+};
 for (const locale of ["en", "es"]) {
   test(`main screens are accessible in ${locale}`, async ({ page }) => {
     test.setTimeout(120000);
@@ -114,6 +124,15 @@ for (const locale of ["en", "es"]) {
         body = { items: [user], total: 1, page: 1, pageSize: 50 };
       } else if (path.endsWith("/admin/users/admin-1")) {
         body = user;
+      } else if (path.endsWith("/admin/plans/sports")) {
+        body = [
+          { id: "sport-combat", name: "Combat" },
+          { id: "sport-basketball", name: "Basketball" },
+        ];
+      } else if (path.endsWith(`/admin/plans/${plan.id}`)) {
+        body = plan;
+      } else if (path.endsWith("/admin/plans")) {
+        body = [plan];
       } else if (path.endsWith("/admin/policies")) {
         body = { registrationEnabled: false, userAutoApprove: false, adminAutoApprove: false };
       } else if (path.endsWith("/settings/sportarr")) {
@@ -183,6 +202,9 @@ for (const locale of ["en", "es"]) {
       "/admin",
       "/admin/users/admin-1",
       "/admin/users/new",
+      "/admin?tab=plans",
+      `/admin/plans/${plan.id}`,
+      "/admin/plans/new",
       "/admin?tab=policies",
       "/admin?tab=sportarr",
       "/admin?tab=notifications",

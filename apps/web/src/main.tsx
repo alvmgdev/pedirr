@@ -1,4 +1,5 @@
 import { Administration, UserDetail } from "./admin";
+import { PlanDetail } from "./plans";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
@@ -147,6 +148,10 @@ function App() {
             <Route
               path="/admin/users/:id"
               element={<UserDetail key={location.pathname} user={user} />}
+            />
+            <Route
+              path="/admin/plans/:id"
+              element={<PlanDetail key={location.pathname} user={user} />}
             />
             <Route path="/admin" element={<Administration user={user} />} />
             <Route path="*" element={<h1>{t("notFound")}</h1>} />

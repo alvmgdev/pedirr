@@ -61,6 +61,9 @@ test("the user form explains that only administrators request seasons", async ({
     if (request.method() !== "GET") {
       writes.push(request.postDataJSON());
     }
+    if (path.endsWith("/admin/plans")) {
+      return route.fulfill({ json: [] });
+    }
     return route.fulfill({ json: path.endsWith(`/admin/users/${edited.id}`) ? edited : {} });
   });
   await page.goto(`/admin/users/${edited.id}`);

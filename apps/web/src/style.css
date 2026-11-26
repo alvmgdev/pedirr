@@ -1352,3 +1352,43 @@ th {
 .field-hint {
   font-weight: 400;
 }
+.sport-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px 20px;
+}
+.grant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.grant-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--raised);
+  border-radius: 6px;
+  padding: 8px 8px 8px 16px;
+  min-width: 0;
+}
+.grant-list span {
+  overflow-wrap: anywhere;
+}
+.grant-list button {
+  background: var(--surface);
+  padding: 8px 14px;
+  min-height: 0;
+}
+.plan-delete {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.plan-delete p {
+  margin: 0;
+}
