@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Optional weekly request limit per user. Administrators switch it on in the user form and set how many new requests the user may start in any seven days; switched off, the user has no limit. Only starting a request counts: following a request someone else made is free, and a rejected request is given back. Users see how many requests they have left on the request button and in their account, and when the next one frees up. Administrators are never limited. Requests started before this version count from the moment a limit is set.
+- Optional expiration date per user, switched on the same way. When that day ends the user is signed out and cannot sign in again (they are told the account expired); their requests keep going, and extending or removing the date brings the account back. The user list shows expired accounts, and users see the date in their account. Administrators never expire.
+
 ## 1.1.0 - 2026-11-13
 
 - Wrong downloads for team sports and newly announced events. Pedirr created requested events in Sportarr by hand, without team names or the local air date, and Sportarr then accepted releases of other games (an NBA request downloaded another game of the night before) or searched with the wrong date. Sportarr now imports the events from its catalog itself and Pedirr only monitors them; while an event is being imported the request says so and nothing is searched. Events created by earlier versions that still have no file should be deleted in Sportarr once, so they are imported again complete.
