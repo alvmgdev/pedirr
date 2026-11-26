@@ -96,7 +96,7 @@ async function send<T>(path: string, method: string, body?: unknown): Promise<T>
 export type User = {
   id: string;
   email: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "RESELLER" | "USER";
   active: boolean;
   locale: string;
   timezone: string;
@@ -127,8 +127,9 @@ export type Quota = {
 /** Limits and expiration apply to users only. */
 export const isExpired = (user: Pick<User, "role" | "expiresAt">) =>
   user.role === "USER" && user.expiresAt !== null && Date.parse(user.expiresAt) <= Date.now();
-/** Only administrators request whole seasons; users request single events. */
-export const mayRequestSeasons = (user: Pick<User, "role">) => user.role === "ADMIN";
+/** Only administrators (of the platform or a reseller) request whole seasons. */
+export const mayRequestSeasons = (user: Pick<User, "role">) =>
+  user.role === "ADMIN" || user.role === "RESELLER";
 export type Item = {
   id: string;
   name: string;
@@ -231,7 +232,7 @@ export type IssueDetail = Issue & {
     body: string | null;
     status: Issue["status"] | null;
     createdAt: string;
-    author: { role: "ADMIN" | "USER"; mine: boolean; email: string | null } | null;
+    author: { role: "ADMIN" | "RESELLER" | "USER"; mine: boolean; email: string | null } | null;
   }[];
 };
 

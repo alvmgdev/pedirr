@@ -56,6 +56,7 @@ jobs:
       - run: node apps/server/test/integration/plans.cjs
       - run: node apps/server/test/integration/catalog.cjs
       - run: node apps/server/test/integration/schedule.cjs
+      - run: node apps/server/test/integration/tenants.cjs
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm audit --audit-level=moderate

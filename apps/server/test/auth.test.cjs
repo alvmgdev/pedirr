@@ -228,3 +228,17 @@ test("ordinary users cannot read or change administrator policies", async () => 
     403,
   );
 });
+
+test("reseller administrators cannot use platform administration", async () => {
+  counters.clear();
+  user.role = "RESELLER";
+  try {
+    const response = await login(await csrf());
+    const cookie = response.headers.get("set-cookie").split(";")[0];
+    for (const path of ["/admin/policies", "/admin/users"]) {
+      assert.equal((await fetch(base + path, { headers: { cookie } })).status, 403, path);
+    }
+  } finally {
+    user.role = "USER";
+  }
+});

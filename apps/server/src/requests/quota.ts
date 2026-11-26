@@ -4,7 +4,8 @@ import { Prisma } from "@prisma/client";
 /** Weekly limits use a rolling window, so a user cannot spend two weeks back to back. */
 export const QUOTA_WINDOW_MS = 7 * 86400000;
 
-type Limited = { role: "ADMIN" | "USER"; weeklyRequestLimit: number | null };
+type Role = "ADMIN" | "RESELLER" | "USER";
+type Limited = { role: Role; weeklyRequestLimit: number | null };
 export type Quota = {
   /** Null when the user has no limit. */
   limit: number | null;
@@ -14,13 +15,13 @@ export type Quota = {
   resetsAt: string | null;
 };
 
-/** Administrators are never limited; users only when an administrator sets a limit. */
+/** Administrators (of the platform or a reseller) are never limited; users only when given one. */
 export const weeklyLimit = (user: Limited) =>
-  user.role === "ADMIN" ? null : user.weeklyRequestLimit;
+  user.role === "USER" ? user.weeklyRequestLimit : null;
 
 /** Limits and expiration apply to users only, so administrators cannot lock themselves out. */
 export const isExpired = (
-  user: { role: "ADMIN" | "USER"; expiresAt: Date | string | null },
+  user: { role: Role; expiresAt: Date | string | null },
   now = Date.now(),
 ) => user.role === "USER" && user.expiresAt !== null && new Date(user.expiresAt).getTime() <= now;
 

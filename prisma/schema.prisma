@@ -8,7 +8,10 @@ datasource db {
 }
 
 enum Role {
+  // The platform's administrator (super admin): approvals, Sportarr, plans and resellers.
   ADMIN
+  // A reseller's administrator, who manages that reseller's clients.
+  RESELLER
   USER
 }
 
@@ -28,7 +31,7 @@ enum EntityKind {
 
 model User {
   id                 String              @id @default(uuid())
-  email              String              @unique
+  email              String
   passwordHash       String
   role               Role                @default(USER)
   active             Boolean             @default(true)
@@ -42,11 +45,16 @@ model User {
   // What the user may request; without a plan, everything.
   planId             String?
   plan               Plan?               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  // The environment the account belongs to; the same email may exist in several.
+  tenantId           String              @default("platform")
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   createdAt          DateTime            @default(now())
   sessions           Session[]
   subscriptions      RequestSubscriber[]
   issues             Issue[]             @relation("IssueReporter")
   issueComments      IssueComment[]
+
+  @@unique([tenantId, email])
 }
 
 model Session {
@@ -284,14 +292,15 @@ enum PlanGrantKind {
 
 /// A content package: which sports and leagues users on the plan may request.
 model Plan {
-  id         String      @id @default(uuid())
-  name       String      @unique
+  id         String        @id @default(uuid())
+  name       String        @unique
   // Every sport and league, whatever the grants say.
-  allContent Boolean     @default(false)
+  allContent Boolean       @default(false)
   grants     PlanGrant[]
   users      User[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  packages   PlanPackage[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 /// One sport or league a plan includes, by its Sportarr Hub ID.
@@ -344,4 +353,32 @@ model HubEvent {
   @@index([scheduledStart])
   @@index([leagueId, scheduledStart])
   @@index([syncedAt])
+}
+
+/// An environment: the platform, reached at the root of the domain, or a reseller reached at
+/// /<code>/. The platform row has the fixed ID "platform" and no code.
+model Tenant {
+  id        String       @id @default(uuid())
+  code      String?      @unique
+  name      String
+  // A disabled reseller's users cannot sign in.
+  active    Boolean      @default(true)
+  // Clients a reseller may have; null means no limit.
+  maxUsers  Int?
+  // The plans a reseller may assign to its clients.
+  packageId String?
+  package   PlanPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  users     User[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+/// A set of plans the platform administrator gives resellers to assign to their clients.
+model PlanPackage {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  plans     Plan[]
+  tenants   Tenant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
