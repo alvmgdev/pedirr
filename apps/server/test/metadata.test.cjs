@@ -233,3 +233,59 @@ test("background copies leave most of the Hub budget to people", () => {
   // Never faster than one call every 3 seconds, however large the budget.
   assert.equal(backgroundDelayMs(1000), 3000);
 });
+
+test("Hub's league-aware search reads events with their league and teams with theirs", async () => {
+  const { provider } = fixture();
+  const urls = [];
+  global.fetch = async (url) => {
+    urls.push(String(url));
+    return String(url).includes("/search/event/")
+      ? Response.json({
+          data: {
+            search: [
+              {
+                hubId: "event-uuid",
+                hubShortId: "ev-1",
+                strEvent: "UFC 300 Pereira vs Hill",
+                idLeague: "lg-000079",
+                strLeague: "UFC",
+                strSport: "Combat",
+                strTimestamp: "2024-04-14T02:00:00+00:00",
+                strPoster: "https://sportarr.net/poster.jpg",
+              },
+              { strEvent: "No Hub ID" },
+            ],
+          },
+        })
+      : Response.json({ data: { search: null } });
+  };
+  const found = await provider.searchWithLeagues(" UFC 300 ");
+  assert.deepEqual(urls.sort(), [
+    "https://sportarr.net/api/v2/json/search/event/UFC%20300",
+    "https://sportarr.net/api/v2/json/search/team/UFC%20300",
+  ]);
+  assert.equal(found.events.length, 1);
+  assert.deepEqual(
+    [found.events[0].id, found.events[0].leagueShortId, found.events[0].scheduledStart],
+    ["event-uuid", "lg-000079", "2024-04-14T02:00:00+00:00"],
+  );
+  assert.equal(found.events[0].posterUrl, "https://sportarr.net/poster.jpg");
+  assert.deepEqual(found.teams, []);
+});
+
+test("unexpected league-aware search responses are refused", () => {
+  const { parseMirrorEvents, parseMirrorTeams } = require("../dist/metadata/hub");
+  for (const value of [null, {}, { data: { search: "x" } }]) {
+    assert.throws(() => parseMirrorEvents(value));
+  }
+  assert.deepEqual(
+    parseMirrorTeams({
+      data: {
+        search: [
+          { hubId: "t", strTeam: "Boston Celtics", strLeague: "NBA", strSport: "Basketball" },
+        ],
+      },
+    }).map((team) => [team.id, team.name, team.leagueName, team.sportName]),
+    [["t", "Boston Celtics", "NBA", "Basketball"]],
+  );
+});

@@ -9,6 +9,7 @@ import { Infrastructure, logger } from "../infrastructure";
 import { appVersion, hubBudget } from "../config";
 import {
   EventFilters,
+  LeagueSearch,
   MetadataItem,
   MetadataPage,
   MetadataProvider,
@@ -67,6 +68,52 @@ export function parseSearch(value: unknown): MetadataSearch {
   });
   return { query: value.query, total: Number(value.total), results };
 }
+const optional = (value: unknown) => (typeof value === "string" && value !== "" ? value : null);
+/** Rows of Hub's TheSportsDB-compatible search; every row needs Hub's ID and a name. */
+function mirrorRows(value: unknown, name: "strEvent" | "strTeam") {
+  if (!record(value) || !record(value.data)) {
+    throw new Error("Invalid mirror search");
+  }
+  const rows = value.data.search ?? [];
+  if (!Array.isArray(rows)) {
+    throw new Error("Invalid mirror search");
+  }
+  return rows.filter(
+    (row): row is Record<string, unknown> =>
+      record(row) && typeof row.hubId === "string" && typeof row[name] === "string",
+  );
+}
+export function parseMirrorEvents(value: unknown): LeagueSearch["events"] {
+  return mirrorRows(value, "strEvent").map((row) => ({
+    id: row.hubId as string,
+    shortId: optional(row.hubShortId),
+    name: row.strEvent as string,
+    entityType: "event",
+    leagueShortId: optional(row.idLeague),
+    leagueName: optional(row.strLeague),
+    sportName: optional(row.strSport),
+    scheduledStart: optional(row.strTimestamp),
+    status: optional(row.strStatus),
+    posterUrl: optional(row.strPoster),
+    thumbUrl: optional(row.strThumb),
+    squareUrl: optional(row.strSquare),
+    fanartUrl: optional(row.strFanart),
+    bannerUrl: optional(row.strBanner),
+    venueName: optional(row.strVenue),
+  }));
+}
+export function parseMirrorTeams(value: unknown): LeagueSearch["teams"] {
+  return mirrorRows(value, "strTeam").map((row) => ({
+    id: row.hubId as string,
+    shortId: optional(row.hubShortId),
+    name: row.strTeam as string,
+    entityType: "team",
+    leagueName: optional(row.strLeague),
+    sportName: optional(row.strSport),
+    logoUrl: optional(row.strBadge),
+    imageUrl: optional(row.strBadge),
+  }));
+}
 export function retrySeconds(value: string | null): number {
   if (value === null) {
     return 60;
@@ -98,7 +145,12 @@ export class HubProvider extends MetadataProvider {
     parse: (value: unknown) => T,
     ttl = 300,
   ): Promise<T> {
-    const url = new URL(`https://sportarr.net/api/public/v1/${path}`);
+    // Paths starting with "/" are outside the public API (Hub's TheSportsDB-compatible search).
+    const url = new URL(
+      path.startsWith("/")
+        ? `https://sportarr.net${path}`
+        : `https://sportarr.net/api/public/v1/${path}`,
+    );
     for (const [key, value] of Object.entries(query).sort(([a], [b]) => a.localeCompare(b))) {
       if (value !== undefined) {
         url.searchParams.set(key, String(value));
@@ -216,6 +268,18 @@ export class HubProvider extends MetadataProvider {
       { q: query.trim(), types: "league,team,event", limit: 20 },
       parseSearch,
     );
+  }
+  /**
+   * Hub's TheSportsDB-compatible search: public like the rest, and unlike the main search it says
+   * which league each result belongs to. It returns up to 25 events, nearest dates first.
+   */
+  async searchWithLeagues(query: string): Promise<LeagueSearch> {
+    const q = encodeURIComponent(query.trim());
+    const [events, teams] = await Promise.all([
+      this.read(`/api/v2/json/search/event/${q}`, {}, parseMirrorEvents),
+      this.read(`/api/v2/json/search/team/${q}`, {}, parseMirrorTeams),
+    ]);
+    return { events, teams };
   }
   sports() {
     // Hub lists a few dozen sports, so one page covers them; they rarely change.

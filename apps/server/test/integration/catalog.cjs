@@ -79,6 +79,52 @@ async function main() {
         };
       },
       team: async (id) => ({ id, name: id }),
+      // Hub's league-aware search: events name their league by short ID, teams by name.
+      searchWithLeagues: async (q) => {
+        if (q === "boom") {
+          throw new Error("Hub is busy");
+        }
+        return q !== "night"
+          ? { events: [], teams: [] }
+          : {
+              events: [
+                {
+                  id: "hub-ufc",
+                  name: "UFC Fight Night",
+                  entityType: "event",
+                  leagueShortId: "lg-1",
+                },
+                { id: "hub-nba", name: "NBA Night", entityType: "event", leagueShortId: "lg-3" },
+                { id: "hub-wnba", name: "WNBA Night", entityType: "event", leagueShortId: "lg-4" },
+                {
+                  id: "hub-new",
+                  name: "New League Night",
+                  entityType: "event",
+                  leagueShortId: "lg-99",
+                },
+              ],
+              teams: [
+                {
+                  id: "team-celtics",
+                  name: "Night Celtics",
+                  entityType: "team",
+                  leagueName: "NBA",
+                },
+                {
+                  id: "team-liberty",
+                  name: "Night Liberty",
+                  entityType: "team",
+                  leagueName: "WNBA",
+                },
+                {
+                  id: "team-none",
+                  name: "Night Nobody",
+                  entityType: "team",
+                  leagueName: "_No League",
+                },
+              ],
+            };
+      },
     };
 
     // The index fills page by page under a lock; each page queues the next one.
@@ -173,6 +219,19 @@ async function main() {
       ["NBA", "PFL", "UFC"],
     );
     assert.deepEqual([list.total, list.totalPages], [3, 1]);
+    // The whole catalog through Hub's league-aware search, kept to the plan's leagues: unknown
+    // leagues are left out, and events come back with the league's Hub ID.
+    const night = await controller.search({ q: "night" }, as(fighter));
+    assert.deepEqual(
+      night.results.map((item) => [item.entityType, item.id, item.leagueId ?? null]),
+      [
+        ["team", "team-celtics", null],
+        ["event", "hub-ufc", "league-ufc"],
+        ["event", "hub-nba", "league-nba"],
+      ],
+    );
+    // Hub being busy only loses those results.
+    assert.deepEqual((await controller.search({ q: "boom" }, as(fighter))).results, []);
     // Without a restrictive plan, and for administrators, Hub answers as before.
     for (const viewer of [free, admin]) {
       assert.equal(
@@ -265,7 +324,7 @@ async function main() {
     await db.plan.update({ where: { id: plan.id }, data: { allContent: true } });
     assert.equal((await controller.search({ q: "ba" }, as(fighter))).results[0].entityType, "team");
     console.log(
-      "Catalog integration passed: paged league index with lock and cleanup, plan-limited search and league list, refusals for leagues, seasons and events outside the plan, Hub fallback for unindexed leagues, filtered team events, schedule and popular leagues, unrestricted viewers.",
+      "Catalog integration passed: paged league index with lock and cleanup, plan-limited search (league index and Hub's league-aware search) and league list, refusals for leagues, seasons and events outside the plan, Hub fallback for unindexed leagues, filtered team events, schedule and popular leagues, unrestricted viewers.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

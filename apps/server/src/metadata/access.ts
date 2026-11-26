@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Viewer } from "../auth";
 import { Infrastructure } from "../infrastructure";
 import { userAccess } from "../plans";
-import { MetadataItem, MetadataPage, MetadataSearch } from "./provider";
+import { LeagueSearch, MetadataItem, MetadataPage, MetadataSearch } from "./provider";
 import { MetadataProvider } from "./provider";
 
 /** What a user on a plan may see: league grants by Hub ID and sport grants by Hub sport ID. */
@@ -77,6 +77,42 @@ export class CatalogAccess {
       select: { id: true, sportId: true },
     });
     return this.includes(scope, row ?? (await this.metadata.league(identifier)));
+  }
+  /**
+   * The results of a league-aware search that the plan includes. Events name their league by
+   * short ID and teams by league name; both are looked up in the index, and anything whose
+   * league is unknown there is left out. Events come back with the league's Hub ID.
+   */
+  async withinPlan(scope: PlanScope, found: LeagueSearch) {
+    const db = this.infrastructure.db;
+    const shortIds = [...new Set(found.events.map((event) => event.leagueShortId ?? ""))];
+    const names = [...new Set(found.teams.map((team) => String(team.leagueName ?? "")))];
+    const [byShortId, byName] = await Promise.all([
+      db.hubLeague.findMany({
+        where: { shortId: { in: shortIds.filter(Boolean) } },
+        select: { id: true, shortId: true, sportId: true },
+      }),
+      db.hubLeague.findMany({
+        where: { name: { in: names.filter(Boolean) } },
+        select: { id: true, name: true, sportId: true, sportName: true },
+      }),
+    ]);
+    const events = found.events.flatMap(({ leagueShortId, ...event }) => {
+      const league = byShortId.find((row) => row.shortId === leagueShortId);
+      return league && this.includes(scope, league)
+        ? [{ ...event, leagueId: league.id } as MetadataItem]
+        : [];
+    });
+    // A league name can repeat across sports; the team's sport tells them apart.
+    const teams = found.teams.filter((team) =>
+      byName.some(
+        (row) =>
+          row.name === team.leagueName &&
+          (!team.sportName || !row.sportName || row.sportName === team.sportName) &&
+          this.includes(scope, row),
+      ),
+    );
+    return { events, teams };
   }
   /** Leagues of the plan whose name matches, shaped like Hub search results. */
   async searchLeagues(scope: PlanScope, query: string): Promise<MetadataSearch> {
