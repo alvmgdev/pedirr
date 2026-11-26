@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { ApiError, type Item, type PartOption } from "./api";
+import { useQuery } from "@tanstack/react-query";
+import { api, ApiError, type Item, type PartOption, type Quota, type User } from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
   const keys: Record<string, string> = {
@@ -33,6 +34,8 @@ export function ErrorMessage({ error }: { error: unknown }) {
     PARTS_NOT_SUPPORTED: "invalidParts",
     PARTS_REQUIRED: "invalidParts",
     SEASON_REQUESTS_NOT_ALLOWED: "seasonRequestsNotAllowed",
+    WEEKLY_LIMIT_REACHED: "weeklyLimitReached",
+    ACCOUNT_EXPIRED: "accountExpired",
     EMAIL_UNAVAILABLE: "emailUnavailable",
     CONNECTION_FAILED: "connectionError",
   };
@@ -53,6 +56,42 @@ export function ErrorMessage({ error }: { error: unknown }) {
       {t(message)}
     </p>
   ) : null;
+}
+/** The viewer's weekly limit, fetched only when they have one. */
+export function useQuota(user: User) {
+  return useQuery({
+    queryKey: ["quota"],
+    queryFn: () => api<Quota>("/requests/quota"),
+    enabled: user.role === "USER" && typeof user.weeklyRequestLimit === "number",
+    staleTime: 15000,
+  });
+}
+export function formatDateTime(value: string, language: string, timezone: string) {
+  return new Intl.DateTimeFormat(language, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: timezone,
+  }).format(new Date(value));
+}
+/** Requests left this week and, once none are left, when the next one frees up. */
+export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
+  const { t, i18n } = useTranslation();
+  if (typeof quota?.limit !== "number") {
+    return null;
+  }
+  return (
+    <p className="quota-note" role="status">
+      <strong>{t("quotaLeft", { remaining: quota.remaining, limit: quota.limit })}</strong>
+      {quota.remaining === 0 && quota.resetsAt && (
+        <>
+          {" "}
+          {t("quotaResets", {
+            date: formatDateTime(quota.resetsAt, i18n.language, user.timezone),
+          })}
+        </>
+      )}
+    </p>
+  );
 }
 export function Loading() {
   const { t } = useTranslation();

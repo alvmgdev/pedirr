@@ -820,6 +820,45 @@ progress {
   display: grid;
   gap: 24px;
 }
+.limits {
+  display: grid;
+  gap: 18px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px 0 0;
+  padding: 20px 0 0;
+  min-width: 0;
+}
+.limits legend {
+  font-weight: 600;
+  padding: 0;
+  float: left;
+  width: 100%;
+}
+.limits legend + p {
+  margin: -10px 0 0;
+}
+.optional-limit {
+  display: grid;
+  gap: 8px;
+}
+.optional-limit p {
+  margin: 0;
+  padding-left: 28px;
+}
+.optional-limit label:not(.check) {
+  padding-left: 28px;
+  max-width: 280px;
+}
+.quota-note {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0;
+}
+.quota-note strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
 .delivery-list {
   margin-top: 40px;
 }

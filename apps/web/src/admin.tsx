@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, type User } from "./api";
+import { api, client, isExpired, type User } from "./api";
 import { ErrorMessage, Loading, Pager } from "./ui";
 
 function Toggle({ name, checked }: { name: string; checked: boolean }) {
@@ -12,6 +12,89 @@ function Toggle({ name, checked }: { name: string; checked: boolean }) {
       <input name={name} type="checkbox" defaultChecked={checked} />
       {t(name)}
     </label>
+  );
+}
+/** A date input value (local calendar day) for an instant, and back as the end of that day. */
+const toDay = (value: string) => {
+  const date = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+const endOfDay = (day: string) => new Date(`${day}T23:59:59.999`).toISOString();
+/**
+ * An optional limit: switched off it means no limit, switched on it asks for the value. The
+ * explanation stays visible under the switch so it also works on touch screens.
+ */
+function OptionalLimit({
+  name,
+  type,
+  value,
+}: {
+  name: "weeklyRequestLimit" | "expiresAt";
+  type: "number" | "date";
+  value: string;
+}) {
+  const { t } = useTranslation();
+  const [enabled, setEnabled] = useState(value !== "");
+  const id = useId();
+  return (
+    <div className="optional-limit">
+      <label className="check">
+        <input
+          name={name + "Enabled"}
+          type="checkbox"
+          checked={enabled}
+          aria-describedby={id + "-hint"}
+          onChange={(event) => setEnabled(event.currentTarget.checked)}
+        />
+        {t(name)}
+      </label>
+      <p className="muted" id={id + "-hint"}>
+        {t(name + (enabled ? "On" : "Off"))}
+      </p>
+      {enabled && (
+        <label>
+          {t(name + "Value")}
+          <input
+            name={name}
+            type={type}
+            defaultValue={value}
+            required
+            {...(type === "number" ? { min: 0, max: 1000, step: 1, inputMode: "numeric" } : {})}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+/** Reads the optional limits back from a user form; a switched-off limit is sent as null. */
+const limits = (data: FormData) => ({
+  weeklyRequestLimit: data.has("weeklyRequestLimitEnabled")
+    ? Number(data.get("weeklyRequestLimit"))
+    : null,
+  expiresAt: data.has("expiresAtEnabled") ? endOfDay(String(data.get("expiresAt"))) : null,
+});
+function UserLimits({ user }: { user?: User }) {
+  const { t } = useTranslation();
+  return (
+    <fieldset className="limits">
+      <legend>{t("limits")}</legend>
+      <p className="muted">{t("limitsHint")}</p>
+      <OptionalLimit
+        name="weeklyRequestLimit"
+        type="number"
+        value={
+          user?.weeklyRequestLimit === null || user?.weeklyRequestLimit === undefined
+            ? ""
+            : String(user.weeklyRequestLimit)
+        }
+      />
+      <OptionalLimit
+        name="expiresAt"
+        type="date"
+        value={user?.expiresAt ? toDay(user.expiresAt) : ""}
+      />
+    </fieldset>
   );
 }
 function Field({
@@ -119,7 +202,7 @@ function Users() {
             <Link className="user-row" key={user.id} to={`/admin/users/${user.id}`}>
               <strong>{user.email}</strong>
               <span>{t(user.role)}</span>
-              <span>{t(user.active ? "active" : "inactive")}</span>
+              <span>{t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active")}</span>
               <span>{t("editUser")}</span>
             </Link>
           ))}
@@ -151,6 +234,7 @@ function UserEditor({ user }: { user: User }) {
           active: data.has("active"),
           autoApprove: approval === "inherit" ? null : approval === "true",
           canRequestSeasons: data.has("canRequestSeasons"),
+          ...limits(data),
         });
       }}
     >
@@ -176,6 +260,7 @@ function UserEditor({ user }: { user: User }) {
         </label>
         <Toggle name="active" checked={user.active} />
         <Toggle name="canRequestSeasons" checked={user.canRequestSeasons} />
+        <UserLimits user={user} />
         <button disabled={update.isPending}>{t("save")}</button>
       </div>
       <ErrorMessage error={update.error} />
@@ -225,6 +310,7 @@ export function UserDetail({ user }: { user: User }) {
               email: data.get("email"),
               password: data.get("password"),
               canRequestSeasons: data.has("canRequestSeasons"),
+              ...limits(data),
             });
           }}
         >
@@ -243,6 +329,7 @@ export function UserDetail({ user }: { user: User }) {
           <p className="muted">{t("passwordHint")}</p>
           <Toggle name="canRequestSeasons" checked={false} />
           <p className="muted">{t("canRequestSeasonsHint")}</p>
+          <UserLimits />
           <ErrorMessage error={create.error} />
           <button disabled={create.isPending}>{t("createUser")}</button>
         </form>

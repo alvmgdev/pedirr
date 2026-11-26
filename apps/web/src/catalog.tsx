@@ -11,7 +11,17 @@ import {
   type PartOptions,
   type User,
 } from "./api";
-import { Artwork, ErrorMessage, Fixture, Loading, Pager, PartsDialog, Status } from "./ui";
+import {
+  Artwork,
+  ErrorMessage,
+  Fixture,
+  Loading,
+  Pager,
+  PartsDialog,
+  QuotaNote,
+  Status,
+  useQuota,
+} from "./ui";
 export function Discover({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -274,6 +284,9 @@ export function CatalogDetail({ user }: { user: User }) {
   });
   const [choosing, setChoosing] = useState(false);
   const byParts = parts.data?.supported === true;
+  // Only starting a request uses the weekly limit; following one never does.
+  const quota = useQuota(user);
+  const exhausted = quota.data?.remaining === 0;
   const request = useMutation({
     mutationFn: (chosen?: string[]) =>
       api<{ request: { id: string } | null; available?: boolean }>("/requests", "POST", {
@@ -281,6 +294,7 @@ export function CatalogDetail({ user }: { user: User }) {
         identifier: id,
         ...(chosen ? { parts: chosen } : {}),
       }),
+    onSettled: () => void client.invalidateQueries({ queryKey: ["quota"] }),
     onSuccess: (result) => {
       setChoosing(false);
       void client.invalidateQueries({ queryKey: ["requests"] });
@@ -376,7 +390,7 @@ export function CatalogDetail({ user }: { user: User }) {
             ) : (
               <>
                 <button
-                  disabled={request.isPending || parts.isPending}
+                  disabled={request.isPending || parts.isPending || exhausted}
                   onClick={() => (byParts ? setChoosing(true) : request.mutate(undefined))}
                 >
                   {t(
@@ -388,6 +402,7 @@ export function CatalogDetail({ user }: { user: User }) {
                   )}
                 </button>
                 <p>{t(kind === "season" ? "scopeNote" : "requestHelp")}</p>
+                <QuotaNote quota={quota.data} user={user} />
                 {availability.data?.reason === "not_configured" && (
                   <p>{t("managerNotConfigured")}</p>
                 )}

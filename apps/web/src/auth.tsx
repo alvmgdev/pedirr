@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, client, setSession, type User } from "./api";
-import { ErrorMessage } from "./ui";
+import { ErrorMessage, formatDateTime, QuotaNote, useQuota } from "./ui";
 export function Language({ user }: { user?: User | null }) {
   const { t, i18n } = useTranslation();
   const change = useMutation({
@@ -141,6 +141,38 @@ export function LinkBrand() {
     </div>
   );
 }
+/** What limits the account has, so users are not surprised by them. Hidden for administrators. */
+function AccountLimits({ user }: { user: User }) {
+  const { t, i18n } = useTranslation();
+  const quota = useQuota(user);
+  if (user.role !== "USER") {
+    return null;
+  }
+  return (
+    <section className="panel">
+      <h2>{t("yourLimits")}</h2>
+      {typeof user.weeklyRequestLimit !== "number" ? (
+        <p>{t("quotaUnlimited")}</p>
+      ) : (
+        <>
+          {quota.error ? (
+            <ErrorMessage error={quota.error} />
+          ) : (
+            <QuotaNote quota={quota.data} user={user} />
+          )}
+          <p className="muted">{t("quotaHelp")}</p>
+        </>
+      )}
+      <p>
+        {user.expiresAt
+          ? t("accountExpiresOn", {
+              date: formatDateTime(user.expiresAt, i18n.language, user.timezone),
+            })
+          : t("accountNeverExpires")}
+      </p>
+    </section>
+  );
+}
 export function Account({ user }: { user: User }) {
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
@@ -226,6 +258,7 @@ export function Account({ user }: { user: User }) {
             <button disabled={password.isPending}>{t("changePassword")}</button>
           </form>
         </section>
+        <AccountLimits user={user} />
       </div>
     </>
   );

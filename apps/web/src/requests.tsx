@@ -323,6 +323,7 @@ function FollowRequest({ request, user }: { request: RequestRecord; user: User }
   const follow = useMutation({
     mutationFn: (parts?: string[]) =>
       api("/requests", "POST", { kind, identifier, ...(parts ? { parts } : {}) }),
+    onSettled: () => void client.invalidateQueries({ queryKey: ["quota"] }),
     onSuccess: () => {
       setChoosing(false);
       void client.invalidateQueries({ queryKey: ["requests"] });
