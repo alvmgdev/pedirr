@@ -11,6 +11,8 @@ import { CatalogAccess } from "./metadata/access";
 import { Schedule } from "./metadata/schedule";
 import { UsersController, UsersService } from "./users";
 import { PlansController, PlansService } from "./plans";
+import { PackagesController, PackagesService } from "./packages";
+import { ResellersController, ResellersService } from "./resellers";
 import { IssuesController } from "./issues/controller";
 import { IssuesService } from "./issues/service";
 import { Module } from "@nestjs/common";
@@ -27,6 +29,8 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     AuthService,
     UsersService,
     PlansService,
+    PackagesService,
+    ResellersService,
     CatalogAccess,
     Schedule,
     SportarrSettings,
@@ -46,6 +50,8 @@ import { AuthController, AuthService, SecurityGuard } from "./auth";
     AuthController,
     UsersController,
     PlansController,
+    PackagesController,
+    ResellersController,
   ],
 })
 export class AppModule {}
