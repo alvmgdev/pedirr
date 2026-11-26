@@ -16,7 +16,7 @@ Deployment consists of app, worker, PostgreSQL, Redis, and a single migration ta
 
 | Model                              | Responsibility and relationships                                                                                                                                             |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| User / Session                     | Roles, approval overrides, season access (single events by default), locale/timezone; revocable hashed session tokens belong to users.                                       |
+| User / Session                     | Roles (only administrators request seasons), approval overrides, locale/timezone; revocable hashed session tokens belong to users.                                           |
 | CatalogEntity / ExternalIdentifier | Cached entity metadata and unique provider/namespace/value identities.                                                                                                       |
 | Request / RequestSubscriber        | A unique entity/scope request shared by interested users. A league request has an explicit season scope. Subscribers keep their own parts and status.                        |
 | Issue / IssueComment               | Problems reported by subscribers about a request (optionally an event and part), private to the reporter and administrators, with a timeline of comments and status changes. |
