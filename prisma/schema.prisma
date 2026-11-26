@@ -322,3 +322,26 @@ model HubLeague {
   @@index([sportId])
   @@index([syncedAt])
 }
+
+/// Hub's events from 7 days ago to 14 days ahead, refreshed by the worker, so the schedule can be
+/// paged and both it and search filtered by plan in Pedirr. `item` is Hub's event as served.
+model HubEvent {
+  id             String    @id
+  shortId        String?
+  name           String
+  leagueId       String?
+  seasonId       String?
+  homeTeamId     String?
+  homeTeamName   String?
+  awayTeamId     String?
+  awayTeamName   String?
+  scheduledStart DateTime?
+  status         String?
+  isActive       Boolean   @default(true)
+  item           Json
+  syncedAt       DateTime
+
+  @@index([scheduledStart])
+  @@index([leagueId, scheduledStart])
+  @@index([syncedAt])
+}

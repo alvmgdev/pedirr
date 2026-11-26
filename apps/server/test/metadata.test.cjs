@@ -38,6 +38,8 @@ function fixture() {
 }
 /** Catalog access for viewers without a restrictive plan. */
 const unrestricted = { scope: async () => null, includes: () => true };
+/** No complete local copy of the schedule, so upcoming reads Hub. */
+const notReady = { ready: async () => false };
 test("search uses the documented contract and reuses shared cached results", async () => {
   const { provider, redis } = fixture();
   let calls = 0;
@@ -134,7 +136,13 @@ test("upcoming excludes past, cancelled, and undated entries while preserving pa
       ],
     }),
   };
-  const controller = new CatalogController(metadata, { rate: async () => {} }, {}, unrestricted);
+  const controller = new CatalogController(
+    metadata,
+    { rate: async () => {} },
+    {},
+    unrestricted,
+    notReady,
+  );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.deepEqual(
     result.items.map((item) => item.id),
@@ -177,6 +185,7 @@ test("upcoming preserves the broadcast-date margin and skips past-only pages wit
     { rate: async () => {} },
     {},
     unrestricted,
+    notReady,
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls[0].from, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
@@ -204,9 +213,19 @@ test("empty upcoming scans are bounded and do not report false exhaustion", asyn
     { rate: async () => {} },
     {},
     unrestricted,
+    notReady,
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls, 5);
   assert.equal(result.hasMore, true);
   assert.equal(result.nextPage, 6);
+});
+
+test("background copies leave most of the Hub budget to people", () => {
+  const { backgroundDelayMs } = require("../dist/jobs/paged-sync");
+  // The default budget of 20 calls a minute allows 6 background calls: one every 10 seconds.
+  assert.equal(backgroundDelayMs(20), 10000);
+  assert.equal(backgroundDelayMs(1), 60000);
+  // Never faster than one call every 3 seconds, however large the budget.
+  assert.equal(backgroundDelayMs(1000), 3000);
 });

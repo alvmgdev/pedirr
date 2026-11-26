@@ -11,6 +11,7 @@ import { SportarrSettings } from "./settings/sportarr";
 import { Fulfillment, errorCode } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
 import { LEAGUE_INDEX_EVERY_MS, LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
+import { SCHEDULE_INDEX_JOB, SCHEDULE_WINDOWS, scheduleIndexStale } from "./jobs/schedule-index";
 
 async function main() {
   // Fail at startup rather than on the first search.
@@ -66,6 +67,21 @@ async function main() {
   );
   if (await leagueIndexStale(infrastructure)) {
     await queue.add(LEAGUE_INDEX_JOB, {}, { jobId: `${LEAGUE_INDEX_JOB}-startup-${Date.now()}` });
+  }
+  // The local schedule pages and filters "upcoming" and lets users on a plan search events.
+  for (const window of ["full", "near"] as const) {
+    await queue.upsertJobScheduler(
+      `${SCHEDULE_INDEX_JOB}-${window}`,
+      { every: SCHEDULE_WINDOWS[window].everyMs },
+      { name: SCHEDULE_INDEX_JOB, data: { window } },
+    );
+  }
+  if (await scheduleIndexStale(infrastructure)) {
+    await queue.add(
+      SCHEDULE_INDEX_JOB,
+      { window: "full" },
+      { jobId: `${SCHEDULE_INDEX_JOB}-startup-${Date.now()}` },
+    );
   }
   const beat = () =>
     connection
