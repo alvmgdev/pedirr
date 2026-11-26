@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, isExpired, type User } from "./api";
 import { limits, UserLimits } from "./fields";
 import { Address } from "./resellers";
+import { NotificationSettings } from "./admin";
 import { ErrorMessage, Loading, Pager } from "./ui";
 import { useState } from "react";
 
@@ -21,6 +22,8 @@ const useOverview = () =>
 /** The reseller administrator's panel: its address, package and clients. */
 export function ResellerPanel() {
   const { t } = useTranslation();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "notifications" ? "notifications" : "clients";
   const overview = useOverview();
   const [page, setPage] = useState(1);
   const clients = useQuery({
@@ -41,60 +44,78 @@ export function ResellerPanel() {
         <h1>{info.name}</h1>
         <p>{t("resellerPanelIntro")}</p>
       </header>
-      <div className="form-stack">
-        <Address code={info.code} hint="clientAddressHint" />
-        <section className="panel">
-          <h2>{t("yourPackage")}</h2>
-          {info.package ? (
-            <>
-              <p>{info.package.name}</p>
-              <p className="muted">
-                {info.package.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage")}
-              </p>
-            </>
-          ) : (
-            <p className="muted">{t("noPackageYet")}</p>
-          )}
-        </section>
-        <section>
-          <div className="section-actions">
-            <h2>{t("clientsTitle")}</h2>
-            {full ? (
-              <span className="muted">{t("clientLimitReached")}</span>
+      <nav className="tabs admin-tabs" aria-label={t("admin")}>
+        {(["clients", "notifications"] as const).map((item) => (
+          <button
+            key={item}
+            className={tab === item ? "selected" : ""}
+            onClick={() => setParams({ tab: item })}
+          >
+            {t(item === "clients" ? "clientsTitle" : "notifications")}
+          </button>
+        ))}
+      </nav>
+      {tab === "notifications" ? (
+        <>
+          <p className="muted">{t("resellerNotificationsHint")}</p>
+          <NotificationSettings base="/reseller/notifications" />
+        </>
+      ) : (
+        <div className="form-stack">
+          <Address code={info.code} hint="clientAddressHint" />
+          <section className="panel">
+            <h2>{t("yourPackage")}</h2>
+            {info.package ? (
+              <>
+                <p>{info.package.name}</p>
+                <p className="muted">
+                  {info.package.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage")}
+                </p>
+              </>
             ) : (
-              <Link className="button-link" to="/admin/clients/new">
-                {t("createClient")}
-              </Link>
+              <p className="muted">{t("noPackageYet")}</p>
             )}
-          </div>
-          <p className="muted">
-            {info.maxUsers === null
-              ? t("clients", { count: info.clients })
-              : t("clientsOf", { count: info.clients, max: info.maxUsers })}
-          </p>
-          {clients.isPending ? (
-            <Loading />
-          ) : clients.error ? (
-            <ErrorMessage error={clients.error} />
-          ) : clients.data.items.length === 0 ? (
-            <p className="empty">{t("noClients")}</p>
-          ) : (
-            <div className="user-list">
-              {clients.data.items.map((item) => (
-                <Link className="user-row" key={item.id} to={`/admin/clients/${item.id}`}>
-                  <strong>{item.email}</strong>
-                  <span>{item.plan?.name ?? t("noPlanShort")}</span>
-                  <span>
-                    {t(!item.active ? "inactive" : isExpired(item) ? "expired" : "active")}
-                  </span>
-                  <span>{t("editUser")}</span>
+          </section>
+          <section>
+            <div className="section-actions">
+              <h2>{t("clientsTitle")}</h2>
+              {full ? (
+                <span className="muted">{t("clientLimitReached")}</span>
+              ) : (
+                <Link className="button-link" to="/admin/clients/new">
+                  {t("createClient")}
                 </Link>
-              ))}
+              )}
             </div>
-          )}
-          <Pager page={page} more={page * 50 < (clients.data?.total ?? 0)} onChange={setPage} />
-        </section>
-      </div>
+            <p className="muted">
+              {info.maxUsers === null
+                ? t("clients", { count: info.clients })
+                : t("clientsOf", { count: info.clients, max: info.maxUsers })}
+            </p>
+            {clients.isPending ? (
+              <Loading />
+            ) : clients.error ? (
+              <ErrorMessage error={clients.error} />
+            ) : clients.data.items.length === 0 ? (
+              <p className="empty">{t("noClients")}</p>
+            ) : (
+              <div className="user-list">
+                {clients.data.items.map((item) => (
+                  <Link className="user-row" key={item.id} to={`/admin/clients/${item.id}`}>
+                    <strong>{item.email}</strong>
+                    <span>{item.plan?.name ?? t("noPlanShort")}</span>
+                    <span>
+                      {t(!item.active ? "inactive" : isExpired(item) ? "expired" : "active")}
+                    </span>
+                    <span>{t("editUser")}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <Pager page={page} more={page * 50 < (clients.data?.total ?? 0)} onChange={setPage} />
+          </section>
+        </div>
+      )}
     </>
   );
 }

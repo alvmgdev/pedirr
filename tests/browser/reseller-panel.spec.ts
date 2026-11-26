@@ -70,6 +70,23 @@ async function resellerAdmin(page: Page, maxUsers: number | null = null) {
     if (path === `/reseller/clients/${clientId}/password`) {
       return json({ ok: true });
     }
+    if (path === "/reseller/notifications/deliveries") {
+      return json([]);
+    }
+    if (path === "/reseller/notifications") {
+      return json({
+        emailEnabled: method === "PUT",
+        smtpHost: method === "PUT" ? "smtp.fightclub.invalid" : "",
+        smtpPort: 587,
+        smtpSecurity: "starttls",
+        smtpUser: "",
+        emailFrom: method === "PUT" ? "noreply@fightclub.invalid" : "",
+        discordEnabled: false,
+        discordLocale: "en",
+        hasSmtpPassword: false,
+        hasDiscordWebhook: false,
+      });
+    }
     return json({ items: [], total: 0, open: 0 });
   });
   return writes;
@@ -132,4 +149,28 @@ test("a reseller at its client limit cannot create more", async ({ page }) => {
     page.getByText("You have reached the number of clients you can have."),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Create client" })).toHaveCount(0);
+});
+
+test("a reseller administrator sets its own notification settings", async ({ page }) => {
+  const writes = await resellerAdmin(page);
+  const platformCalls: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/v1/admin")) {
+      platformCalls.push(request.url());
+    }
+  });
+  await page.goto("/k7x2p/admin?tab=notifications");
+  await expect(page.getByText("through these settings only")).toBeVisible();
+  await page.getByLabel("Enable email notifications").check();
+  await page.getByLabel("SMTP server").fill("smtp.fightclub.invalid");
+  await page.getByLabel("Sender email").fill("noreply@fightclub.invalid");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
+  // Its own settings, never the platform's.
+  expect(writes.at(-1)).toMatchObject({
+    method: "PUT",
+    path: "/reseller/notifications",
+    body: { emailEnabled: true, smtpHost: "smtp.fightclub.invalid" },
+  });
+  expect(platformCalls).toEqual([]);
 });

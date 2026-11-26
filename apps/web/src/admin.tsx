@@ -555,14 +555,22 @@ type NotificationsConfig = {
   discordEnabled: boolean;
   discordLocale: string;
 };
-function NotificationSettings() {
+/**
+ * Email and Discord settings: the platform's at /admin/settings/notifications, a reseller's own
+ * at /reseller/notifications.
+ */
+export function NotificationSettings({
+  base = "/admin/settings/notifications",
+}: {
+  base?: string;
+}) {
   const { t } = useTranslation();
   const settings = useQuery({
-    queryKey: ["notification-settings"],
-    queryFn: () => api<NotificationsConfig>("/admin/settings/notifications"),
+    queryKey: ["notification-settings", base],
+    queryFn: () => api<NotificationsConfig>(base),
   });
   const deliveries = useQuery({
-    queryKey: ["deliveries"],
+    queryKey: ["deliveries", base],
     queryFn: () =>
       api<
         {
@@ -572,12 +580,11 @@ function NotificationSettings() {
           status: string;
           attempts: number;
         }[]
-      >("/admin/settings/notifications/deliveries"),
+      >(`${base}/deliveries`),
   });
   const save = useMutation({
-    mutationFn: (body: unknown) =>
-      api<NotificationsConfig>("/admin/settings/notifications", "PUT", body),
-    onSuccess: (value) => client.setQueryData(["notification-settings"], value),
+    mutationFn: (body: unknown) => api<NotificationsConfig>(base, "PUT", body),
+    onSuccess: (value) => client.setQueryData(["notification-settings", base], value),
   });
   if (settings.isPending) {
     return <Loading />;
