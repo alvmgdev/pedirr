@@ -106,7 +106,7 @@ export type User = {
   /** When the account stops working; null means never. */
   expiresAt: string | null;
   /** What the user may request; null means everything. */
-  plan: { id: string; name: string } | null;
+  plan: { id: string; name: string; allContent: boolean } | null;
 };
 export type PlanGrant = { kind: "SPORT" | "LEAGUE"; hubId: string; name: string };
 /** A content package: which sports and leagues users on the plan may request. */

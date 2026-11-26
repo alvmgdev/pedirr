@@ -87,6 +87,8 @@ const en = {
   planInUse_other: "{{count}} users are on this plan. Move them to another plan to delete it.",
   deletePlan: "Delete plan",
   notInPlan: "Your plan does not include this league.",
+  planSearchNote:
+    "Search finds the leagues in your plan ({{name}}). Open a league to see its seasons and events.",
   planNotFound: "That plan no longer exists. Reload the page.",
   planInUseError: "Users are still on this plan. Move them to another plan first.",
   planNameTaken: "Another plan already has this name.",
@@ -409,6 +411,8 @@ const es: Record<keyof typeof en, string> = {
   planInUse_other: "{{count}} usuarios tienen este plan. Pásalos a otro plan para poder borrarlo.",
   deletePlan: "Borrar plan",
   notInPlan: "Tu plan no incluye esta liga.",
+  planSearchNote:
+    "La búsqueda encuentra las ligas de tu plan ({{name}}). Abre una liga para ver sus temporadas y eventos.",
   planNotFound: "Ese plan ya no existe. Recarga la página.",
   planInUseError: "Todavía hay usuarios con este plan. Pásalos antes a otro plan.",
   planNameTaken: "Ya hay otro plan con este nombre.",
