@@ -28,7 +28,7 @@ import {
 import { Prisma } from "@prisma/client";
 import * as argon2 from "argon2";
 import { randomInt } from "node:crypto";
-import { Admin, Credentials, passwordOptions } from "./auth";
+import { Admin, Credentials, PASSWORD_MIN_LENGTH, passwordOptions } from "./auth";
 import { Infrastructure } from "./infrastructure";
 import { isTenantCode, PLATFORM_TENANT } from "./tenants";
 
@@ -91,9 +91,9 @@ export class ResellerUpdate extends ResellerFields {
   active?: boolean;
 }
 export class ResellerPassword {
-  @ApiProperty({ minLength: 12, maxLength: 128 })
+  @ApiProperty({ minLength: PASSWORD_MIN_LENGTH, maxLength: 128 })
   @IsString()
-  @MinLength(12)
+  @MinLength(PASSWORD_MIN_LENGTH)
   @MaxLength(128)
   password!: string;
 }

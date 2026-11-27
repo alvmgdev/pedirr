@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, isExpired, type User } from "./api";
+import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH } from "./api";
 import { limits, UserLimits } from "./fields";
 import { Address } from "./resellers";
 import { NotificationSettings } from "./admin";
@@ -224,7 +224,7 @@ function NewClient({ overview }: { overview: Overview }) {
           name="password"
           type="password"
           autoComplete="new-password"
-          minLength={12}
+          minLength={PASSWORD_MIN_LENGTH}
           maxLength={128}
           required
         />
@@ -301,7 +301,7 @@ function ClientEditor({ current, overview }: { current: User; overview: Overview
             name="password"
             type="password"
             autoComplete="new-password"
-            minLength={12}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={128}
             required
           />

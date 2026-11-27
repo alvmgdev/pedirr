@@ -18,6 +18,8 @@ import {
 import { Reflector } from "@nestjs/core";
 import { ApiProperty, ApiTags } from "@nestjs/swagger";
 import { IsEmail, IsIn, ValidateIf, IsString, MaxLength, MinLength } from "class-validator";
+import { PASSWORD_MIN_LENGTH } from "./passwords";
+export { PASSWORD_MIN_LENGTH };
 import { Request, Response } from "express";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import * as argon2 from "argon2";
@@ -80,9 +82,9 @@ export const passwordOptions = {
 
 export class Credentials {
   @ApiProperty() @IsEmail() @MaxLength(254) email!: string;
-  @ApiProperty({ minLength: 12, maxLength: 128 })
+  @ApiProperty({ minLength: PASSWORD_MIN_LENGTH, maxLength: 128 })
   @IsString()
-  @MinLength(12)
+  @MinLength(PASSWORD_MIN_LENGTH)
   @MaxLength(128)
   password!: string;
 }
@@ -100,7 +102,11 @@ export class ProfileUpdate {
 }
 export class PasswordUpdate {
   @ApiProperty() @IsString() @MaxLength(128) currentPassword!: string;
-  @ApiProperty({ minLength: 12 }) @IsString() @MinLength(12) @MaxLength(128) newPassword!: string;
+  @ApiProperty({ minLength: PASSWORD_MIN_LENGTH })
+  @IsString()
+  @MinLength(PASSWORD_MIN_LENGTH)
+  @MaxLength(128)
+  newPassword!: string;
 }
 
 @Injectable()

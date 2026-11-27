@@ -243,3 +243,16 @@ test("reseller administrators cannot use platform administration", async () => {
     user.role = "USER";
   }
 });
+
+test("passwords need at least 8 characters", async () => {
+  const { plainToInstance } = require("class-transformer");
+  const { validateSync } = require("class-validator");
+  const { Credentials, PasswordUpdate } = require("../dist/auth");
+  const { PASSWORD_MIN_LENGTH } = require("../dist/passwords");
+  assert.equal(PASSWORD_MIN_LENGTH, 8);
+  const errors = (type, value) => validateSync(plainToInstance(type, value)).length;
+  assert.equal(errors(Credentials, { email: "a@example.com", password: "1234567" }), 1);
+  assert.equal(errors(Credentials, { email: "a@example.com", password: "12345678" }), 0);
+  assert.equal(errors(PasswordUpdate, { currentPassword: "old", newPassword: "1234567" }), 1);
+  assert.equal(errors(PasswordUpdate, { currentPassword: "old", newPassword: "12345678" }), 0);
+});

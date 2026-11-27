@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { api, ApiError, setSession, type AuthConfig, type User } from "./api";
+import { api, ApiError, setSession, type AuthConfig, type User, PASSWORD_MIN_LENGTH } from "./api";
 import { ErrorMessage, formatDateTime, PageHeader, QuotaNote, timezoneOf, useQuota } from "./ui";
 import { LanguageMenu, LinkBrand } from "./shell";
 export function Login() {
@@ -88,7 +88,7 @@ export function Login() {
                   type="password"
                   autoComplete={register ? "new-password" : "current-password"}
                   required
-                  minLength={12}
+                  minLength={PASSWORD_MIN_LENGTH}
                   maxLength={128}
                 />
               </label>
@@ -194,7 +194,7 @@ export function Account({ user }: { user: User }) {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={12}
+                minLength={PASSWORD_MIN_LENGTH}
                 maxLength={128}
               />
             </label>

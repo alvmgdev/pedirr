@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, isExpired, type User } from "./api";
+import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH } from "./api";
 import { ErrorMessage, Loading, PageHeader, Pager } from "./ui";
 import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
@@ -446,7 +446,7 @@ export function UserDetail({ user }: { user: User }) {
               name="password"
               type="password"
               autoComplete="new-password"
-              minLength={12}
+              minLength={PASSWORD_MIN_LENGTH}
               maxLength={128}
               required
             />
