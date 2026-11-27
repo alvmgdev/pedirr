@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- The full schedule copy now completes. Hub cannot answer date ranges of ten days or more, so the 22-day copy never got past its first page. It is now read as consecutive ranges of at most seven days within one run, which cleans up and counts as complete only after its last page. A failure in any range no longer blocks retries for two hours: the retry resumes the run. The "This week" fallback also asks Hub a week at a time.
+- Failed background copies retry after 2, 4, 8 and 16 minutes instead of every 30 seconds, and the worker log says why Hub failed (`timeout`, `network`, `upstream` with the HTTP status, `upstream_limit`, `local_limit` or `in_flight`).
+
 ## 2.0.1 - 2026-11-27
 
 - `HUB_TIMEOUT_SECONDS` sets how long a Hub call may take before Pedirr gives up (default 20 instead of the previous fixed 10; 1-120), so a slow Hub is waited for longer. The lock shared by identical reads and the wait of the reads behind it follow it, so overlapping reads still call Hub once.
