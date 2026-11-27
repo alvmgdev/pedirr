@@ -208,7 +208,7 @@ Each recipient/channel/outbox event has a unique delivery record. Successful del
 
 The Docker app serves the React SPA and API from the same origin. Open `http://localhost:3000` (or your configured `APP_PORT`). Direct routes such as `/requests/{id}` return the SPA; API paths retain JSON behavior. Fonts ship locally. English/Spanish selection is available before login. Dates and times follow the browser's time zone, so nobody sets one; the zone saved at sign-in is used only when the browser cannot tell.
 
-Implemented screens cover authentication, discovery, league/season/team/event detail, scoped requests, request tracking/moderation and password changes. Administrators can also manage users and approval policies, test/configure Sportarr, and configure notifications and inspect delivery attempts.
+Implemented screens cover authentication, discovery, league/season/team/event detail, scoped requests, request tracking/moderation and password changes. Administrators can also manage users and approval policies, test/configure Sportarr, and configure notifications and inspect delivery attempts. One bar holds the sections, the language menu and the account menu; on phones the sections move to a bar at the bottom. Detail pages show breadcrumbs, and administration lists its sections in a side menu.
 
 For frontend development use `npm run dev:web`. Vite listens on port 5173 and proxies `/api` to localhost:3187. Configure the API's `APP_ORIGIN` to the exact frontend development origin to satisfy CSRF validation. Run `npm run test:browser` for fixture-backed browser flows; install Chromium with `npx playwright install chromium` or set `CHROMIUM_PATH`. CI installs Playwright's Chromium. Local browser tests default to `/usr/bin/chromium`.
 
