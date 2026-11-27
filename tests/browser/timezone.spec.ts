@@ -46,6 +46,7 @@ test("dates follow the browser's time zone without asking or saving it", async (
   // 15:00 UTC is 10:00 in New York (16:00 in Madrid, the saved zone).
   await expect(page.getByRole("status").filter({ hasText: "frees up" })).toContainText("10:00");
   await expect(page.getByLabel("Timezone")).toHaveCount(0);
-  await expect(page.getByText("Dates and times in America/New_York").first()).toBeVisible();
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await expect(page.getByText("Dates and times in America/New_York")).toBeVisible();
   expect(writes).toEqual([]);
 });

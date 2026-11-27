@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -129,6 +129,46 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
     </p>
   );
 }
+export type Crumb = { label: string; to: string };
+/** Where a page sits: its ancestors as links, then the page itself. */
+export function Breadcrumbs({ trail, current }: { trail: Crumb[]; current: string }) {
+  const { t } = useTranslation();
+  return (
+    <nav className="breadcrumbs" aria-label={t("breadcrumb")}>
+      <ol>
+        {trail.map((crumb) => (
+          <li key={crumb.to}>
+            <Link to={crumb.to}>{crumb.label}</Link>
+          </li>
+        ))}
+        <li aria-current="page">{current}</li>
+      </ol>
+    </nav>
+  );
+}
+/** A page's title, with its breadcrumbs above and its main actions beside it. */
+export function PageHeader({
+  title,
+  trail,
+  actions,
+  children,
+}: {
+  title: string;
+  trail?: Crumb[];
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="page-header">
+      {trail && <Breadcrumbs trail={trail} current={title} />}
+      <div className="page-title">
+        <h1>{title}</h1>
+        {actions}
+      </div>
+      {children}
+    </header>
+  );
+}
 export function Loading() {
   const { t } = useTranslation();
   return (
@@ -194,11 +234,14 @@ export function Fixture({
   kind = "event",
   headingLevel = 3,
   timezone,
+  showDate = true,
 }: {
   item: Item;
   kind?: string;
   headingLevel?: 2 | 3;
   timezone: string;
+  /** Off where a heading already names the day. */
+  showDate?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const Heading = headingLevel === 2 ? "h2" : "h3";
@@ -206,43 +249,40 @@ export function Fixture({
   const valid = date && !Number.isNaN(date.getTime());
   return (
     <Link className={`fixture fixture-${kind}`} to={`/catalog/${kind}/${item.id}`}>
-      {kind === "event" ? (
-        <div className="fixture-date">
-          {valid ? (
-            <>
-              <strong>
-                {new Intl.DateTimeFormat(i18n.language, {
-                  day: "2-digit",
-                  timeZone: timezone,
-                }).format(date)}
-              </strong>
-              <span>
-                {new Intl.DateTimeFormat(i18n.language, {
-                  month: "short",
-                  year: "numeric",
-                  timeZone: timezone,
-                }).format(date)}
-              </span>
-            </>
-          ) : (
-            <span>{t("dateUnknown")}</span>
-          )}
-        </div>
-      ) : null}
       <Artwork item={item} kind={kind} />
-      <div className="fixture-name">
+      <div className="fixture-body">
+        <p className="fixture-meta">
+          {item.leagueName ?? item.sportName ?? item.country ?? t(kind)}
+        </p>
         <Heading>{item.name}</Heading>
-        <p>{item.leagueName ?? item.sportName ?? item.country ?? t(kind)}</p>
+        {kind === "event" && (
+          <p className="fixture-when">
+            {valid ? (
+              <>
+                <time dateTime={date.toISOString()}>
+                  {new Intl.DateTimeFormat(i18n.language, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZone: timezone,
+                  }).format(date)}
+                </time>
+                {showDate && (
+                  <span>
+                    {new Intl.DateTimeFormat(i18n.language, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      timeZone: timezone,
+                    }).format(date)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span>{t("dateUnknown")}</span>
+            )}
+          </p>
+        )}
       </div>
-      {valid ? (
-        <time dateTime={date.toISOString()}>
-          {new Intl.DateTimeFormat(i18n.language, {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: timezone,
-          }).format(date)}
-        </time>
-      ) : null}
     </Link>
   );
 }

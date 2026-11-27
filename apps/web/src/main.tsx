@@ -4,8 +4,8 @@ import { PackageDetail, ResellerDetail } from "./resellers";
 import { ClientDetail, ResellerPanel } from "./reseller-panel";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import "./i18n";
 import "@fontsource/barlow/latin-400.css";
@@ -13,11 +13,12 @@ import "@fontsource/barlow/latin-600.css";
 import "@fontsource/barlow-condensed/latin-600.css";
 import "./style.css";
 import { api, ApiError, client, setSession, type User } from "./api";
-import { Account, Language, LinkBrand, Login } from "./auth";
+import { Account, Login } from "./auth";
+import { TopBar } from "./shell";
 import { CatalogDetail, Discover } from "./catalog";
 import { RequestDetail, Requests } from "./requests";
 import { IssueDetail, Issues } from "./issues";
-import { ErrorMessage, Loading, timezoneOf } from "./ui";
+import { ErrorMessage, Loading } from "./ui";
 import { basename } from "./environment";
 function App() {
   const { t, i18n } = useTranslation();
@@ -39,19 +40,6 @@ function App() {
       }
     },
     staleTime: 300000,
-  });
-  // Issues waiting for attention: open ones for administrators, the user's own active ones.
-  const openIssues = useQuery({
-    queryKey: ["issues", "open"],
-    queryFn: () => api<{ open: number }>("/issues/open"),
-    enabled: Boolean(me.data),
-    refetchInterval: 60000,
-  });
-  const logout = useMutation({
-    mutationFn: () => api("/auth/logout", "POST"),
-    onSuccess: () => {
-      setSession(null);
-    },
   });
   useEffect(() => {
     const expired = () => {
@@ -88,51 +76,7 @@ function App() {
       <a href="#main" className="skip-link">
         {t("skipContent")}
       </a>
-      <header className="app-header">
-        <div className="app-nav">
-          <NavLink to="/" aria-label="Pedirr">
-            <LinkBrand />
-          </NavLink>
-          <nav aria-label={t("mainNavigation")}>
-            <NavLink end to="/">
-              {t("discover")}
-            </NavLink>
-            <NavLink to="/requests">{t("requests")}</NavLink>
-            <NavLink to="/issues">
-              {t("issues")}
-              {Boolean(openIssues.data?.open) && (
-                <span className="nav-count">
-                  <span aria-hidden="true">{openIssues.data!.open}</span>
-                  <span className="sr-only">
-                    {t("openIssues", { count: openIssues.data!.open })}
-                  </span>
-                </span>
-              )}
-            </NavLink>
-            <NavLink to="/account">{t("account")}</NavLink>
-            {(user.role === "ADMIN" || user.role === "RESELLER") && (
-              // Phones show the short label so five sections fit; the name stays complete.
-              <NavLink to="/admin" aria-label={t("admin")}>
-                <span className="label-long">{t("admin")}</span>
-                <span className="label-short" aria-hidden="true">
-                  {t("adminShort")}
-                </span>
-              </NavLink>
-            )}
-          </nav>
-          <div className="nav-bottom">
-            <span>{user.email}</span>
-            <button disabled={logout.isPending} onClick={() => logout.mutate()}>
-              {t("logout")}
-            </button>
-            <ErrorMessage error={logout.error} />
-          </div>
-        </div>
-        <div className="topbar">
-          <span>{t("scheduleNote", { timezone: timezoneOf(user) })}</span>
-          <Language user={user} />
-        </div>
-      </header>
+      <TopBar user={user} />
       <div className="app-content">
         <main id="main" tabIndex={-1}>
           <Routes>
