@@ -1138,8 +1138,9 @@ progress {
 }
 .table-scroll {
   overflow-x: auto;
+  border: 1px solid #26252d;
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--bar);
 }
 table {
   border-collapse: collapse;
@@ -1149,12 +1150,16 @@ table {
 }
 td,
 th {
-  padding: 16px;
-  border-bottom: 1px solid var(--line);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+tbody tr:last-child td {
+  border-bottom: 0;
 }
 th {
-  background: var(--raised);
-  font-weight: 600;
+  color: #8e899a;
+  font-size: 13px;
+  font-weight: 500;
 }
 .admin-tabs {
   margin-bottom: 28px;
@@ -1777,4 +1782,305 @@ th {
   padding: 10px 14px;
   user-select: all;
   overflow-wrap: anywhere;
+}
+/* Inside administration the page title names the section; its own heading stays for screen readers. */
+.admin-content > .section-actions {
+  justify-content: flex-end;
+  margin: 0 0 18px;
+}
+.admin-content > .section-actions > h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.delivery-list h2 {
+  font-size: 18px;
+}
+/* Administration: a side menu of sections beside the section itself. */
+.admin-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px 40px;
+}
+.admin-menu {
+  flex: 0 0 220px;
+  margin-top: -14px;
+}
+.admin-menu h2 {
+  margin: 14px 12px 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8e899a;
+}
+.admin-menu ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-menu a {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #d6d1df;
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-menu a:hover {
+  background: #1d1d24;
+  color: var(--ink);
+}
+.admin-menu a[aria-current="page"] {
+  background: var(--raised);
+  color: var(--ink);
+  font-weight: 600;
+}
+.admin-content {
+  position: relative;
+  flex: 999 1 640px;
+  min-width: 0;
+}
+/* Notification channels: a tab each, with whether it is on. */
+.channel-tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--hairline);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.channel-tabs [role="tab"] {
+  /* Contains the visually hidden state text, so it never widens the page. */
+  position: relative;
+  gap: 10px;
+  min-height: 0;
+  padding: 0 2px 12px;
+  margin-bottom: -1px;
+  background: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.channel-tabs [role="tab"]:hover {
+  filter: none;
+  color: var(--ink);
+}
+.channel-tabs [aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.channel-tabs svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.channel-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--raised);
+  color: #d6d1df;
+  font-size: 12px;
+}
+.channel-state:before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6f6a7b;
+}
+.channel-state.on:before {
+  background: #7fc79a;
+}
+.channel-help {
+  margin: 16px 0 22px;
+}
+.channel-form,
+.channel-panel {
+  display: grid;
+  gap: 22px;
+  max-width: 720px;
+}
+.channel-panel[hidden] {
+  display: none;
+}
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid #26252d;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.switch-copy {
+  display: grid;
+  gap: 2px;
+}
+.switch-copy .muted {
+  font-size: 13px;
+  font-weight: 400;
+}
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  min-height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 13px;
+  background: #3a3842;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.switch:after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.15s;
+}
+.switch:checked {
+  background: var(--accent);
+}
+.switch:checked:after {
+  transform: translateX(18px);
+  background: #211b10;
+}
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+.field-with-hint {
+  display: grid;
+  gap: 6px;
+}
+.field-with-hint p {
+  margin: 0;
+  font-size: 13px;
+}
+.linked-chat-section {
+  display: grid;
+  gap: 12px;
+}
+.linked-chat-section h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.linked-chat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid #26252d;
+  border-radius: 8px;
+}
+.linked-chat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #1f2a33;
+  color: #8fc3e8;
+}
+.linked-chat-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.linked-chat-name {
+  flex: 1;
+  min-width: 160px;
+  display: grid;
+  margin: 0;
+}
+.linked-chat-name span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.text-danger {
+  background: transparent;
+  color: #e7a99a;
+  padding-inline: 12px;
+}
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.form-actions .notice {
+  margin: 0;
+}
+.form-actions > .muted {
+  margin: 0;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  /* The side menu becomes one row of sections that scrolls on its own. */
+  .admin-menu {
+    flex-basis: 100%;
+    margin: 0;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 8px;
+  }
+  .admin-menu-group,
+  .admin-menu ul {
+    display: contents;
+  }
+  .admin-menu h2 {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The tabs keep only the state's dot; its word stays for screen readers. */
+  .channel-tabs {
+    gap: 20px;
+  }
+  .channel-state {
+    padding: 0;
+    background: none;
+  }
+  .channel-state-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
