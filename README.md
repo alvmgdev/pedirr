@@ -11,7 +11,7 @@
 <p align="center"><strong>Sports requests for Sportarr</strong></p>
 
 <p align="center">
-  Like Overseerr, but for sports. People browse the Sportarr Hub catalog and request a fight card, a game or a whole season; Pedirr sends approved requests to Sportarr, follows the download and tells them when it is in the library.
+  Like Overseerr, but for sports. People browse the Sportarr Hub catalog and request a fight card, a game or a whole season; Pedirr sends approved requests to Sportarr, follows the download and tells them when it is in the library. One installation can also be resold to resellers, each with its own address and clients.
 </p>
 
 <p align="center">
@@ -26,15 +26,16 @@
 
 ## Features
 
-- **Discovery**: search leagues, teams and events, browse seasons, and see the next seven days of events.
+- **Discovery**: search leagues, teams and events, browse seasons, and see the week's events day by day, served from a local copy of Hub that the worker keeps up to date.
 - **Requests**: users request single events; administrators can also request whole seasons. Requests are shared, so the same content is never requested or downloaded twice.
 - **Plans and limits**: plans (content packages) choose which sports and leagues users may request; optional weekly request limits and expiration dates per user.
+- **Resellers**: separate environments at `/<code>/` with their own clients, a package of plans chosen by the platform, an optional client limit and their own notification settings, isolated from each other and served by the same Sportarr.
 - **Event parts**: fight cards are requested by part (Early Prelims, Prelims, Main Card…), with each person's own status.
 - **Approval**: manual review or automatic approval by role and by user.
 - **Sportarr**: approved content is monitored and searched in Sportarr without touching existing league settings, with progress and availability tracked.
 - **Issues**: users report problems with what they requested and follow the conversation with the administrators.
-- **Notifications**: optional email (SMTP), Discord and Telegram messages.
-- **Everywhere**: English and Spanish, phones and desktops, Docker images for amd64 and arm64.
+- **Notifications**: optional email (SMTP), Discord and Telegram messages, configured per environment; one Telegram bot for the platform, with a group or channel linked per environment.
+- **Everywhere**: English and Spanish, dates in each browser's time zone, phones and desktops, Docker images for amd64 and arm64.
 
 ## Screenshots
 
@@ -69,7 +70,7 @@ Run `npm run db:migrate` before starting the API. In separate terminals, run `np
 
 Copy `compose.yaml` and `.env.example` (as `.env`) to the installation directory. Replace the database password with a long random URL-safe value, set a random `SESSION_SECRET`, generate `SETTINGS_ENCRYPTION_KEY` with `openssl rand -hex 32`, then run `docker compose up -d`. Compose pulls the published `docker.io/alvmgdev/pedirr` image (linux/amd64 and linux/arm64); set `PEDIRR_IMAGE` in `.env` to pin a release such as `docker.io/alvmgdev/pedirr:1.0.0` (or `:1.0` for its patch releases). One image runs the migrations, the API and the worker. PostgreSQL and Redis are private to the Compose network. Migrations run before the API and worker start.
 
-To upgrade, change the pinned version if any, then run `docker compose pull && docker compose up -d`. To build the image from a checkout instead, run `PEDIRR_IMAGE=pedirr:local docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
+To upgrade, back up the database, change the pinned version if any, then run `docker compose pull && docker compose up -d`. Upgrading from 1.x to 2.0 keeps accounts, sessions, requests, issues and settings; [docs/dockerhub.md](docs/dockerhub.md#from-1x-to-20) lists what changes. To build the image from a checkout instead, run `PEDIRR_IMAGE=pedirr:local docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 - Liveness: `http://localhost:3000/api/v1/health/live`
 - Readiness (database, Redis, worker): `http://localhost:3000/api/v1/health/ready`
