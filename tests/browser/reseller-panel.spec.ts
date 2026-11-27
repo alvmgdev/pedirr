@@ -174,3 +174,78 @@ test("a reseller administrator sets its own notification settings", async ({ pag
   });
   expect(platformCalls).toEqual([]);
 });
+
+/** Notification settings with the platform's bot set and Telegram not linked yet. */
+const telegramSettings = {
+  emailEnabled: false,
+  smtpHost: "",
+  smtpPort: 587,
+  smtpSecurity: "starttls",
+  smtpUser: "",
+  emailFrom: "",
+  discordEnabled: false,
+  discordLocale: "en",
+  hasSmtpPassword: false,
+  hasDiscordWebhook: false,
+  telegramEnabled: false,
+  telegramLocale: "en",
+  telegramBot: "PedirrAvisosBot",
+  hasTelegramToken: false,
+  telegramChat: null,
+  telegramLinkPending: false,
+};
+
+test("a reseller links its Telegram group by posting a one-time code", async ({ page }) => {
+  await resellerAdmin(page);
+  let stage: "idle" | "pending" | "linked" = "idle";
+  let readsWhilePending = 0;
+  const writes: string[] = [];
+  await page.route("**/k7x2p/api/v1/reseller/notifications**", (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/k7x2p/api/v1", "");
+    if (path.endsWith("/deliveries")) {
+      return route.fulfill({ json: [] });
+    }
+    if (path === "/reseller/notifications/telegram/link" && request.method() === "POST") {
+      writes.push("link");
+      stage = "pending";
+      return route.fulfill({
+        json: { code: "7F3K9QAB", bot: "PedirrAvisosBot", expiresInSeconds: 1800 },
+      });
+    }
+    // The code is posted in the group after a couple of looks.
+    if (stage === "pending" && ++readsWhilePending > 1) {
+      stage = "linked";
+    }
+    return route.fulfill({
+      json: {
+        ...telegramSettings,
+        telegramLinkPending: stage === "pending",
+        telegramChat: stage === "linked" ? { title: "Fight Club Alerts" } : null,
+      },
+    });
+  });
+  await page.goto("/k7x2p/admin?tab=notifications");
+  // Resellers post with the platform's bot and never see a token field.
+  await expect(page.getByLabel("Telegram bot token")).toHaveCount(0);
+  await expect(page.getByText("No group or channel linked yet.")).toBeVisible();
+  await page.getByRole("button", { name: "Link a group or channel" }).click();
+  const steps = page.getByRole("status").filter({ hasText: "/link" });
+  await expect(steps).toContainText("add @PedirrAvisosBot to your group or channel");
+  await expect(steps.locator("code")).toHaveText("/link 7F3K9QAB");
+  expect(await new AxeBuilder({ page }).analyze().then((r) => r.violations)).toEqual([]);
+  // Once the code is used, the panel shows the chat and drops the code.
+  await expect(page.getByText("Linked to Fight Club Alerts.")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText("/link 7F3K9QAB")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Link another group or channel" })).toBeVisible();
+  expect(writes).toEqual(["link"]);
+});
+
+test("without the platform's bot, Telegram is shown as unavailable to resellers", async ({
+  page,
+}) => {
+  await resellerAdmin(page);
+  await page.goto("/k7x2p/admin?tab=notifications");
+  await expect(page.getByText("Telegram is not available yet")).toBeVisible();
+  await expect(page.getByLabel("Enable Telegram notifications")).toHaveCount(0);
+});

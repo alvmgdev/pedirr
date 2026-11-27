@@ -554,7 +554,115 @@ type NotificationsConfig = {
   emailFrom: string;
   discordEnabled: boolean;
   discordLocale: string;
+  telegramEnabled: boolean;
+  telegramLocale: string;
+  /** The platform bot's @username; null until the platform sets a bot. */
+  telegramBot: string | null;
+  hasTelegramToken: boolean;
+  telegramChat: { title: string } | null;
+  telegramLinkPending: boolean;
 };
+/**
+ * Telegram: the platform sets one bot for everyone; each environment links its own group or
+ * channel by posting a one-time code there.
+ */
+function TelegramSettings({
+  value,
+  base,
+  platform,
+}: {
+  value: NotificationsConfig;
+  base: string;
+  platform: boolean;
+}) {
+  const { t } = useTranslation();
+  const key = ["notification-settings", base];
+  const [issued, setIssued] = useState<{ code: string; bot: string } | null>(null);
+  // The code stays on screen until the server says it was used or expired.
+  const link = value.telegramLinkPending ? issued : null;
+  const start = useMutation({
+    mutationFn: () => api<{ code: string; bot: string }>(`${base}/telegram/link`, "POST"),
+    onSuccess: (code) => {
+      client.setQueryData<NotificationsConfig>(key, (old) =>
+        old ? { ...old, telegramLinkPending: true } : old,
+      );
+      setIssued(code);
+    },
+  });
+  const unlink = useMutation({
+    mutationFn: () => api<NotificationsConfig>(`${base}/telegram/link`, "DELETE"),
+    onSuccess: (updated) => client.setQueryData(key, updated),
+  });
+  useQuery({
+    queryKey: key,
+    queryFn: () => api<NotificationsConfig>(base),
+    enabled: link !== null,
+    refetchInterval: 3000,
+  });
+  const chat = value.telegramChat;
+  const available = Boolean(value.telegramBot);
+  return (
+    <section className="panel">
+      <h2>Telegram</h2>
+      <div className="form-stack">
+        {platform && (
+          <>
+            <Field name="telegramToken" type="password" secret />
+            <p className="muted">
+              {value.telegramBot
+                ? t("telegramBotIs", { bot: value.telegramBot })
+                : t("telegramTokenHint")}
+            </p>
+          </>
+        )}
+        {!available && !platform && <p className="muted">{t("telegramNotAvailable")}</p>}
+        {available && (
+          <>
+            <Toggle name="telegramEnabled" checked={value.telegramEnabled} />
+            <label>
+              {t("telegramLocale")}
+              <select name="telegramLocale" defaultValue={value.telegramLocale}>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <p>{chat ? t("telegramLinked", { title: chat.title }) : t("telegramNotLinked")}</p>
+            {link ? (
+              <div className="telegram-steps" role="status">
+                <p>{t("telegramStepAdd", { bot: link.bot })}</p>
+                <p>{t("telegramStepPost")}</p>
+                <code>/link {link.code}</code>
+                <p className="muted">{t("telegramWaiting")}</p>
+              </div>
+            ) : (
+              <div className="address-row">
+                <button
+                  type="button"
+                  className="quiet"
+                  disabled={start.isPending}
+                  onClick={() => start.mutate()}
+                >
+                  {t(chat ? "telegramRelink" : "telegramLink")}
+                </button>
+                {chat && (
+                  <button
+                    type="button"
+                    className="quiet"
+                    disabled={unlink.isPending}
+                    onClick={() => unlink.mutate()}
+                  >
+                    {t("telegramUnlink")}
+                  </button>
+                )}
+              </div>
+            )}
+            <ErrorMessage error={start.error ?? unlink.error} />
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
 /**
  * Email and Discord settings: the platform's at /admin/settings/notifications, a reseller's own
  * at /reseller/notifications.
@@ -604,6 +712,7 @@ export function NotificationSettings({
           const body: Record<string, unknown> = Object.fromEntries(data);
           body.emailEnabled = data.has("emailEnabled");
           body.discordEnabled = data.has("discordEnabled");
+          body.telegramEnabled = data.has("telegramEnabled");
           body.smtpPort = Number(data.get("smtpPort"));
           if (!body.smtpPassword) {
             delete body.smtpPassword;
@@ -611,10 +720,16 @@ export function NotificationSettings({
           if (!body.discordWebhook) {
             delete body.discordWebhook;
           }
+          if (!body.telegramToken) {
+            delete body.telegramToken;
+          }
           save.mutate(body, {
             onSuccess: () => {
-              for (const name of ["smtpPassword", "discordWebhook"]) {
-                (form.elements.namedItem(name) as HTMLInputElement).value = "";
+              for (const name of ["smtpPassword", "discordWebhook", "telegramToken"]) {
+                const input = form.elements.namedItem(name) as HTMLInputElement | null;
+                if (input) {
+                  input.value = "";
+                }
               }
             },
           });
@@ -657,6 +772,11 @@ export function NotificationSettings({
               <p className="muted">{t("credentialsHint")}</p>
             </div>
           </section>
+          <TelegramSettings
+            value={value}
+            base={base}
+            platform={base === "/admin/settings/notifications"}
+          />
         </div>
         <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
       </form>
@@ -680,8 +800,20 @@ export function NotificationSettings({
               <tbody>
                 {deliveries.data.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.channel === "email" ? t("email") : "Discord"}</td>
-                    <td>{item.channel === "discord" ? t("discordDestination") : item.recipient}</td>
+                    <td>
+                      {item.channel === "email"
+                        ? t("email")
+                        : item.channel === "discord"
+                          ? "Discord"
+                          : "Telegram"}
+                    </td>
+                    <td>
+                      {item.channel === "discord"
+                        ? t("discordDestination")
+                        : item.channel === "telegram"
+                          ? t("telegramDestination")
+                          : item.recipient}
+                    </td>
                     <td>{t(item.status)}</td>
                     <td>{item.attempts}</td>
                   </tr>
