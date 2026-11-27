@@ -140,7 +140,7 @@ test("a reseller administrator creates a client with a plan of its package", asy
   await expect(page.getByText("Password changed.")).toBeVisible();
   await page.getByRole("link", { name: "Clients" }).click();
   await expect(
-    page.getByRole("link", { name: /fan@example.invalid.*Fights.*Inactive/ }),
+    page.getByRole("row", { name: /fan@example.invalid.*Fights.*Inactive/ }),
   ).toBeVisible();
 });
 

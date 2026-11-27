@@ -142,7 +142,7 @@ test("administrators create a plan from sports and catalog leagues", async ({ pa
   });
   await expect(page.getByRole("heading", { name: "Edit plan" })).toBeVisible();
   await page.getByRole("link", { name: "Plans" }).click();
-  await expect(page.getByRole("link", { name: /Fights.*Combat, NBA.*0 users/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Fights.*Combat, NBA.*0 users/ })).toBeVisible();
 });
 
 test("a plan in use cannot be deleted and can switch to every sport", async ({ page }) => {
@@ -179,7 +179,7 @@ test("administrators put a user on a plan", async ({ page }) => {
     },
   ]);
   await page.goto("/admin?tab=users");
-  await expect(page.getByRole("link", { name: /client@example.invalid.*No plan/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /client@example.invalid.*No plan/ })).toBeVisible();
   await page.goto(`/admin/users/${userId}`);
   const plan = page.getByRole("combobox", { name: "Plan" });
   await expect(plan).toHaveValue("");

@@ -5,7 +5,16 @@ import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH, type ListedUser
 import { limits, UserLimits } from "./fields";
 import { Address } from "./resellers";
 import { NotificationSettings } from "./admin";
-import { ErrorMessage, Loading, PageHeader, Pager, WeeklyLimitInfo, WeeklyUsage } from "./ui";
+import {
+  ErrorMessage,
+  Loading,
+  PageHeader,
+  Pager,
+  WeeklyLimitInfo,
+  WeeklyUsage,
+  RecordTable,
+  ExpiresOn,
+} from "./ui";
 import { useState } from "react";
 
 /** What a reseller administrator knows about its own reseller. */
@@ -108,21 +117,28 @@ export function ResellerPanel() {
                     <p className="list-note">
                       {t("weeklyListNote")} <WeeklyLimitInfo />
                     </p>
-                    {clients.data.items.map((item) => (
-                      <Link
-                        className="user-row client-row"
-                        key={item.id}
-                        to={`/admin/clients/${item.id}`}
-                      >
-                        <strong>{item.email}</strong>
-                        <span>{item.plan?.name ?? t("noPlanShort")}</span>
-                        <WeeklyUsage user={item} />
-                        <span>
-                          {t(!item.active ? "inactive" : isExpired(item) ? "expired" : "active")}
-                        </span>
-                        <span>{t("editUser")}</span>
-                      </Link>
-                    ))}
+                    <RecordTable
+                      label={t("clientsTitle")}
+                      className="client-table"
+                      columns={[
+                        t("colEmail"),
+                        t("colPlan"),
+                        t("colWeekly"),
+                        t("colExpires"),
+                        t("colStatus"),
+                      ]}
+                      rows={clients.data.items.map((item) => ({
+                        key: item.id,
+                        to: `/admin/clients/${item.id}`,
+                        cells: [
+                          item.email,
+                          item.plan?.name ?? t("noPlanShort"),
+                          <WeeklyUsage key="weekly" user={item} />,
+                          <ExpiresOn key="expires" user={item} />,
+                          t(!item.active ? "inactive" : isExpired(item) ? "expired" : "active"),
+                        ],
+                      }))}
+                    />
                   </div>
                 )}
                 <Pager

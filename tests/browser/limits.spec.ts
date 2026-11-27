@@ -143,7 +143,11 @@ test("administrators and resellers see each account's weekly requests", async ({
     row("a", "admin@example.invalid", { role: "ADMIN", weeklyRequestsUsed: null }),
     row("b", "free@example.invalid", { weeklyRequestsUsed: null }),
     row("c", "some@example.invalid", { weeklyRequestLimit: 3, weeklyRequestsUsed: 1 }),
-    row("d", "spent@example.invalid", { weeklyRequestLimit: 2, weeklyRequestsUsed: 2 }),
+    row("d", "spent@example.invalid", {
+      weeklyRequestLimit: 2,
+      weeklyRequestsUsed: 2,
+      expiresAt: "2026-12-31T23:59:59.999Z",
+    }),
   ];
   let me: Record<string, unknown> = admin;
   await page.route("**/api/v1/**", (route) => {
@@ -162,11 +166,16 @@ test("administrators and resellers see each account's weekly requests", async ({
     return route.fulfill({ json: path.endsWith("/admin/resellers") ? [] : {} });
   });
   await page.goto("/admin?tab=users");
-  const rowOf = (email: string) => page.getByRole("link", { name: new RegExp(email) });
+  const rowOf = (email: string) => page.getByRole("row", { name: new RegExp(email) });
   await expect(rowOf("admin@example.invalid")).toContainText("No limit");
   await expect(rowOf("free@example.invalid")).toContainText("No limit");
   await expect(rowOf("some@example.invalid")).toContainText("1 of 3 this week");
   await expect(rowOf("spent@example.invalid")).toContainText("2 of 2 this week");
+  await expect(rowOf("some@example.invalid")).toContainText("Never");
+  await expect(rowOf("spent@example.invalid")).toContainText("Dec 31, 2026");
+  // Headed columns, and the whole row opens the account.
+  await expect(page.getByRole("columnheader", { name: "Weekly requests" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Expires" })).toBeVisible();
   // The note above the list explains the window when hovered with a mouse.
   await page.getByRole("button", { name: "How the weekly limit works" }).hover();
   await expect(page.getByText(/last 7 days, not since Monday/)).toBeVisible();

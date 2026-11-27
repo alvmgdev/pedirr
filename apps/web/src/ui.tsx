@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   api,
   ApiError,
+  isExpired,
   type Item,
   type ListedUser,
   type PartOption,
@@ -186,6 +187,68 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
 export function WeeklyLimitInfo() {
   const { t } = useTranslation();
   return <InfoTip label={t("weeklyLimitInfoLabel")}>{t("weeklyLimitInfo")}</InfoTip>;
+}
+/** One row of a RecordTable: the first cell names the record and links to it. */
+export type RecordRow = { key: string; to: string; cells: ReactNode[] };
+/**
+ * Records as a table with headed columns. The whole row opens the record through the
+ * link in its first cell; on phones each row stacks its cells, labelled by their column.
+ */
+export function RecordTable({
+  label,
+  columns,
+  rows,
+  className,
+}: {
+  label: string;
+  columns: string[];
+  rows: RecordRow[];
+  className?: string;
+}) {
+  return (
+    <table className={className ? `record-table ${className}` : "record-table"} aria-label={label}>
+      <thead>
+        <tr>
+          {columns.map((column) => (
+            <th key={column} scope="col">
+              {column}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.key}>
+            {row.cells.map((cell, index) =>
+              index === 0 ? (
+                <th key={index} scope="row">
+                  <Link className="record-link" to={row.to}>
+                    {cell}
+                  </Link>
+                </th>
+              ) : (
+                <td key={index} data-label={columns[index]}>
+                  {cell}
+                </td>
+              ),
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+/** When an account stops working, in the viewer's time zone, or "Never". */
+export function ExpiresOn({ user }: { user: User }) {
+  const { t, i18n } = useTranslation();
+  if (!user.expiresAt) {
+    return <span>{t("neverExpires")}</span>;
+  }
+  const date = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: "medium",
+    timeZone: timezoneOf(user),
+  }).format(new Date(user.expiresAt));
+  return <span className={isExpired(user) ? "off" : undefined}>{date}</span>;
 }
 /** A row's weekly requests: "2 of 3 this week", highlighted once all are used. */
 export function WeeklyUsage({ user }: { user: ListedUser }) {

@@ -3,7 +3,16 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH, type ListedUser } from "./api";
-import { ErrorMessage, Loading, PageHeader, Pager, WeeklyLimitInfo, WeeklyUsage } from "./ui";
+import {
+  ErrorMessage,
+  Loading,
+  PageHeader,
+  Pager,
+  WeeklyLimitInfo,
+  WeeklyUsage,
+  RecordTable,
+  ExpiresOn,
+} from "./ui";
 import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
 import { Packages, Resellers, useResellerPlans, useResellers } from "./resellers";
@@ -305,18 +314,30 @@ function Users() {
           <p className="list-note">
             {t("weeklyListNote")} <WeeklyLimitInfo />
           </p>
-          {users.data?.items.map((user) => (
-            <Link className="user-row account-row" key={user.id} to={`/admin/users/${user.id}`}>
-              <strong>{user.email}</strong>
-              <span>{environmentName(user, t("platform"))}</span>
-              <span>
-                {user.role === "USER" ? (user.plan?.name ?? t("noPlanShort")) : t(user.role)}
-              </span>
-              <WeeklyUsage user={user} />
-              <span>{t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active")}</span>
-              <span>{t("editUser")}</span>
-            </Link>
-          ))}
+          <RecordTable
+            label={t("users")}
+            className="account-table"
+            columns={[
+              t("colEmail"),
+              t("colEnvironment"),
+              t("colPlan"),
+              t("colWeekly"),
+              t("colExpires"),
+              t("colStatus"),
+            ]}
+            rows={(users.data?.items ?? []).map((user) => ({
+              key: user.id,
+              to: `/admin/users/${user.id}`,
+              cells: [
+                user.email,
+                environmentName(user, t("platform")),
+                user.role === "USER" ? (user.plan?.name ?? t("noPlanShort")) : t(user.role),
+                <WeeklyUsage key="weekly" user={user} />,
+                <ExpiresOn key="expires" user={user} />,
+                t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active"),
+              ],
+            }))}
+          />
         </div>
       )}
       <Pager page={page} more={page * 50 < (users.data?.total ?? 0)} onChange={setPage} />
