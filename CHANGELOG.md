@@ -2,7 +2,9 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 2.0.0 - 2026-11-27
+
+Upgrading from 1.x keeps accounts and their sessions, requests, issues and settings, and needs no new environment variables; back up the database first. Administrators become the platform administrators and users become platform users with no plan or limits. Whole seasons are now requested by administrators only, and users no longer set a time zone. See [upgrading from 1.x](https://github.com/alvmgdev/pedirr/blob/main/docs/dockerhub.md#from-1x-to-20).
 
 - The local league index and schedule recover within the hour after a Hub outage. A copy that failed on its first page no longer blocks retries for two hours, and the daily copies are checked every hour, running when their last complete copy is a day old or missing.
 - A calmer, denser interface, set in Manrope (the wordmark keeps Barlow Condensed). One bar holds the sections, a language menu with flags and an account menu (account page, time zone, sign out); on phones the sections move to a bar at the bottom. Page titles are compact and detail pages show breadcrumbs. Discover puts the search beside the title and groups the week by day. Event pages show the date, a request panel and the details at a glance. Administration has a grouped side menu, and notifications show email, Discord and Telegram as tabs with their state.
