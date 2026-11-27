@@ -112,7 +112,7 @@ test("administrator can set policies and sees protection for the last administra
     userAutoApprove: true,
     adminAutoApprove: false,
   });
-  await page.getByRole("button", { name: "Users", exact: true }).click();
+  await page.getByRole("link", { name: "Users", exact: true }).click();
   await expect(page.locator(".user-list input, .user-list select")).toHaveCount(0);
   await page.getByRole("link", { name: /admin@example.invalid/ }).click();
   await expect(page).toHaveURL(/admin\/users\/admin-1/);
@@ -168,6 +168,8 @@ test("notification form preserves saved secrets when fields are left blank", asy
   });
   await page.goto("/admin?tab=notifications");
   await page.getByLabel("Enable email notifications").check();
+  // Each channel has its own tab; the form keeps what every tab holds.
+  await page.getByRole("tab", { name: /Discord/ }).click();
   await page.getByLabel("Enable Discord notifications").check();
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
@@ -215,6 +217,7 @@ test("the platform sets its Telegram bot with a token that is never shown again"
     return route.fulfill({ json: settings });
   });
   await page.goto("/admin?tab=notifications");
+  await page.getByRole("tab", { name: /Telegram/ }).click();
   await expect(page.getByText("Create a bot with @BotFather")).toBeVisible();
   await page.getByLabel("Telegram bot token").fill(token);
   await page.getByRole("button", { name: "Save changes" }).click();

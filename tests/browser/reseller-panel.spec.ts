@@ -226,6 +226,7 @@ test("a reseller links its Telegram group by posting a one-time code", async ({ 
     });
   });
   await page.goto("/k7x2p/admin?tab=notifications");
+  await page.getByRole("tab", { name: /Telegram/ }).click();
   // Resellers post with the platform's bot and never see a token field.
   await expect(page.getByLabel("Telegram bot token")).toHaveCount(0);
   await expect(page.getByText("No group or channel linked yet.")).toBeVisible();
@@ -235,7 +236,9 @@ test("a reseller links its Telegram group by posting a one-time code", async ({ 
   await expect(steps.locator("code")).toHaveText("/link 7F3K9QAB");
   expect(await new AxeBuilder({ page }).analyze().then((r) => r.violations)).toEqual([]);
   // Once the code is used, the panel shows the chat and drops the code.
-  await expect(page.getByText("Linked to Fight Club Alerts.")).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText("Fight Club Alerts", { exact: true })).toBeVisible({
+    timeout: 10000,
+  });
   await expect(page.getByText("/link 7F3K9QAB")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Link another group or channel" })).toBeVisible();
   expect(writes).toEqual(["link"]);
@@ -246,6 +249,7 @@ test("without the platform's bot, Telegram is shown as unavailable to resellers"
 }) => {
   await resellerAdmin(page);
   await page.goto("/k7x2p/admin?tab=notifications");
+  await page.getByRole("tab", { name: /Telegram/ }).click();
   await expect(page.getByText("Telegram is not available yet")).toBeVisible();
   await expect(page.getByLabel("Enable Telegram notifications")).toHaveCount(0);
 });

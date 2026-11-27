@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,97 @@ function Toggle({ name, checked }: { name: string; checked: boolean }) {
       <input name={name} type="checkbox" defaultChecked={checked} />
       {t(name)}
     </label>
+  );
+}
+/** Turns a channel on or off, with a line on what it sends. */
+function SwitchRow({ name, checked, hint }: { name: string; checked: boolean; hint: string }) {
+  const { t } = useTranslation();
+  const id = useId();
+  return (
+    <label className="switch-row">
+      <span className="switch-copy">
+        <span className="switch-label" id={`${id}-label`}>
+          {t(name)}
+        </span>
+        <span className="muted" id={`${id}-hint`}>
+          {hint}
+        </span>
+      </span>
+      <input
+        className="switch"
+        name={name}
+        type="checkbox"
+        role="switch"
+        defaultChecked={checked}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-hint`}
+      />
+    </label>
+  );
+}
+type Channel = "email" | "discord" | "telegram";
+const channelIcons: Record<Channel, ReactNode> = {
+  email: (
+    <>
+      <rect x="2.5" y="4.5" width="15" height="11" rx="2" />
+      <path d="m3 6 7 5 7-5" />
+    </>
+  ),
+  discord: <path d="M4 5.5h12v8H9l-3.5 3v-3H4z" />,
+  telegram: (
+    <>
+      <path d="m17 3.5-14 5.5 4.5 1.7L9 16l2.6-3.7 3.9 2.7z" />
+      <path d="m7.5 10.7 6-4.2" />
+    </>
+  ),
+};
+/** Tabs for the channels, each showing whether it is on; arrow keys move between them. */
+function ChannelTabs({
+  channels,
+  selected,
+  onSelect,
+}: {
+  channels: { id: Channel; label: string; on: boolean }[];
+  selected: Channel;
+  onSelect: (channel: Channel) => void;
+}) {
+  const { t } = useTranslation();
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  return (
+    <div role="tablist" aria-label={t("channels")} className="channel-tabs">
+      {channels.map((channel, index) => (
+        <button
+          key={channel.id}
+          ref={(element) => {
+            tabs.current[index] = element;
+          }}
+          type="button"
+          role="tab"
+          id={`channel-tab-${channel.id}`}
+          aria-selected={selected === channel.id}
+          aria-controls={`channel-${channel.id}`}
+          tabIndex={selected === channel.id ? 0 : -1}
+          onClick={() => onSelect(channel.id)}
+          onKeyDown={(event) => {
+            const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+            if (step) {
+              event.preventDefault();
+              const next = (index + step + channels.length) % channels.length;
+              onSelect(channels[next].id);
+              tabs.current[next]?.focus();
+            }
+          }}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            {channelIcons[channel.id]}
+          </svg>
+          {channel.label}
+          <span className={`channel-state${channel.on ? " on" : ""}`}>
+            <span className="channel-state-text">{t(channel.on ? "channelOn" : "channelOff")}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 /** Which plan the user is on; "No plan" lets them request everything. */
@@ -100,48 +191,69 @@ function Feedback({ pending, error, saved }: { pending: boolean; error: unknown;
     </>
   );
 }
+/** The administration sections, grouped as the side menu shows them. */
+const ADMIN_SECTIONS = [
+  ["adminAccounts", ["users", "resellers"]],
+  ["adminContent", ["plans", "packages"]],
+  ["adminPlatform", ["policies", "sportarr", "notifications"]],
+] as const;
 export function Administration({ user }: { user: User }) {
   const { t } = useTranslation();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const tab = params.get("tab") ?? "users";
+  const menu = useRef<HTMLElement>(null);
+  // On narrow screens the menu is one scrolling row: keep the open section in view.
+  useEffect(() => {
+    menu.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [tab]);
   if (user.role !== "ADMIN") {
     return <p role="alert">{t("unauthorized")}</p>;
   }
   return (
     <>
-      <header className="page-heading">
-        <h1>{t("admin")}</h1>
-      </header>
-      <nav className="tabs admin-tabs" aria-label={t("admin")}>
-        {["users", "resellers", "plans", "packages", "policies", "sportarr", "notifications"].map(
-          (item) => (
-            <button
-              key={item}
-              className={tab === item ? "selected" : ""}
-              onClick={() => setParams({ tab: item })}
-            >
-              {t(item)}
-            </button>
-          ),
-        )}
-      </nav>
-      {tab === "users" ? (
-        <Users />
-      ) : tab === "resellers" ? (
-        <Resellers />
-      ) : tab === "plans" ? (
-        <Plans />
-      ) : tab === "packages" ? (
-        <Packages />
-      ) : tab === "policies" ? (
-        <Policies />
-      ) : tab === "sportarr" ? (
-        <SportarrSettings />
-      ) : tab === "notifications" ? (
-        <NotificationSettings />
-      ) : (
-        <p>{t("notFound")}</p>
-      )}
+      <PageHeader title={t(tab)} trail={[{ label: t("admin"), to: "/admin" }]} />
+      <div className="admin-layout">
+        <nav className="admin-menu" aria-label={t("admin")} ref={menu}>
+          {ADMIN_SECTIONS.map(([group, items]) => (
+            <div key={group} className="admin-menu-group">
+              <h2>{t(group)}</h2>
+              <ul>
+                {items.map((item) => (
+                  <li key={item}>
+                    <Link
+                      to={`/admin?tab=${item}`}
+                      aria-current={tab === item ? "page" : undefined}
+                    >
+                      {t(item)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+        <div className="admin-content">
+          {tab === "users" ? (
+            <Users />
+          ) : tab === "resellers" ? (
+            <Resellers />
+          ) : tab === "plans" ? (
+            <Plans />
+          ) : tab === "packages" ? (
+            <Packages />
+          ) : tab === "policies" ? (
+            <Policies />
+          ) : tab === "sportarr" ? (
+            <SportarrSettings />
+          ) : tab === "notifications" ? (
+            <NotificationSettings />
+          ) : (
+            <p>{t("notFound")}</p>
+          )}
+        </div>
+      </div>
     </>
   );
 }
@@ -571,10 +683,12 @@ function TelegramSettings({
   value,
   base,
   platform,
+  hidden,
 }: {
   value: NotificationsConfig;
   base: string;
   platform: boolean;
+  hidden: boolean;
 }) {
   const { t } = useTranslation();
   const key = ["notification-settings", base];
@@ -603,23 +717,34 @@ function TelegramSettings({
   const chat = value.telegramChat;
   const available = Boolean(value.telegramBot);
   return (
-    <section className="panel">
-      <h2>Telegram</h2>
-      <div className="form-stack">
-        {platform && (
-          <>
-            <Field name="telegramToken" type="password" secret />
-            <p className="muted">
-              {value.telegramBot
-                ? t("telegramBotIs", { bot: value.telegramBot })
-                : t("telegramTokenHint")}
-            </p>
-          </>
-        )}
-        {!available && !platform && <p className="muted">{t("telegramNotAvailable")}</p>}
-        {available && (
-          <>
-            <Toggle name="telegramEnabled" checked={value.telegramEnabled} />
+    <section
+      role="tabpanel"
+      id="channel-telegram"
+      aria-labelledby="channel-tab-telegram"
+      className="channel-panel"
+      hidden={hidden}
+    >
+      {available && (
+        <SwitchRow
+          name="telegramEnabled"
+          checked={value.telegramEnabled}
+          hint={t("telegramEnabledHint")}
+        />
+      )}
+      {!available && !platform && <p className="notice">{t("telegramNotAvailable")}</p>}
+      {(platform || available) && (
+        <div className="field-grid">
+          {platform && (
+            <div className="field-with-hint">
+              <Field name="telegramToken" type="password" secret />
+              <p className="muted">
+                {value.telegramBot
+                  ? t("telegramBotIs", { bot: value.telegramBot })
+                  : t("telegramTokenHint")}
+              </p>
+            </div>
+          )}
+          {available && (
             <label>
               {t("telegramLocale")}
               <select name="telegramLocale" defaultValue={value.telegramLocale}>
@@ -627,46 +752,68 @@ function TelegramSettings({
                 <option value="es">Español</option>
               </select>
             </label>
-            <p>{chat ? t("telegramLinked", { title: chat.title }) : t("telegramNotLinked")}</p>
-            {link ? (
-              <div className="telegram-steps" role="status">
-                <p>{t("telegramStepAdd", { bot: link.bot })}</p>
-                <p>{t("telegramStepPost")}</p>
-                <code>/link {link.code}</code>
-                <p className="muted">{t("telegramWaiting")}</p>
-              </div>
-            ) : (
-              <div className="address-row">
+          )}
+        </div>
+      )}
+      {available && (
+        <section className="linked-chat-section" aria-labelledby="telegram-chat-title">
+          <h2 id="telegram-chat-title">{t("telegramChatHeading")}</h2>
+          {link ? (
+            <div className="telegram-steps" role="status">
+              <p>{t("telegramStepAdd", { bot: link.bot })}</p>
+              <p>{t("telegramStepPost")}</p>
+              <code>/link {link.code}</code>
+              <p className="muted">{t("telegramWaiting")}</p>
+            </div>
+          ) : (
+            <div className="linked-chat">
+              <span className="linked-chat-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20">
+                  <circle cx="7" cy="7" r="3" />
+                  <circle cx="14" cy="8" r="2.4" />
+                  <path d="M2 16c.6-2.8 2.6-4.3 5-4.3s4.4 1.5 5 4.3M12.5 12c2.2-.3 4.6.8 5.5 3.5" />
+                </svg>
+              </span>
+              <p className="linked-chat-name">
+                {chat ? (
+                  <>
+                    <strong>{chat.title}</strong>
+                    <span>{t("telegramLinkedHint")}</span>
+                  </>
+                ) : (
+                  <span>{t("telegramNotLinked")}</span>
+                )}
+              </p>
+              <button
+                type="button"
+                className="quiet"
+                disabled={start.isPending}
+                onClick={() => start.mutate()}
+              >
+                {t(chat ? "telegramRelink" : "telegramLink")}
+              </button>
+              {chat && (
                 <button
                   type="button"
-                  className="quiet"
-                  disabled={start.isPending}
-                  onClick={() => start.mutate()}
+                  className="text-danger"
+                  disabled={unlink.isPending}
+                  onClick={() => unlink.mutate()}
                 >
-                  {t(chat ? "telegramRelink" : "telegramLink")}
+                  {t("telegramUnlink")}
                 </button>
-                {chat && (
-                  <button
-                    type="button"
-                    className="quiet"
-                    disabled={unlink.isPending}
-                    onClick={() => unlink.mutate()}
-                  >
-                    {t("telegramUnlink")}
-                  </button>
-                )}
-              </div>
-            )}
-            <ErrorMessage error={start.error ?? unlink.error} />
-          </>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+          <ErrorMessage error={start.error ?? unlink.error} />
+        </section>
+      )}
     </section>
   );
 }
 /**
- * Email and Discord settings: the platform's at /admin/settings/notifications, a reseller's own
- * at /reseller/notifications.
+ * Email, Discord and Telegram settings, a tab each: the platform's at
+ * /admin/settings/notifications, a reseller's own at /reseller/notifications. The tabs share one
+ * form, so switching tabs keeps what was typed and one save covers all three.
  */
 export function NotificationSettings({
   base = "/admin/settings/notifications",
@@ -674,6 +821,7 @@ export function NotificationSettings({
   base?: string;
 }) {
   const { t } = useTranslation();
+  const [channel, setChannel] = useState<Channel>("email");
   const settings = useQuery({
     queryKey: ["notification-settings", base],
     queryFn: () => api<NotificationsConfig>(base),
@@ -704,8 +852,22 @@ export function NotificationSettings({
   const value = settings.data!;
   return (
     <>
-      <p>{t("notificationHelp")}</p>
+      <ChannelTabs
+        selected={channel}
+        onSelect={setChannel}
+        channels={[
+          { id: "email", label: t("email"), on: value.emailEnabled },
+          { id: "discord", label: "Discord", on: value.discordEnabled },
+          {
+            id: "telegram",
+            label: "Telegram",
+            on: value.telegramEnabled && Boolean(value.telegramChat && value.telegramBot),
+          },
+        ]}
+      />
+      <p className="muted channel-help">{t("notificationHelp")}</p>
       <form
+        className="channel-form"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -736,50 +898,69 @@ export function NotificationSettings({
           });
         }}
       >
-        <div className="form-columns">
-          <section className="panel">
-            <h2>{t("email")}</h2>
-            <div className="form-stack">
-              <Toggle name="emailEnabled" checked={value.emailEnabled} />
-              <Field name="smtpHost" value={value.smtpHost} />
-              <Field name="smtpPort" value={value.smtpPort} type="number" required />
-              <label>
-                {t("smtpSecurity")}
-                <select name="smtpSecurity" defaultValue={value.smtpSecurity}>
-                  {["starttls", "tls", "plain"].map((mode) => (
-                    <option key={mode} value={mode}>
-                      {t(mode)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Field name="smtpUser" value={value.smtpUser} />
-              <Field name="smtpPassword" type="password" secret />
-              <Field name="emailFrom" type="email" value={value.emailFrom} />
-            </div>
-          </section>
-          <section className="panel">
-            <h2>Discord</h2>
-            <div className="form-stack">
-              <Toggle name="discordEnabled" checked={value.discordEnabled} />
-              <Field name="discordWebhook" type="password" secret />
-              <label>
-                {t("discordLocale")}
-                <select name="discordLocale" defaultValue={value.discordLocale}>
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                </select>
-              </label>
-              <p className="muted">{t("credentialsHint")}</p>
-            </div>
-          </section>
-          <TelegramSettings
-            value={value}
-            base={base}
-            platform={base === "/admin/settings/notifications"}
+        <section
+          role="tabpanel"
+          id="channel-email"
+          aria-labelledby="channel-tab-email"
+          className="channel-panel"
+          hidden={channel !== "email"}
+        >
+          <SwitchRow
+            name="emailEnabled"
+            checked={value.emailEnabled}
+            hint={t("emailEnabledHint")}
           />
+          <div className="field-grid">
+            <Field name="smtpHost" value={value.smtpHost} />
+            <Field name="smtpPort" value={value.smtpPort} type="number" required />
+            <label>
+              {t("smtpSecurity")}
+              <select name="smtpSecurity" defaultValue={value.smtpSecurity}>
+                {["starttls", "tls", "plain"].map((mode) => (
+                  <option key={mode} value={mode}>
+                    {t(mode)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Field name="smtpUser" value={value.smtpUser} />
+            <Field name="smtpPassword" type="password" secret />
+            <Field name="emailFrom" type="email" value={value.emailFrom} />
+          </div>
+        </section>
+        <section
+          role="tabpanel"
+          id="channel-discord"
+          aria-labelledby="channel-tab-discord"
+          className="channel-panel"
+          hidden={channel !== "discord"}
+        >
+          <SwitchRow
+            name="discordEnabled"
+            checked={value.discordEnabled}
+            hint={t("discordEnabledHint")}
+          />
+          <div className="field-grid">
+            <Field name="discordWebhook" type="password" secret />
+            <label>
+              {t("discordLocale")}
+              <select name="discordLocale" defaultValue={value.discordLocale}>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+          </div>
+        </section>
+        <TelegramSettings
+          value={value}
+          base={base}
+          platform={base === "/admin/settings/notifications"}
+          hidden={channel !== "telegram"}
+        />
+        <div className="form-actions">
+          <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
+          <p className="muted">{t("credentialsHint")}</p>
         </div>
-        <Feedback pending={save.isPending} error={save.error} saved={save.isSuccess} />
       </form>
       <section className="delivery-list">
         <h2>{t("deliveryHistory")}</h2>
