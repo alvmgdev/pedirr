@@ -2,8 +2,8 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH } from "./api";
-import { ErrorMessage, Loading, PageHeader, Pager } from "./ui";
+import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH, type ListedUser } from "./api";
+import { ErrorMessage, Loading, PageHeader, Pager, WeeklyLimitInfo, WeeklyUsage } from "./ui";
 import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
 import { Packages, Resellers, useResellerPlans, useResellers } from "./resellers";
@@ -269,7 +269,7 @@ function Users() {
   const path = `/admin/users?page=${page}${tenant ? `&tenant=${tenant}` : ""}`;
   const users = useQuery({
     queryKey: ["users", page, tenant],
-    queryFn: () => api<{ items: User[]; total: number }>(path),
+    queryFn: () => api<{ items: ListedUser[]; total: number }>(path),
   });
   return (
     <>
@@ -302,6 +302,9 @@ function Users() {
         <ErrorMessage error={users.error} />
       ) : (
         <div className="user-list">
+          <p className="list-note">
+            {t("weeklyListNote")} <WeeklyLimitInfo />
+          </p>
           {users.data?.items.map((user) => (
             <Link className="user-row account-row" key={user.id} to={`/admin/users/${user.id}`}>
               <strong>{user.email}</strong>
@@ -309,6 +312,7 @@ function Users() {
               <span>
                 {user.role === "USER" ? (user.plan?.name ?? t("noPlanShort")) : t(user.role)}
               </span>
+              <WeeklyUsage user={user} />
               <span>{t(!user.active ? "inactive" : isExpired(user) ? "expired" : "active")}</span>
               <span>{t("editUser")}</span>
             </Link>

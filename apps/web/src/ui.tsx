@@ -1,8 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type Item, type PartOption, type Quota, type User } from "./api";
+import {
+  api,
+  ApiError,
+  type Item,
+  type ListedUser,
+  type PartOption,
+  type Quota,
+  type User,
+} from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
   const keys: Record<string, string> = {
@@ -109,6 +117,89 @@ export function formatDateTime(value: string, language: string, timezone: string
     timeZone: timezone,
   }).format(new Date(value));
 }
+/**
+ * A small "i" that explains something: it opens on hover with a mouse, and on tap, click
+ * or Enter elsewhere. The bubble stays inside the window and closes on Escape or scroll.
+ */
+export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
+  const [place, setPlace] = useState<{ top: number; left: number; width: number } | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  const open = place !== null;
+  const show = () => {
+    const rect = button.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+    const width = Math.min(300, window.innerWidth - 32);
+    const left = rect.left + rect.width / 2 - width / 2;
+    setPlace({
+      top: rect.bottom + 8,
+      left: Math.max(16, Math.min(left, window.innerWidth - 16 - width)),
+      width,
+    });
+  };
+  const hide = () => setPlace(null);
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const close = () => setPlace(null);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+  return (
+    <span
+      className="info-tip"
+      onPointerEnter={(event) => event.pointerType === "mouse" && show()}
+      onPointerLeave={(event) => event.pointerType === "mouse" && hide()}
+    >
+      <button
+        ref={button}
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => (open ? hide() : show())}
+        onBlur={hide}
+        onKeyDown={(event) => event.key === "Escape" && hide()}
+      >
+        <span aria-hidden="true">i</span>
+      </button>
+      <span
+        id={id}
+        role="status"
+        className="info-tip-bubble"
+        style={place ? { top: place.top, left: place.left, width: place.width } : undefined}
+        hidden={!open}
+      >
+        {open && children}
+      </span>
+    </span>
+  );
+}
+/** Explains that the weekly limit is a rolling seven days, not the calendar week. */
+export function WeeklyLimitInfo() {
+  const { t } = useTranslation();
+  return <InfoTip label={t("weeklyLimitInfoLabel")}>{t("weeklyLimitInfo")}</InfoTip>;
+}
+/** A row's weekly requests: "2 of 3 this week", highlighted once all are used. */
+export function WeeklyUsage({ user }: { user: ListedUser }) {
+  const { t } = useTranslation();
+  if (user.weeklyRequestsUsed === null || user.weeklyRequestLimit === null) {
+    return <span>{t("noWeeklyLimit")}</span>;
+  }
+  const usedUp = user.weeklyRequestsUsed >= user.weeklyRequestLimit;
+  return (
+    <span className={usedUp ? "used-up" : undefined}>
+      {t("weeklyUsage", { used: user.weeklyRequestsUsed, limit: user.weeklyRequestLimit })}
+    </span>
+  );
+}
 /** Requests left this week and, once none are left, when the next one frees up. */
 export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
   const { t, i18n } = useTranslation();
@@ -116,17 +207,20 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
     return null;
   }
   return (
-    <p className="quota-note" role="status">
-      <strong>{t("quotaLeft", { remaining: quota.remaining, limit: quota.limit })}</strong>
-      {quota.remaining === 0 && quota.resetsAt && (
-        <>
-          {" "}
-          {t("quotaResets", {
-            date: formatDateTime(quota.resetsAt, i18n.language, timezoneOf(user)),
-          })}
-        </>
-      )}
-    </p>
+    <div className="quota-line">
+      <p className="quota-note" role="status">
+        <strong>{t("quotaLeft", { remaining: quota.remaining, limit: quota.limit })}</strong>
+        {quota.remaining === 0 && quota.resetsAt && (
+          <>
+            {" "}
+            {t("quotaResets", {
+              date: formatDateTime(quota.resetsAt, i18n.language, timezoneOf(user)),
+            })}
+          </>
+        )}
+      </p>
+      <WeeklyLimitInfo />
+    </div>
   );
 }
 export type Crumb = { label: string; to: string };

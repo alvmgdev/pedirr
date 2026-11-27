@@ -1,11 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH } from "./api";
+import { api, client, isExpired, type User, PASSWORD_MIN_LENGTH, type ListedUser } from "./api";
 import { limits, UserLimits } from "./fields";
 import { Address } from "./resellers";
 import { NotificationSettings } from "./admin";
-import { ErrorMessage, Loading, PageHeader, Pager } from "./ui";
+import { ErrorMessage, Loading, PageHeader, Pager, WeeklyLimitInfo, WeeklyUsage } from "./ui";
 import { useState } from "react";
 
 /** What a reseller administrator knows about its own reseller. */
@@ -28,7 +28,7 @@ export function ResellerPanel() {
   const [page, setPage] = useState(1);
   const clients = useQuery({
     queryKey: ["clients", page],
-    queryFn: () => api<{ items: User[]; total: number }>(`/reseller/clients?page=${page}`),
+    queryFn: () => api<{ items: ListedUser[]; total: number }>(`/reseller/clients?page=${page}`),
   });
   if (overview.isPending) {
     return <Loading />;
@@ -105,10 +105,18 @@ export function ResellerPanel() {
                   <p className="empty">{t("noClients")}</p>
                 ) : (
                   <div className="user-list">
+                    <p className="list-note">
+                      {t("weeklyListNote")} <WeeklyLimitInfo />
+                    </p>
                     {clients.data.items.map((item) => (
-                      <Link className="user-row" key={item.id} to={`/admin/clients/${item.id}`}>
+                      <Link
+                        className="user-row client-row"
+                        key={item.id}
+                        to={`/admin/clients/${item.id}`}
+                      >
                         <strong>{item.email}</strong>
                         <span>{item.plan?.name ?? t("noPlanShort")}</span>
+                        <WeeklyUsage user={item} />
                         <span>
                           {t(!item.active ? "inactive" : isExpired(item) ? "expired" : "active")}
                         </span>
