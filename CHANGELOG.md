@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 2.0.1 - 2026-11-27
 
 - `HUB_TIMEOUT_SECONDS` sets how long a Hub call may take before Pedirr gives up (default 20 instead of the previous fixed 10; 1-120), so a slow Hub is waited for longer. The lock shared by identical reads and the wait of the reads behind it follow it, so overlapping reads still call Hub once.
 
