@@ -192,6 +192,8 @@ test("upcoming preserves the broadcast-date margin and skips past-only pages wit
   );
   const result = await controller.upcoming({ page: 1 }, { viewer: { id: "viewer" } });
   assert.equal(calls[0].from, new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+  // Hub is asked a week at a time, never the whole margin at once.
+  assert.equal(calls[0].to, new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10));
   assert.equal(calls[0].pageSize, 100);
   assert.deepEqual(
     calls.map((item) => item.page),
@@ -288,4 +290,35 @@ test("unexpected league-aware search responses are refused", () => {
     }).map((team) => [team.id, team.name, team.leagueName, team.sportName]),
     [["t", "Boston Celtics", "NBA", "Basketball"]],
   );
+});
+
+test("Hub failures say whether Hub timed out, was unreachable or answered with an error", async () => {
+  const reasonOf = async (fetcher) => {
+    const { provider } = fixture();
+    global.fetch = fetcher;
+    try {
+      await provider.events({ page: 1 });
+    } catch (error) {
+      const body = error.getResponse();
+      return [body.code, body.reason, body.status];
+    }
+    assert.fail("expected a failure");
+  };
+  assert.deepEqual(
+    await reasonOf(async () => {
+      throw Object.assign(new Error("aborted"), { name: "TimeoutError" });
+    }),
+    ["METADATA_BUSY", "timeout", undefined],
+  );
+  assert.deepEqual(
+    await reasonOf(async () => {
+      throw new TypeError("fetch failed");
+    }),
+    ["METADATA_BUSY", "network", undefined],
+  );
+  assert.deepEqual(await reasonOf(async () => new Response("bad gateway", { status: 502 })), [
+    "METADATA_BUSY",
+    "upstream",
+    502,
+  ]);
 });

@@ -132,12 +132,13 @@ export class HubProvider extends MetadataProvider {
     super();
     this.budget = hubBudget();
   }
-  private unavailable(seconds: number, reason = "upstream") {
+  private unavailable(seconds: number, reason = "upstream", status?: number) {
     return new ServiceUnavailableException({
       code: "METADATA_BUSY",
       message: "Metadata is temporarily unavailable. Try again shortly.",
       retryAfterSeconds: Math.max(1, seconds),
       reason,
+      ...(status ? { status } : {}),
     });
   }
   private async read<T>(
@@ -222,8 +223,12 @@ export class HubProvider extends MetadataProvider {
           redirect: "error",
           headers: { Accept: "application/json", "User-Agent": `Pedirr/${appVersion}` },
         });
-      } catch {
-        throw this.unavailable(10);
+      } catch (error) {
+        // A slow Hub and an unreachable one need different responses from whoever reads the log.
+        throw this.unavailable(
+          10,
+          error instanceof Error && error.name === "TimeoutError" ? "timeout" : "network",
+        );
       }
       if (response.status === 429) {
         const seconds = retrySeconds(response.headers.get("retry-after"));
@@ -241,7 +246,7 @@ export class HubProvider extends MetadataProvider {
       }
       if (!response.ok) {
         logger.warn({ upstream: "hub", status: response.status }, "Metadata request failed");
-        throw this.unavailable(10);
+        throw this.unavailable(10, "upstream", response.status);
       }
       let parsed: T;
       try {
