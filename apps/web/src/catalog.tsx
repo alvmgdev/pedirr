@@ -20,6 +20,7 @@ import {
   PartsDialog,
   QuotaNote,
   Status,
+  timezoneOf,
   useQuota,
 } from "./ui";
 export function Discover({ user }: { user: User }) {
@@ -134,7 +135,7 @@ export function Discover({ user }: { user: User }) {
               ))}
             </nav>
           )}
-          <p className="muted">{t("scheduleNote", { timezone: user.timezone })}</p>
+          <p className="muted">{t("scheduleNote", { timezone: timezoneOf(user) })}</p>
           {query && user.plan && !user.plan.allContent && (
             <p className="muted">{t("planSearchNote", { name: user.plan.name })}</p>
           )}
@@ -173,7 +174,7 @@ export function Discover({ user }: { user: User }) {
                           key={kind + item.id}
                           item={item}
                           kind={kind}
-                          timezone={user.timezone}
+                          timezone={timezoneOf(user)}
                         />
                       ))}
                     </div>
@@ -456,8 +457,8 @@ export function CatalogDetail({ user }: { user: User }) {
       {kind === "event" ? (
         <section className="panel">
           <h2>{t("details")}</h2>
-          <Fixture item={item} timezone={user.timezone} />
-          <p className="muted">{t("scheduleNote", { timezone: user.timezone })}</p>
+          <Fixture item={item} timezone={timezoneOf(user)} />
+          <p className="muted">{t("scheduleNote", { timezone: timezoneOf(user) })}</p>
           {item.seasonName && (
             <p>
               {t("season")}: {item.seasonName}
@@ -496,7 +497,7 @@ export function CatalogDetail({ user }: { user: User }) {
                   key={item.id}
                   item={item}
                   kind={kind === "league" ? "season" : "event"}
-                  timezone={user.timezone}
+                  timezone={timezoneOf(user)}
                 />
               ))}
               {!list.data?.items.length && (

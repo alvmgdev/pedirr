@@ -86,6 +86,22 @@ export function useQuota(user: User) {
     staleTime: 15000,
   });
 }
+/**
+ * The time zone dates are shown in: this device's, so nobody has to set it, or the one saved at
+ * sign-in when the browser cannot tell.
+ */
+export function timezoneOf(user: { timezone: string }) {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (zone) {
+      new Intl.DateTimeFormat("en", { timeZone: zone });
+      return zone;
+    }
+  } catch {
+    // An unknown zone: fall back to the saved one.
+  }
+  return user.timezone;
+}
 export function formatDateTime(value: string, language: string, timezone: string) {
   return new Intl.DateTimeFormat(language, {
     dateStyle: "medium",
@@ -106,7 +122,7 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
         <>
           {" "}
           {t("quotaResets", {
-            date: formatDateTime(quota.resetsAt, i18n.language, user.timezone),
+            date: formatDateTime(quota.resetsAt, i18n.language, timezoneOf(user)),
           })}
         </>
       )}

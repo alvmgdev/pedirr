@@ -10,7 +10,7 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { Artwork, ErrorMessage, Loading, Pager, PartsDialog, Status } from "./ui";
+import { Artwork, ErrorMessage, Loading, Pager, PartsDialog, Status, timezoneOf } from "./ui";
 import { ReportIssue, RequestIssueList } from "./issues";
 export function Requests() {
   const { t } = useTranslation();
@@ -124,7 +124,7 @@ export function RequestDetail({ user }: { user: User }) {
     new Intl.DateTimeFormat(i18n.language, {
       dateStyle: "medium",
       timeStyle: "short",
-      timeZone: user.timezone,
+      timeZone: timezoneOf(user),
     }).format(new Date(date));
   return (
     <>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, client, setSession, type AuthConfig, type User } from "./api";
-import { ErrorMessage, formatDateTime, QuotaNote, useQuota } from "./ui";
+import { ErrorMessage, formatDateTime, QuotaNote, timezoneOf, useQuota } from "./ui";
 export function Language({ user }: { user?: User | null }) {
   const { t, i18n } = useTranslation();
   const change = useMutation({
@@ -182,7 +182,7 @@ function AccountLimits({ user }: { user: User }) {
       <p>
         {user.expiresAt
           ? t("accountExpiresOn", {
-              date: formatDateTime(user.expiresAt, i18n.language, user.timezone),
+              date: formatDateTime(user.expiresAt, i18n.language, timezoneOf(user)),
             })
           : t("accountNeverExpires")}
       </p>
@@ -191,14 +191,6 @@ function AccountLimits({ user }: { user: User }) {
 }
 export function Account({ user }: { user: User }) {
   const { t } = useTranslation();
-  const [saved, setSaved] = useState(false);
-  const profile = useMutation({
-    mutationFn: (body: unknown) => api<User>("/me", "PATCH", body),
-    onSuccess: (updated) => {
-      client.setQueryData(["me"], updated);
-      setSaved(true);
-    },
-  });
   const password = useMutation({
     mutationFn: (body: unknown) => api("/me/password", "POST", body),
     onSuccess: () => {
@@ -214,27 +206,7 @@ export function Account({ user }: { user: User }) {
       <div className="form-columns">
         <section className="panel">
           <h2>{t("profile")}</h2>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              profile.mutate({
-                timezone: String(new FormData(event.currentTarget).get("timezone")),
-              });
-            }}
-          >
-            <label>
-              {t("timezone")}
-              <input name="timezone" defaultValue={user.timezone} required list="timezones" />
-              <datalist id="timezones">
-                {Intl.supportedValuesOf("timeZone").map((zone) => (
-                  <option key={zone} value={zone} />
-                ))}
-              </datalist>
-            </label>
-            <ErrorMessage error={profile.error} />
-            {saved && <p role="status">{t("saved")}</p>}
-            <button disabled={profile.isPending}>{t("save")}</button>
-          </form>
+          <p>{t("timezoneAuto", { timezone: timezoneOf(user) })}</p>
         </section>
         <section className="panel">
           <h2>{t("changePassword")}</h2>
