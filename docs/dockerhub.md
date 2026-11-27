@@ -8,7 +8,7 @@ Sports content requests for [Sportarr](https://sportarr.net). Users browse the S
 - Manual review or automatic approval by role and by user
 - Private issue reports with comments and a resolution workflow
 - Background fulfillment that never changes your existing league monitoring settings
-- Email (SMTP) and Discord notifications
+- Email (SMTP), Discord and Telegram notifications
 - English and Spanish interface; registration closed by default
 
 Writes to Sportarr require Sportarr 4.1.11 or a later 4.1 release.
@@ -119,7 +119,7 @@ APP_PORT=3000
 # At least 32 random characters, e.g. openssl rand -hex 32
 SESSION_SECRET=
 # Exactly 64 hexadecimal characters: openssl rand -hex 32
-# Back it up: without it, stored Sportarr, SMTP and Discord credentials cannot be decrypted.
+# Back it up: without it, stored Sportarr, SMTP, Discord and Telegram credentials cannot be decrypted.
 SETTINGS_ENCRYPTION_KEY=
 LOG_LEVEL=info
 HUB_REQUESTS_PER_MINUTE=20

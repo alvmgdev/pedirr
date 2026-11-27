@@ -40,6 +40,7 @@ Checked items are implemented; unchecked items are planned for the future and ha
 
 - [x] Email over SMTP
 - [x] Discord webhooks
+- [x] Telegram groups and channels, with one platform bot and a chat linked per environment
 - [x] Localized messages, delivery history and automatic retries
 - [ ] Additional notification providers. Delivery is isolated behind the `NotificationChannel` interface (`apps/server/src/notifications/channels.ts`); a new provider needs its own channel implementation, encrypted settings and administrator configuration, and reuses the existing outbox, per-recipient delivery records and retry handling.
 

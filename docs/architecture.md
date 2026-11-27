@@ -2,7 +2,7 @@
 
 React/TypeScript SPA; NestJS REST API with OpenAPI; PostgreSQL/Prisma migrations; BullMQ/Redis background jobs. One modular application with separately scalable API and worker processes. Sessions, rate limits, caches, and durable work live outside application memory.
 
-Browser -> API -> domain services -> database and transactional outbox -> worker -> Sportarr / SMTP / Discord. Metadata discovery uses an isolated MetadataProvider; fulfillment uses ContentManager; delivery uses NotificationChannel.
+Browser -> API -> domain services -> database and transactional outbox -> worker -> Sportarr / SMTP / Discord / Telegram. Metadata discovery uses an isolated MetadataProvider; fulfillment uses ContentManager; delivery uses NotificationChannel.
 
 A league request targets one selected season. Event requests target one event. The unique target and scope prevent duplicate requests; subscribers share fulfillment. Approval and outbox insertion must commit atomically. Jobs reconcile before retrying ambiguous remote writes. Approval failures remain approved with an independent integration error.
 

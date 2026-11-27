@@ -33,7 +33,7 @@
 - **Approval**: manual review or automatic approval by role and by user.
 - **Sportarr**: approved content is monitored and searched in Sportarr without touching existing league settings, with progress and availability tracked.
 - **Issues**: users report problems with what they requested and follow the conversation with the administrators.
-- **Notifications**: optional email (SMTP) and Discord messages.
+- **Notifications**: optional email (SMTP), Discord and Telegram messages.
 - **Everywhere**: English and Spanish, phones and desktops, Docker images for amd64 and arm64.
 
 ## Screenshots
@@ -192,7 +192,7 @@ Active event progress is persisted in `RequestEvent` and included in request det
 docker compose run --rm --no-deps app node apps/server/test/integration/fulfillment.cjs
 ```
 
-## Email and Discord notifications
+## Email, Discord and Telegram notifications
 
 GET/PUT `/api/v1/admin/settings/notifications` manages SMTP and Discord settings. GET `/api/v1/admin/settings/notifications/deliveries` lists the latest 100 delivery attempts for administrators. Both channels start disabled. SMTP passwords and Discord webhook URLs are encrypted with field-specific context; GET returns only presence flags. Omit a secret to retain it, or send an empty string to clear it. Changing SMTP connection details requires explicitly supplying the password again.
 
@@ -200,7 +200,9 @@ SMTP fields are `emailEnabled`, `smtpHost`, `smtpPort`, `smtpSecurity` (`tls`, `
 
 Subscribers receive status emails in their profile language. Administrators also receive newly created request emails and new issue emails; issue comments and status changes reach the other side of the conversation. Discord receives one channel-wide message in its configured language. Enabling a channel does not send historical notices. Text-only emails avoid HTML injection and use stable Message-ID values. SMTP has connection/greeting/socket timeouts and cannot load files or URLs from message content.
 
-Each recipient/channel/outbox event has a unique delivery record. Successful deliveries are skipped on retry; failures record sanitized codes and retry through BullMQ. The latest attempts are visible to administrators. Delivery is at least once: a process crash after provider acceptance but before the database acknowledgement can cause a duplicate. SMTP/Discord do not provide a shared transactional boundary with Pedirr. Tests use mocked Discord and a local SMTP fixture; no external recipients are contacted during tests.
+Telegram posts to a group or channel with one bot for the whole platform. The platform administrator creates it with @BotFather and saves its token as `telegramToken` (platform only; empty removes it). Pedirr checks it with Telegram's `getMe`, stores it encrypted and returns only `hasTelegramToken` and the bot's `telegramBot` username, which every environment's settings show. Each environment, the platform and every reseller (at `/api/v1/reseller/notifications`), links its own chat: POST `.../telegram/link` returns a one-time `code` valid for 30 minutes, to post as `/link CODE` in the group or channel where the bot is an administrator allowed to post; DELETE `.../telegram/link` unlinks it. Settings return the linked `telegramChat` title and `telegramLinkPending`, plus `telegramEnabled` and `telegramLocale`. The worker reads what reaches the bot (Telegram's `getUpdates`, so the server needs no public address) only while some environment has an unused code; otherwise it does not contact Telegram. A linked chat hears what that environment's Discord channel would: the platform's every request and new issue, a reseller's only its own people's. Without the platform's bot, no environment posts to Telegram.
+
+Each recipient/channel/outbox event has a unique delivery record. Successful deliveries are skipped on retry; failures record sanitized codes and retry through BullMQ. The latest attempts are visible to administrators. Delivery is at least once: a process crash after provider acceptance but before the database acknowledgement can cause a duplicate. SMTP, Discord and Telegram do not provide a shared transactional boundary with Pedirr. Tests use mocked Discord and Telegram and a local SMTP fixture; no external recipients are contacted during tests.
 
 ## Web interface
 
