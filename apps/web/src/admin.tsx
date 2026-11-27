@@ -197,6 +197,13 @@ const ADMIN_SECTIONS = [
   ["adminContent", ["plans", "packages"]],
   ["adminPlatform", ["policies", "sportarr", "notifications"]],
 ] as const;
+/** The sections whose title row offers creating one more. */
+const ADMIN_CREATE: Record<string, [string, string]> = {
+  users: ["/admin/users/new", "createUser"],
+  resellers: ["/admin/resellers/new", "createReseller"],
+  plans: ["/admin/plans/new", "createPlan"],
+  packages: ["/admin/packages/new", "createPackage"],
+};
 export function Administration({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -213,7 +220,17 @@ export function Administration({ user }: { user: User }) {
   }
   return (
     <>
-      <PageHeader title={t(tab)} trail={[{ label: t("admin"), to: "/admin" }]} />
+      <PageHeader
+        title={t(tab)}
+        trail={[{ label: t("admin"), to: "/admin" }]}
+        actions={
+          tab in ADMIN_CREATE && (
+            <Link className="button-link" to={ADMIN_CREATE[tab][0]}>
+              {t(ADMIN_CREATE[tab][1])}
+            </Link>
+          )
+        }
+      />
       <div className="admin-layout">
         <nav className="admin-menu" aria-label={t("admin")} ref={menu}>
           {ADMIN_SECTIONS.map(([group, items]) => (
@@ -273,12 +290,6 @@ function Users() {
   });
   return (
     <>
-      <div className="section-actions">
-        <h2>{t("users")}</h2>
-        <Link className="button-link" to="/admin/users/new">
-          {t("createUser")}
-        </Link>
-      </div>
       <label className="sort-control">
         {t("environment")}
         <select
@@ -474,7 +485,6 @@ type Policy = {
   adminAutoApprove: boolean;
 };
 function Policies() {
-  const { t } = useTranslation();
   const policy = useQuery({
     queryKey: ["policies"],
     queryFn: () => api<Policy>("/admin/policies"),
@@ -491,7 +501,6 @@ function Policies() {
   }
   return (
     <section className="panel compact-form">
-      <h2>{t("policies")}</h2>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -573,7 +582,6 @@ function SportarrSettings() {
   }
   return (
     <section className="panel compact-form">
-      <h2>{t("sportarr")}</h2>
       <p>{t("sportarrHelp")}</p>
       <form
         onSubmit={(event) => {

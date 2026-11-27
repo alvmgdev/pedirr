@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type Item, type PartOption, type Quota, type User } from "./api";
 export function ErrorMessage({ error }: { error: unknown }) {
   const { t } = useTranslation();
@@ -130,14 +130,18 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
   );
 }
 export type Crumb = { label: string; to: string };
-/** Where a page sits: its ancestors as links, then the page itself. */
-export function Breadcrumbs({ trail, current }: { trail: Crumb[]; current: string }) {
+/**
+ * Where a page sits: the environment (the platform or the reseller), its ancestors as links, then
+ * the page itself. Every page shows one, so titles sit at the same height everywhere.
+ */
+export function Breadcrumbs({ trail = [], current }: { trail?: Crumb[]; current: string }) {
   const { t } = useTranslation();
+  const home = useQueryClient().getQueryData<User | null>(["me"])?.tenant?.name ?? "Pedirr";
   return (
     <nav className="breadcrumbs" aria-label={t("breadcrumb")}>
       <ol>
-        {trail.map((crumb) => (
-          <li key={crumb.to}>
+        {[{ label: home, to: "/" }, ...trail].map((crumb, index) => (
+          <li key={index}>
             <Link to={crumb.to}>{crumb.label}</Link>
           </li>
         ))}
@@ -160,7 +164,7 @@ export function PageHeader({
 }) {
   return (
     <header className="page-header">
-      {trail && <Breadcrumbs trail={trail} current={title} />}
+      <Breadcrumbs trail={trail} current={title} />
       <div className="page-title">
         <h1>{title}</h1>
         {actions}

@@ -12,7 +12,7 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { Breadcrumbs, ErrorMessage, Loading, Pager, Status, timezoneOf } from "./ui";
+import { Breadcrumbs, ErrorMessage, Loading, PageHeader, Pager, Status, timezoneOf } from "./ui";
 
 /** What the issue is about: the request, plus the event and part when given. */
 function subject(issue: Issue) {
@@ -61,10 +61,9 @@ export function Issues({ user }: { user: User }) {
     setParams({ ...Object.fromEntries(params), page: "1", ...values });
   return (
     <>
-      <header className="page-heading">
-        <h1>{t("issues")}</h1>
+      <PageHeader title={t("issues")}>
         <p>{t(user.role === "ADMIN" ? "issuesAdminHelp" : "issuesHelp")}</p>
-      </header>
+      </PageHeader>
       <nav className="filter-tabs" aria-label={t("status")}>
         {["", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((value) => (
           <button

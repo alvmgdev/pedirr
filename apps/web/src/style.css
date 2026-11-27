@@ -100,8 +100,8 @@ h1 {
   margin-bottom: 12px;
 }
 h2 {
-  font-size: 24px;
-  margin-bottom: 18px;
+  font-size: 20px;
+  margin-bottom: 14px;
 }
 h3 {
   font-size: 20px;
@@ -474,7 +474,11 @@ main {
 }
 .workspace-columns {
   display: grid;
-  gap: 42px;
+  gap: 32px;
+}
+/* The column gap already separates it. */
+.workspace-columns > .sidebar-note {
+  margin-top: 0;
 }
 .workspace-columns > section {
   min-width: 0;
@@ -638,13 +642,12 @@ main {
 }
 .sidebar-note {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 16px;
+  margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .sidebar-note > h2 {
-  grid-column: 1/-1;
   margin: 0;
 }
 .sidebar-note p {
@@ -717,14 +720,33 @@ main {
 }
 .panel {
   background: var(--surface);
+  border: 1px solid #26252d;
   border-radius: 8px;
-  padding: 28px;
+  padding: 24px;
   min-width: 0;
+}
+.panel > h2:first-child {
+  font-size: 18px;
+}
+.panel > p:last-child {
+  margin-bottom: 0;
+}
+.admin-content .panel {
+  max-width: 760px;
 }
 .form-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 24px;
+}
+/* Forms keep their buttons at their own size, where the eye ends the form. */
+form > button,
+form > .button-link {
+  justify-self: start;
+}
+.login-form form > button {
+  justify-self: stretch;
 }
 .detail-heading {
   display: flex;
@@ -803,6 +825,13 @@ main {
 }
 .detail-copy > p {
   color: var(--muted);
+  margin: 6px 0 0;
+}
+.detail-copy > .status + h1 {
+  margin-top: 12px;
+}
+.detail-copy h1 {
+  margin-bottom: 0;
 }
 .detail-copy > a {
   display: inline-block;
@@ -940,8 +969,14 @@ main {
   margin-top: 5px;
 }
 .progress-row {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--line);
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid #26252d;
+  border-radius: 8px;
+}
+.progress-row h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
 }
 .progress-row p {
   font-size: 14px;
@@ -1055,9 +1090,15 @@ progress {
 .sort-control select {
   width: auto;
 }
-.compact-form {
+/* Stacked cards: spacing below each, never above, so nothing piles up under a title. */
+.compact-form,
+.address-panel {
   max-width: 760px;
-  margin: 24px 0;
+  margin: 0 0 24px;
+}
+.form-stack > .panel,
+.compact-form:last-child {
+  margin-bottom: 0;
 }
 .form-stack {
   display: grid;
@@ -1134,7 +1175,7 @@ progress {
   font-variant-numeric: tabular-nums;
 }
 .delivery-list {
-  margin-top: 40px;
+  margin-top: 32px;
 }
 .table-scroll {
   overflow-x: auto;
@@ -1274,7 +1315,7 @@ th {
 }
 .request-parts,
 .request-subscribers {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 .request-parts ul,
 .request-subscribers ul {
@@ -1377,7 +1418,7 @@ th {
   font-size: 14px;
 }
 .issue-heading {
-  margin: 24px 0 32px;
+  margin: 8px 0 28px;
 }
 .issue-heading h1 {
   margin: 12px 0 8px;
@@ -1401,7 +1442,7 @@ th {
   margin-bottom: 16px;
 }
 .request-issues {
-  margin-top: 48px;
+  margin-top: 32px;
   max-width: 720px;
 }
 @media (max-width: 1050px) {
@@ -1552,10 +1593,13 @@ th {
   .detail-heading {
     gap: 20px;
   }
-  .detail-artwork,
-  .detail-artwork-wide {
+  /* Artwork stays a supporting image on phones: square art small, wide art full width. */
+  .detail-artwork {
     flex-basis: 100%;
-    max-width: 360px;
+    max-width: 140px;
+  }
+  .detail-artwork-wide {
+    max-width: 100%;
   }
   .detail-copy h1 {
     font-size: 34px;
