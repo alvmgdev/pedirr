@@ -131,10 +131,11 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
 }
 export type Crumb = { label: string; to: string };
 /**
- * Where a page sits: the environment (the platform or the reseller), then the page's ancestors as
- * links. Pages with a large title of their own (an event, a request, an issue) show only this.
+ * Where a page sits: the environment (the platform or the reseller), the page's ancestors as
+ * links, and the page itself as the highlighted last step. Pages with a large title of their own
+ * (an event, a request, an issue) name themselves here too.
  */
-export function Breadcrumbs({ trail = [] }: { trail?: Crumb[] }) {
+export function Breadcrumbs({ trail = [], current }: { trail?: Crumb[]; current?: string }) {
   const { t } = useTranslation();
   const home = useQueryClient().getQueryData<User | null>(["me"])?.tenant?.name ?? "Pedirr";
   return (
@@ -145,6 +146,11 @@ export function Breadcrumbs({ trail = [] }: { trail?: Crumb[] }) {
             <Link to={crumb.to}>{crumb.label}</Link>
           </li>
         ))}
+        {current && (
+          <li className="crumb-current" aria-current="page">
+            {current}
+          </li>
+        )}
       </ol>
     </nav>
   );

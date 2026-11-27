@@ -428,6 +428,7 @@ export function CatalogDetail({ user }: { user: User }) {
             ? [{ label: item.seasonName ?? t("season"), to: "/catalog/season/" + item.seasonId }]
             : []),
         ]}
+        current={item.name}
       />
       <header className="detail-heading">
         <div className={`detail-artwork${kind === "event" ? " detail-artwork-wide" : ""}`}>

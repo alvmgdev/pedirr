@@ -342,10 +342,17 @@ main {
   gap: 4px 8px;
   min-width: 0;
 }
-.page-path h1 {
+/* The active step, whether it is the page title or a page that has a large title of its own. */
+.page-path h1,
+.breadcrumbs .crumb-current {
   margin: 0;
-  font-size: 28px;
-  line-height: 1.1;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
   overflow-wrap: anywhere;
 }
 .page-path .breadcrumbs {
