@@ -8,10 +8,10 @@ import { required, searchRetrySeconds } from "./config";
 import { Infrastructure, logger } from "./infrastructure";
 import { HubProvider } from "./metadata/hub";
 import { SportarrSettings } from "./settings/sportarr";
-import { Fulfillment, errorCode } from "./jobs/fulfillment";
+import { Fulfillment, failureDetails } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
 import { LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
-import { INDEX_CHECK_EVERY_MS } from "./jobs/paged-sync";
+import { INDEX_BACKOFF, INDEX_CHECK_EVERY_MS, indexRetryDelayMs } from "./jobs/paged-sync";
 import { SCHEDULE_INDEX_JOB, SCHEDULE_WINDOWS, scheduleIndexStale } from "./jobs/schedule-index";
 import { TELEGRAM_POLL_EVERY_MS, TELEGRAM_POLL_JOB } from "./jobs/telegram-poll";
 
@@ -44,7 +44,11 @@ async function main() {
       connection,
       concurrency: 1,
       settings: {
-        backoffStrategy: (attempts, _type, error) => {
+        backoffStrategy: (attempts, type, error) => {
+          // Background copies space their retries out rather than following Hub's short hints.
+          if (type === INDEX_BACKOFF.type) {
+            return indexRetryDelayMs(attempts);
+          }
           if (error instanceof HttpException) {
             const body = error.getResponse();
             if (
@@ -64,9 +68,9 @@ async function main() {
   await queue.add("dispatch", {}, { jobId: `startup-${Date.now()}` });
   /** Runs a job on a schedule, and once now when what it maintains is missing or stale. */
   async function recurring(id: string, every: number, name: string, data: object, stale: boolean) {
-    await queue.upsertJobScheduler(id, { every }, { name, data });
+    await queue.upsertJobScheduler(id, { every }, { name, data, opts: { backoff: INDEX_BACKOFF } });
     if (stale) {
-      await queue.add(name, data, { jobId: `${id}-startup-${Date.now()}` });
+      await queue.add(name, data, { jobId: `${id}-startup-${Date.now()}`, backoff: INDEX_BACKOFF });
     }
   }
   // The league index and the local schedule narrow the catalog to plans and page "upcoming". The
@@ -107,7 +111,7 @@ async function main() {
   }, 15000);
   await beat();
   worker.on("failed", (job, error) =>
-    logger.error({ jobId: job?.id, code: errorCode(error) }, "Job failed"),
+    logger.error({ jobId: job?.id, ...failureDetails(error) }, "Job failed"),
   );
   worker.on("error", () => logger.error("Worker connection error"));
   let stopping = false;

@@ -190,10 +190,21 @@ async function main() {
       indexLeagues(infrastructure, metadata, queue, queued.at(-1).data, 3 * DAY),
       /Hub is down/,
     );
-    // Its later pages keep the lock, so the queued retry of that page can resume the copy.
-    assert.equal(await redis.get("pedirr:index:leagues"), String(3 * DAY));
+    // A failure anywhere releases the lock, and the copy stays due.
+    assert.equal(await redis.get("pedirr:index:leagues"), null);
     assert.equal(await leagueIndexStale(infrastructure, 3 * DAY), true);
+    // The retry of the failed page takes the lock back and completes the copy.
     metadata.leagues = leaguesFromHub;
+    let resume = queued.at(-1).data;
+    for (let step = 0; step < 10; step++) {
+      await redis.del("pedirr:index:pace");
+      const result = await indexLeagues(infrastructure, metadata, queue, resume, 3 * DAY);
+      if (result.done) {
+        break;
+      }
+      resume = queued.at(-1).data;
+    }
+    assert.equal(await leagueIndexStale(infrastructure, 3 * DAY), false);
     await redis.del("pedirr:index:leagues");
     // A complete run drops leagues Hub no longer lists.
     hubLeagues = leagues.slice(0, 4);

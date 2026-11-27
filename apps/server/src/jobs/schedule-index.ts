@@ -2,7 +2,13 @@ import { Queue } from "bullmq";
 import { Prisma } from "@prisma/client";
 import { Infrastructure } from "../infrastructure";
 import { MetadataProvider } from "../metadata/provider";
-import { DAY, isoDay, SCHEDULE_SETTING, scheduleCompletedAt } from "../metadata/schedule";
+import {
+  DAY,
+  daySlices,
+  isoDay,
+  SCHEDULE_SETTING,
+  scheduleCompletedAt,
+} from "../metadata/schedule";
 import { INDEX_CHECK_EVERY_MS, PagedJob, pagedSync, text } from "./paged-sync";
 
 export const SCHEDULE_INDEX_JOB = "schedule-index";
@@ -41,20 +47,21 @@ export function indexSchedule(
   const db = infrastructure.db;
   const name = job.window === "near" ? "near" : "full";
   const window = SCHEDULE_WINDOWS[name];
+  // Hub cannot answer the whole window at once: it is read in ranges of at most a week.
+  const ranges = (startedAt: number) =>
+    daySlices(
+      isoDay(startedAt - window.pastDays * DAY),
+      isoDay(startedAt + window.futureDays * DAY),
+    );
   return pagedSync(
     infrastructure,
     queue,
     {
       name: SCHEDULE_INDEX_JOB,
       key: `schedule-${name}`,
-      fetch: (page, startedAt) =>
-        metadata.events({
-          from: isoDay(startedAt - window.pastDays * DAY),
-          to: isoDay(startedAt + window.futureDays * DAY),
-          page,
-          pageSize: 100,
-          order: "asc",
-        }),
+      fetch: (page, startedAt, slice) =>
+        metadata.events({ ...ranges(startedAt)[slice], page, pageSize: 100, order: "asc" }),
+      slices: (startedAt) => ranges(startedAt).length,
       row: (event, syncedAt) => {
         const data = {
           name: event.name,

@@ -45,6 +45,8 @@ async function main() {
       { id: "ufc-1", name: "UFC 320", leagueId: "league-ufc", scheduledStart: at(2 * DAY) },
       { id: "ufc-past", name: "UFC 319", leagueId: "league-ufc", scheduledStart: at(-3 * DAY) },
       { id: "ufc-late", name: "UFC 321", leagueId: "league-ufc", scheduledStart: at(10 * DAY) },
+      // The window's last day, in its last (one-day) range.
+      { id: "ufc-edge", name: "UFC 322", leagueId: "league-ufc", scheduledStart: at(14 * DAY) },
       {
         id: "ufc-off",
         name: "UFC Cancelled",
@@ -101,16 +103,85 @@ async function main() {
     assert.equal(await scheduleIndexStale(infrastructure), true);
     const schedule = new Schedule(infrastructure, metadata);
     assert.equal(await schedule.ready(), false);
-    await run("full");
-    const windows = new Set(calls.map((call) => `${call.from}..${call.to}`));
-    assert.equal(windows.size, 1);
-    const [from, to] = [...windows][0].split("..");
-    assert.equal(from, new Date(now - 7 * DAY).toISOString().slice(0, 10));
-    assert.equal(to, new Date(now + 14 * DAY).toISOString().slice(0, 10));
+    const finished = await run("full");
+    // Hub cannot answer 22 days at once: the window is read as 7, 7, 7 and 1 days, each range
+    // starting the day after the previous one ends, all in one run.
+    const windows = [...new Set(calls.map((call) => `${call.from}..${call.to}`))];
+    const day = (offset) => new Date(now + offset * DAY).toISOString().slice(0, 10);
+    assert.deepEqual(windows, [
+      `${day(-7)}..${day(-1)}`,
+      `${day(0)}..${day(6)}`,
+      `${day(7)}..${day(13)}`,
+      `${day(14)}..${day(14)}`,
+    ]);
+    assert.equal(finished.slice, 3);
     assert.ok(calls.every((call) => call.pageSize === 100));
+    assert.ok(queued.every((item) => item.options.backoff?.type === "index"));
+    assert.ok(await db.hubEvent.findUnique({ where: { id: "ufc-edge" } }));
     assert.equal(await db.hubEvent.count(), hub.length);
     assert.equal(await schedule.ready(), true);
     assert.equal(await scheduleIndexStale(infrastructure), false);
+    // A run that fails in its second range neither cleans up nor marks the copy complete, and
+    // releases its lock: the retry of that page resumes the run, and finishes it.
+    const completed = (await db.setting.findUniqueOrThrow({ where: { key: SCHEDULE_SETTING } }))
+      .value.completedAt;
+    await db.setting.update({
+      where: { key: SCHEDULE_SETTING },
+      data: { value: { completedAt: new Date(now - 2 * DAY).toISOString() } },
+    });
+    await db.hubEvent.create({
+      data: { id: "stale-row", name: "Gone", syncedAt: new Date(now - 30 * DAY), item: {} },
+    });
+    const events = metadata.events;
+    let failing = true;
+    metadata.events = async (filters) => {
+      if (failing && filters.from === day(0)) {
+        throw Object.assign(new Error("Hub timed out"), { code: "METADATA_BUSY" });
+      }
+      return events(filters);
+    };
+    queued.length = 0;
+    let job = { window: "full" };
+    let failed;
+    for (let step = 0; step < 20 && !failed; step++) {
+      await redis.del("pedirr:index:pace");
+      try {
+        const result = await indexSchedule(infrastructure, metadata, queue, job, now - 60000);
+        job = queued.at(-1).data;
+        assert.ok(!result.done);
+      } catch (error) {
+        failed = error;
+      }
+    }
+    assert.match(failed.message, /timed out/);
+    assert.equal(job.slice, 1);
+    assert.equal(await redis.get("pedirr:index:schedule-full"), null);
+    assert.ok(await db.hubEvent.findUnique({ where: { id: "stale-row" } }));
+    assert.equal(await scheduleIndexStale(infrastructure), true);
+    // Another run starting meanwhile makes the old one stop in whatever range it is.
+    await redis.set("pedirr:index:schedule-full", "123");
+    await redis.del("pedirr:index:pace");
+    assert.deepEqual(await indexSchedule(infrastructure, metadata, queue, job, now - 50000), {
+      skipped: "superseded",
+    });
+    await redis.del("pedirr:index:schedule-full");
+    failing = false;
+    for (let step = 0; step < 20; step++) {
+      await redis.del("pedirr:index:pace");
+      const result = await indexSchedule(infrastructure, metadata, queue, job, now - 40000);
+      if (result.done) {
+        break;
+      }
+      job = queued.at(-1).data;
+    }
+    assert.equal(await db.hubEvent.findUnique({ where: { id: "stale-row" } }), null);
+    assert.equal(await scheduleIndexStale(infrastructure), false);
+    assert.notEqual(
+      (await db.setting.findUniqueOrThrow({ where: { key: SCHEDULE_SETTING } })).value.completedAt,
+      completed,
+    );
+    metadata.events = events;
+
     // The hourly check does not copy the whole window again while its last copy is fresh.
     calls.length = 0;
     assert.deepEqual(await indexSchedule(infrastructure, metadata, queue, { window: "full" }), {
@@ -238,6 +309,7 @@ async function main() {
         ["event", "UFC 319"],
         ["event", "UFC 320"],
         ["event", "UFC 321"],
+        ["event", "UFC 322"],
       ],
     );
     // Events of leagues outside the plan are not found.
@@ -251,9 +323,11 @@ async function main() {
     });
     assert.equal(await schedule.ready(), false);
     let hubAsked = false;
+    const asked = [];
     const hubOnly = {
-      events: async ({ page }) => {
+      events: async ({ page, from, to }) => {
         hubAsked = true;
+        asked.push(Date.parse(to) - Date.parse(from));
         return { items: [], page, totalPages: 1 };
       },
     };
@@ -266,8 +340,10 @@ async function main() {
     );
     await fallback.upcoming({ page: 1 }, as(free));
     assert.equal(hubAsked, true);
+    // Without a local copy, "upcoming" asks Hub in ranges of at most a week too.
+    assert.ok(asked.length > 1 && asked.every((span) => span <= 6 * DAY), String(asked));
     console.log(
-      "Schedule integration passed: paged whole and hourly copies with one window per run, a shared background pace, cleanup only on whole runs, readiness and staleness, schedule paging for everyone and for plans, plan search of teams and events, fallback to Hub.",
+      "Schedule integration passed: whole copies read in ranges of at most a week within one run (resumed after a failure, stopped when superseded, cleaned up once), hourly copies, a shared background pace, cleanup only on whole runs, readiness and staleness, schedule paging for everyone and for plans, plan search of teams and events, fallback to Hub.",
     );
   } finally {
     await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);

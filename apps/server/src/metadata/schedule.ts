@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Infrastructure } from "../infrastructure";
-import { MetadataItem, MetadataProvider, MetadataSearch } from "./provider";
+import { MetadataItem, MetadataPage, MetadataProvider, MetadataSearch } from "./provider";
 
 export const DAY = 86400000;
 const WEEK = 7 * DAY;
@@ -19,6 +19,26 @@ type Result = MetadataSearch["results"][number];
 
 /** A UTC calendar day as Hub's date filters take it. */
 export const isoDay = (at: number) => new Date(at).toISOString().slice(0, 10);
+/**
+ * The longest date range, in days, asked of Hub at once. Hub answers week-long ranges in about
+ * two seconds and times out on ranges of ten days or more, whatever the timeout.
+ */
+export const HUB_RANGE_DAYS = 7;
+/**
+ * Splits the days from `from` to `to` into consecutive ranges of at most `size` days. Hub's
+ * `from` and `to` both include their day (it filters by each event's local date), so each range
+ * starts the day after the previous one ends: no day is asked twice or left out.
+ */
+export function daySlices(from: string, to: string, size = HUB_RANGE_DAYS) {
+  const slices: { from: string; to: string }[] = [];
+  const last = Date.parse(`${to}T00:00:00Z`);
+  for (let start = Date.parse(`${from}T00:00:00Z`); start <= last;) {
+    const end = Math.min(start + (size - 1) * DAY, last);
+    slices.push({ from: isoDay(start), to: isoDay(end) });
+    start = end + DAY;
+  }
+  return slices;
+}
 
 /** When the last complete copy finished, if any. */
 export async function scheduleCompletedAt(infrastructure: Infrastructure) {
@@ -92,12 +112,40 @@ export class Schedule {
    * Hub cannot filter by several leagues, so its pages are filtered here. Empty pages are skipped
    * (at most five per call) without claiming that a partially scanned schedule is exhausted.
    */
+  /**
+   * Page `page` of the given date ranges read one after another, as if they were one list:
+   * Pedirr's page numbers continue from one range into the next.
+   */
+  private async slicedPage(
+    slices: { from: string; to: string }[],
+    page: number,
+    firsts: Map<number, MetadataPage>,
+  ) {
+    let before = 0;
+    for (const [index, slice] of slices.entries()) {
+      // Each range's first page says how many it has; read it once per scan.
+      const first =
+        firsts.get(index) ?? (await this.metadata.events({ ...slice, page: 1, pageSize: 100 }));
+      firsts.set(index, first);
+      if (page <= before + first.totalPages) {
+        const local = page - before;
+        const result =
+          local === 1
+            ? first
+            : await this.metadata.events({ ...slice, page: local, pageSize: 100 });
+        return { result, hasMore: local < first.totalPages || index < slices.length - 1 };
+      }
+      before += first.totalPages;
+    }
+    return { result: { items: [] as MetadataItem[] }, hasMore: false };
+  }
   private async hubUpcoming(leagues: Set<string> | null, first: number, now: number) {
-    // Keep the broadcast-date margin: Hub filters by date, the schedule by start time.
-    const from = isoDay(now - DAY);
-    const to = isoDay(now + WEEK);
+    // Hub filters by each event's local date, the schedule by start time: a day either side
+    // covers every time zone. Asked in ranges Hub can answer.
+    const slices = daySlices(isoDay(now - DAY), isoDay(now + WEEK));
+    const firsts = new Map<number, MetadataPage>();
     for (let page = first; page < first + 5; page++) {
-      const result = await this.metadata.events({ from, to, page, pageSize: 100 });
+      const { result, hasMore } = await this.slicedPage(slices, page, firsts);
       const items = result.items.filter(
         (item) =>
           item.scheduledStart &&
@@ -107,9 +155,8 @@ export class Schedule {
           item.isActive !== false &&
           (!leagues || leagues.has(item.leagueId ?? "")),
       );
-      const hasMore = result.page < result.totalPages;
       if (items.length || !hasMore || page === first + 4) {
-        return { items, page: result.page, hasMore, nextPage: hasMore ? result.page + 1 : null };
+        return { items, page, hasMore, nextPage: hasMore ? page + 1 : null };
       }
     }
     throw new Error("Unreachable upcoming pagination");

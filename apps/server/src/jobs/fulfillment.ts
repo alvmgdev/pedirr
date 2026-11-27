@@ -31,6 +31,31 @@ const conflict = () =>
     code: "REQUEST_METADATA_CHANGED",
     message: "Requested metadata identity or scope changed; administrator review is required",
   });
+/**
+ * What to log about a failed job: its code and, when the error says, why (for Hub: timeout,
+ * network, upstream with the HTTP status, upstream_limit, local_limit or in_flight) and when to
+ * retry. Never the message or the response, which may carry user data.
+ */
+export function failureDetails(error: unknown) {
+  const details: { code: string; reason?: string; status?: number; retryAfterSeconds?: number } = {
+    code: errorCode(error),
+  };
+  if (error instanceof HttpException) {
+    const body = error.getResponse() as Record<string, unknown>;
+    if (typeof body === "object" && body !== null) {
+      if (typeof body.reason === "string" && /^[a-z_]+$/.test(body.reason)) {
+        details.reason = body.reason;
+      }
+      if (Number.isInteger(body.status)) {
+        details.status = body.status as number;
+      }
+      if (typeof body.retryAfterSeconds === "number") {
+        details.retryAfterSeconds = body.retryAfterSeconds;
+      }
+    }
+  }
+  return details;
+}
 export function errorCode(error: unknown): string {
   if (error instanceof HttpException) {
     const body = error.getResponse();
