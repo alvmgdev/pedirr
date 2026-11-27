@@ -30,7 +30,7 @@ export function hubBudget(raw = process.env.HUB_REQUESTS_PER_MINUTE): number {
  * call too and spend the budget; and those others wait for its result a little longer than it.
  */
 export function hubTimings(raw = process.env.HUB_TIMEOUT_SECONDS) {
-  const seconds = Number(raw === undefined || raw === "" ? 10 : raw);
+  const seconds = Number(raw === undefined || raw === "" ? 20 : raw);
   if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > 120) {
     throw new Error("Invalid HUB_TIMEOUT_SECONDS");
   }
