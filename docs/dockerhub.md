@@ -134,7 +134,7 @@ TRUST_PROXY=
 SEARCH_RETRY_MINUTES=60
 ```
 
-Start Pedirr and create the first administrator (password of 12-128 characters):
+Start Pedirr and create the first administrator (password of 8-128 characters):
 
 ```sh
 docker compose up -d

@@ -2,6 +2,10 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Passwords need at least 8 characters instead of 12, everywhere: the first administrator, sign-up, password changes, new users, resellers and clients. Existing passwords keep working.
+
 ## 2.1.0 - 2026-11-27
 
 - The full schedule copy now completes. Hub cannot answer date ranges of ten days or more, so the 22-day copy never got past its first page. It is now read as consecutive ranges of at most seven days within one run, which cleans up and counts as complete only after its last page. A failure in any range no longer blocks retries for two hours: the retry resumes the run. The "This week" fallback also asks Hub a week at a time.

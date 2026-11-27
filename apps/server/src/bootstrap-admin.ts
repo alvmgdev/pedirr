@@ -1,3 +1,4 @@
+import { PASSWORD_MIN_LENGTH } from "./passwords";
 import { PrismaClient } from "@prisma/client";
 import * as argon2 from "argon2";
 import { required } from "./config";
@@ -5,8 +6,12 @@ import { required } from "./config";
 async function main() {
   const email = required("ADMIN_EMAIL").trim().toLowerCase();
   const password = required("ADMIN_PASSWORD");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 12 || password.length > 128) {
-    throw new Error("Valid ADMIN_EMAIL and 12-128 character ADMIN_PASSWORD required");
+  if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+    password.length < PASSWORD_MIN_LENGTH ||
+    password.length > 128
+  ) {
+    throw new Error("Valid ADMIN_EMAIL and 8-128 character ADMIN_PASSWORD required");
   }
   const db = new PrismaClient();
   try {
@@ -32,7 +37,7 @@ main().catch((error: Error) => {
   const expected = [
     "Missing environment variable: ADMIN_EMAIL",
     "Missing environment variable: ADMIN_PASSWORD",
-    "Valid ADMIN_EMAIL and 12-128 character ADMIN_PASSWORD required",
+    "Valid ADMIN_EMAIL and 8-128 character ADMIN_PASSWORD required",
     "Administrator already exists; use user management",
   ];
   console.error(

@@ -28,7 +28,14 @@ import {
 } from "class-validator";
 import { Prisma } from "@prisma/client";
 import * as argon2 from "argon2";
-import { AuthRequest, Credentials, passwordOptions, publicUserSelect, ResellerAdmin } from "./auth";
+import {
+  AuthRequest,
+  Credentials,
+  PASSWORD_MIN_LENGTH,
+  passwordOptions,
+  publicUserSelect,
+  ResellerAdmin,
+} from "./auth";
 import { Infrastructure } from "./infrastructure";
 import { UserPage } from "./users";
 
@@ -77,9 +84,9 @@ export class ClientUpdate extends ClientFields {
   active?: boolean;
 }
 export class ClientPassword {
-  @ApiProperty({ minLength: 12, maxLength: 128 })
+  @ApiProperty({ minLength: PASSWORD_MIN_LENGTH, maxLength: 128 })
   @IsString()
-  @MinLength(12)
+  @MinLength(PASSWORD_MIN_LENGTH)
   @MaxLength(128)
   password!: string;
 }

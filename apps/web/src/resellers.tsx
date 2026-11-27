@@ -10,6 +10,7 @@ import {
   type Plan,
   type Reseller,
   type User,
+  PASSWORD_MIN_LENGTH,
 } from "./api";
 import { OptionalLimit } from "./fields";
 import { ErrorMessage, Loading, PageHeader } from "./ui";
@@ -208,7 +209,7 @@ function NewReseller() {
             name="password"
             type="password"
             autoComplete="new-password"
-            minLength={12}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={128}
             required
           />
@@ -342,7 +343,7 @@ function ResellerEditor({ reseller }: { reseller: Reseller }) {
               name="password"
               type="password"
               autoComplete="new-password"
-              minLength={12}
+              minLength={PASSWORD_MIN_LENGTH}
               maxLength={128}
               required
             />
