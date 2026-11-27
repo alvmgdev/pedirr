@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 2.3.0 - 2026-11-27
 
 - Administration lists (users, a reseller's clients, resellers, plans and packages) are tables with column headers; the whole row still opens the record, and on phones each row stacks its values under their column names.
 - The user and client lists show when each account expires, or "Never", highlighted once it has expired.
