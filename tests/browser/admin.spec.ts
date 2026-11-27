@@ -174,6 +174,59 @@ test("notification form preserves saved secrets when fields are left blank", asy
   expect(saved).toBe(true);
 });
 
+test("the platform sets its Telegram bot with a token that is never shown again", async ({
+  page,
+}) => {
+  let settings = {
+    emailEnabled: false,
+    smtpHost: "",
+    smtpPort: 587,
+    smtpSecurity: "starttls",
+    smtpUser: "",
+    emailFrom: "",
+    discordEnabled: false,
+    discordLocale: "en",
+    hasSmtpPassword: false,
+    hasDiscordWebhook: false,
+    telegramEnabled: false,
+    telegramLocale: "en",
+    telegramBot: null as string | null,
+    hasTelegramToken: false,
+    telegramChat: null,
+    telegramLinkPending: false,
+  };
+  const token = "123456789:" + "A".repeat(35);
+  let sent: Record<string, unknown> = {};
+  await page.route("**/api/v1/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: admin });
+    }
+    if (path.endsWith("/auth/csrf")) {
+      return route.fulfill({ json: { token: "test-token" } });
+    }
+    if (path.endsWith("/notifications/deliveries")) {
+      return route.fulfill({ json: [] });
+    }
+    if (route.request().method() === "PUT") {
+      sent = route.request().postDataJSON();
+      settings = { ...settings, telegramBot: "PedirrAvisosBot", hasTelegramToken: true };
+    }
+    return route.fulfill({ json: settings });
+  });
+  await page.goto("/admin?tab=notifications");
+  await expect(page.getByText("Create a bot with @BotFather")).toBeVisible();
+  await page.getByLabel("Telegram bot token").fill(token);
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
+  expect(sent.telegramToken).toBe(token);
+  await expect(page.getByLabel("Telegram bot token")).toHaveValue("");
+  await expect(page.getByText("Bot: @PedirrAvisosBot.")).toBeVisible();
+  // With a bot, the platform links its own group or channel like any environment.
+  await expect(page.getByRole("button", { name: "Link a group or channel" })).toBeVisible();
+  await expect(page.getByLabel("Enable Telegram notifications")).toBeVisible();
+});
+
 /** A configured Sportarr whose lists either load or fail to. */
 async function savedSportarr(page: import("@playwright/test").Page, reachable: boolean) {
   const tests: unknown[] = [];

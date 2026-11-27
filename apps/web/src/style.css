@@ -1463,3 +1463,24 @@ th {
   gap: 8px 20px;
   margin-top: 8px;
 }
+.telegram-steps {
+  display: grid;
+  gap: 8px;
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 14px;
+}
+.telegram-steps p {
+  margin: 0;
+}
+.telegram-steps code {
+  justify-self: start;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  background: var(--raised);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 10px 14px;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
