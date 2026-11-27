@@ -159,13 +159,12 @@ export function Account({ user }: { user: User }) {
   return (
     <>
       <PageHeader title={t("account")}>
-        <p>{user.email}</p>
+        <p>
+          {user.email}
+          <span className="header-note">{t("timezoneAuto", { timezone: timezoneOf(user) })}</span>
+        </p>
       </PageHeader>
-      <div className="form-columns">
-        <section className="panel">
-          <h2>{t("profile")}</h2>
-          <p>{t("timezoneAuto", { timezone: timezoneOf(user) })}</p>
-        </section>
+      <div className="account-cards">
         <section className="panel">
           <h2>{t("changePassword")}</h2>
           <form

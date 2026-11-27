@@ -10,7 +10,8 @@ const user = {
   autoApprove: null,
 };
 
-// The brand mark must span the wordmark's ascender height and sit on its baseline.
+// The brand mark keeps the wordmark's ascender height and is centred on the letters, from the top
+// of the "d" to the bottom of the "p", so it does not look raised beside the descender.
 for (const [screen, width, signedIn] of [
   ["sign-in", 1280, false],
   ["sign-in on a phone", 390, false],
@@ -44,12 +45,14 @@ for (const [screen, width, signedIn] of [
       context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const metrics = context.measureText("pedirr");
       const baseline = box.top + metrics.fontBoundingBoxAscent;
+      const top = baseline - metrics.actualBoundingBoxAscent;
+      const bottom = baseline + metrics.actualBoundingBoxDescent;
       return {
-        top: mark.top - (baseline - metrics.actualBoundingBoxAscent),
-        bottom: mark.bottom - baseline,
+        centre: (mark.top + mark.bottom) / 2 - (top + bottom) / 2,
+        height: mark.height - metrics.actualBoundingBoxAscent,
       };
     });
-    expect(Math.abs(offsets.top), "mark top vs ascender").toBeLessThanOrEqual(1);
-    expect(Math.abs(offsets.bottom), "mark bottom vs baseline").toBeLessThanOrEqual(1);
+    expect(Math.abs(offsets.centre), "mark centre vs letters centre").toBeLessThanOrEqual(1);
+    expect(Math.abs(offsets.height), "mark height vs ascender height").toBeLessThanOrEqual(1);
   });
 }

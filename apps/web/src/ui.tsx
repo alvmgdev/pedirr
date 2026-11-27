@@ -131,10 +131,10 @@ export function QuotaNote({ quota, user }: { quota?: Quota; user: User }) {
 }
 export type Crumb = { label: string; to: string };
 /**
- * Where a page sits: the environment (the platform or the reseller), its ancestors as links, then
- * the page itself. Every page shows one, so titles sit at the same height everywhere.
+ * Where a page sits: the environment (the platform or the reseller), then the page's ancestors as
+ * links. Pages with a large title of their own (an event, a request, an issue) show only this.
  */
-export function Breadcrumbs({ trail = [], current }: { trail?: Crumb[]; current: string }) {
+export function Breadcrumbs({ trail = [] }: { trail?: Crumb[] }) {
   const { t } = useTranslation();
   const home = useQueryClient().getQueryData<User | null>(["me"])?.tenant?.name ?? "Pedirr";
   return (
@@ -145,29 +145,28 @@ export function Breadcrumbs({ trail = [], current }: { trail?: Crumb[]; current:
             <Link to={crumb.to}>{crumb.label}</Link>
           </li>
         ))}
-        <li aria-current="page">{current}</li>
       </ol>
     </nav>
   );
 }
-/** A page's title, with its breadcrumbs above and its main actions beside it. */
+/**
+ * A page's title as the last, highlighted step of its breadcrumbs, so the name is not repeated on
+ * a line of its own. A short description can follow on one line; actions belong to the content.
+ */
 export function PageHeader({
   title,
   trail,
-  actions,
   children,
 }: {
   title: string;
   trail?: Crumb[];
-  actions?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <header className="page-header">
-      <Breadcrumbs trail={trail} current={title} />
-      <div className="page-title">
+      <div className="page-path">
+        <Breadcrumbs trail={trail} />
         <h1>{title}</h1>
-        {actions}
       </div>
       {children}
     </header>
