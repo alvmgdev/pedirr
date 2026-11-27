@@ -1,5 +1,7 @@
 :root {
-  font-family: Barlow, Arial, sans-serif;
+  font-family: var(--font);
+  --font: "Manrope Variable", Manrope, Arial, sans-serif;
+  --brand-font: "Barlow Condensed", sans-serif;
   color: #f3f0e7;
   background: #101014;
   color-scheme: dark;
@@ -91,12 +93,13 @@ p {
 h1,
 h2,
 h3 {
-  font-weight: 600;
+  font-weight: 700;
 }
 h1 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 34px;
-  line-height: 1.05;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   margin-bottom: 12px;
 }
 h2 {
@@ -130,7 +133,7 @@ time {
   /* The mark sits on the baseline like a letter, spanning the ascender height. */
   align-items: baseline;
   gap: 10px;
-  font-family: "Barlow Condensed", sans-serif;
+  font-family: var(--brand-font);
   font-size: 38px;
   line-height: 1;
   font-weight: 600;
@@ -346,11 +349,10 @@ main {
 .page-path h1,
 .breadcrumbs .crumb-current {
   margin: 0;
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
   overflow-wrap: anywhere;
@@ -425,6 +427,11 @@ main {
 .list-toolbar .filter-tabs,
 .list-toolbar .filters {
   margin: 0;
+}
+/* Never wider than the row: the status chips scroll within it instead of widening the page. */
+.list-toolbar > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .list-toolbar .filters {
   gap: 20px;
@@ -711,9 +718,10 @@ main {
 }
 .fixture-body :is(h2, h3) {
   margin: 0;
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 20px;
-  line-height: 1.15;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 .fixture-when {
@@ -910,8 +918,8 @@ form > .button-link {
   font-weight: 500;
 }
 .detail-copy h1 {
-  font-size: 44px;
-  line-height: 1;
+  font-size: 36px;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 .detail-copy > p {
@@ -988,8 +996,9 @@ form > .button-link {
   grid-row: 1 / span 2;
 }
 .request-row h2 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 25px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin-bottom: 6px;
 }
 .request-row p {
@@ -1095,7 +1104,9 @@ progress {
   overflow: hidden;
 }
 .login-story h1 {
-  font-size: clamp(60px, 7vw, 100px);
+  font-size: clamp(44px, 5vw, 72px);
+  letter-spacing: -0.035em;
+  line-height: 1.02;
   max-width: 520px;
 }
 .login-story p {
@@ -1147,8 +1158,9 @@ progress {
   align-self: center;
 }
 .login-form h2 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 44px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
   margin-bottom: 14px;
 }
 .login-form > p {
@@ -1341,8 +1353,9 @@ th {
 }
 .parts-dialog h2,
 .form-dialog h2 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 30px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin: 0 0 8px;
 }
 .parts-dialog p,
@@ -1374,8 +1387,8 @@ th {
   accent-color: var(--accent);
 }
 .part-option .part-name {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 21px;
+  font-size: 17px;
+  font-weight: 700;
 }
 .part-state {
   font-size: 14px;
@@ -1427,8 +1440,8 @@ th {
 }
 .request-parts .part-name,
 .request-subscribers .part-name {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 22px;
+  font-size: 17px;
+  font-weight: 700;
   flex: 1 1 160px;
 }
 .request-parts p {
@@ -1496,8 +1509,8 @@ th {
   text-decoration: none;
 }
 .issue-category {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 22px;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--ink);
 }
 .issue-subject {
@@ -1676,7 +1689,7 @@ th {
     padding: 10px 11px 12px;
   }
   .fixture-body :is(h2, h3) {
-    font-size: 17px;
+    font-size: 15px;
   }
   .fixture-meta {
     font-size: 12px;
@@ -1693,7 +1706,7 @@ th {
     max-width: 100%;
   }
   .detail-copy h1 {
-    font-size: 34px;
+    font-size: 28px;
   }
   .detail-copy > p {
     font-size: 14px;
@@ -2202,6 +2215,18 @@ th {
   .field-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .list-toolbar > * {
+    flex-basis: 100%;
+  }
+  /* Filters take the whole row on phones, so their selects never widen the page. */
+  .inline-filter {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .inline-filter select {
+    flex: 1;
+    min-width: 0;
+  }
   /* The tabs keep only the state's dot; its word stays for screen readers. */
   .channel-tabs {
     gap: 20px;
@@ -2220,24 +2245,23 @@ th {
   }
 }
 
-/* Sections and tabs in condensed capitals, as sports broadcasts label them. */
+/* Sections and tabs in small capitals, as sports broadcasts label them. */
 .app-nav a,
 .tabs button,
 .tabs > span,
 .channel-tabs [role="tab"] {
-  font-family: "Barlow Condensed", sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 16px;
+  letter-spacing: 0.06em;
+  font-size: 13px;
+  font-weight: 700;
 }
 .channel-state {
-  font-family: Barlow, Arial, sans-serif;
   text-transform: none;
   letter-spacing: 0;
 }
 @media (max-width: 650px) {
   .app-nav a {
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.04em;
   }
 }

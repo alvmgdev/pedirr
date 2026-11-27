@@ -8,8 +8,8 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import "./i18n";
-import "@fontsource/barlow/latin-400.css";
-import "@fontsource/barlow/latin-600.css";
+// Manrope for the interface; Barlow Condensed only for the "pedirr" wordmark.
+import "@fontsource-variable/manrope";
 import "@fontsource/barlow-condensed/latin-600.css";
 import "./style.css";
 import { api, ApiError, client, setSession, type User } from "./api";
