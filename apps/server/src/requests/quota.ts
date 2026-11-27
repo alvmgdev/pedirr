@@ -63,6 +63,35 @@ export async function quota(
   };
 }
 
+/**
+ * Adds `weeklyRequestsUsed` to each listed account: what counts against its weekly limit
+ * right now, or null when it has no limit. One query covers the whole page.
+ */
+export async function withWeeklyUsage<T extends Limited & { id: string }>(
+  db: Prisma.TransactionClient,
+  users: T[],
+  now = Date.now(),
+): Promise<(T & { weeklyRequestsUsed: number | null })[]> {
+  const limited = users.filter((user) => weeklyLimit(user) !== null).map((user) => user.id);
+  const counts = limited.length
+    ? await db.requestSubscriber.groupBy({
+        by: ["userId"],
+        where: {
+          userId: { in: limited },
+          countsTowardQuota: true,
+          status: { not: "REJECTED" },
+          createdAt: { gt: new Date(now - QUOTA_WINDOW_MS) },
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const used = new Map(counts.map((row) => [row.userId, row._count._all]));
+  return users.map((user) => ({
+    ...user,
+    weeklyRequestsUsed: weeklyLimit(user) === null ? null : (used.get(user.id) ?? 0),
+  }));
+}
+
 export const weeklyLimitReached = (current: Quota) =>
   new ForbiddenException({
     code: "WEEKLY_LIMIT_REACHED",

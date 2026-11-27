@@ -110,6 +110,18 @@ const schemas: Record<string, SchemaObject> = {
       description: "The account's environment: the platform (no code) or a reseller.",
     },
   }),
+  ListedUser: {
+    allOf: [
+      ref("PublicUser"),
+      object({
+        weeklyRequestsUsed: {
+          ...nullable(integer),
+          description:
+            "Requests counting against the weekly limit in the last seven days; null without a limit.",
+        },
+      }),
+    ],
+  },
   Quota: object({
     limit: { ...nullable(integer), description: "Null when the viewer has no weekly limit." },
     used: integer,
@@ -425,7 +437,7 @@ const responses: Record<string, Schema> = {
   "PATCH me": ref("PublicUser"),
   "POST me/password": ref("Ok"),
   "GET admin/users/{id}": ref("PublicUser"),
-  "GET admin/users": page(ref("PublicUser"), 50),
+  "GET admin/users": page(ref("ListedUser"), 50),
   "POST admin/users": ref("PublicUser"),
   "PATCH admin/users/{id}": ref("PublicUser"),
   "GET admin/policies": ref("AccessPolicy"),
@@ -454,7 +466,7 @@ const responses: Record<string, Schema> = {
     ),
     clients: integer,
   }),
-  "GET reseller/clients": page(ref("PublicUser"), 50),
+  "GET reseller/clients": page(ref("ListedUser"), 50),
   "GET reseller/clients/{id}": ref("PublicUser"),
   "POST reseller/clients": ref("PublicUser"),
   "PATCH reseller/clients/{id}": ref("PublicUser"),

@@ -5,6 +5,8 @@ const argon2 = require("argon2");
 const { PrismaClient } = require("@prisma/client");
 const { RequestsService } = require("../../dist/requests/service");
 const { AuthService, digest } = require("../../dist/auth");
+const { UsersService } = require("../../dist/users");
+const { withWeeklyUsage } = require("../../dist/requests/quota");
 
 const code = (expected) => (error) => error.getResponse().code === expected;
 
@@ -76,6 +78,18 @@ async function main() {
     );
     assert.equal((await service.quota(limited)).remaining, 1);
     assert.equal((await request("event-3", limited)).created, true);
+
+    // Administrators' lists show what each account has used of its limit.
+    const listed = new Map(
+      (await new UsersService({ db }).list(1)).items.map((user) => [user.id, user]),
+    );
+    assert.equal(listed.get(limited.id).weeklyRequestsUsed, 2);
+    assert.equal(listed.get(other.id).weeklyRequestsUsed, null);
+    assert.equal(listed.get(admin.id).weeklyRequestsUsed, null);
+    const [unused] = await withWeeklyUsage(db, [
+      { id: randomUUID(), role: "USER", weeklyRequestLimit: 3 },
+    ]);
+    assert.equal(unused.weeklyRequestsUsed, 0);
 
     // Requests older than seven days leave the window.
     await db.requestSubscriber.updateMany({
