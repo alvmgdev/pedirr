@@ -12,7 +12,7 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { ErrorMessage, Loading, Pager, Status } from "./ui";
+import { ErrorMessage, Loading, Pager, Status, timezoneOf } from "./ui";
 
 /** What the issue is about: the request, plus the event and part when given. */
 function subject(issue: Issue) {
@@ -26,7 +26,7 @@ function useDate(user: User) {
     new Intl.DateTimeFormat(i18n.language, {
       dateStyle: "medium",
       timeStyle: "short",
-      timeZone: user.timezone,
+      timeZone: timezoneOf(user),
     }).format(new Date(date));
 }
 const refresh = () => {

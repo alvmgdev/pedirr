@@ -62,12 +62,12 @@ test("administrators switch the weekly limit and expiration on and off", async (
   await page.getByRole("button", { name: "Create user" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/users/${created.id}$`));
   expect(writes[0].body).toMatchObject({ weeklyRequestLimit: 5 });
-  // The end of the chosen day in the administrator's time zone.
+  // The end of the chosen day in the administrator's time zone: the browser's, UTC in these tests.
   const expiresAt = new Date(String(writes[0].body.expiresAt));
-  expect([expiresAt.getFullYear(), expiresAt.getMonth(), expiresAt.getDate()]).toEqual([
+  expect([expiresAt.getUTCFullYear(), expiresAt.getUTCMonth(), expiresAt.getUTCDate()]).toEqual([
     2026, 11, 31,
   ]);
-  expect([expiresAt.getHours(), expiresAt.getMinutes()]).toEqual([23, 59]);
+  expect([expiresAt.getUTCHours(), expiresAt.getUTCMinutes()]).toEqual([23, 59]);
 
   // Editing shows the saved values; switching a limit off removes it.
   await expect(page.getByRole("checkbox", { name: "Weekly request limit" })).toBeChecked();

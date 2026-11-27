@@ -17,7 +17,7 @@ import { Account, Language, LinkBrand, Login } from "./auth";
 import { CatalogDetail, Discover } from "./catalog";
 import { RequestDetail, Requests } from "./requests";
 import { IssueDetail, Issues } from "./issues";
-import { ErrorMessage, Loading } from "./ui";
+import { ErrorMessage, Loading, timezoneOf } from "./ui";
 import { basename } from "./environment";
 function App() {
   const { t, i18n } = useTranslation();
@@ -129,7 +129,7 @@ function App() {
           </div>
         </div>
         <div className="topbar">
-          <span>{t("scheduleNote", { timezone: user.timezone })}</span>
+          <span>{t("scheduleNote", { timezone: timezoneOf(user) })}</span>
           <Language user={user} />
         </div>
       </header>
