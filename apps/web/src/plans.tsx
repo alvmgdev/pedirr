@@ -25,12 +25,6 @@ export function Plans() {
   const plans = usePlans();
   return (
     <>
-      <div className="section-actions">
-        <h2>{t("plans")}</h2>
-        <Link className="button-link" to="/admin/plans/new">
-          {t("createPlan")}
-        </Link>
-      </div>
       <p className="muted">{t("plansHint")}</p>
       {plans.isPending ? (
         <Loading />

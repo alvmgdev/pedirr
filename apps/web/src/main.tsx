@@ -18,7 +18,7 @@ import { TopBar } from "./shell";
 import { CatalogDetail, Discover } from "./catalog";
 import { RequestDetail, Requests } from "./requests";
 import { IssueDetail, Issues } from "./issues";
-import { ErrorMessage, Loading } from "./ui";
+import { ErrorMessage, Loading, PageHeader } from "./ui";
 import { basename } from "./environment";
 function App() {
   const { t, i18n } = useTranslation();
@@ -123,7 +123,7 @@ function App() {
                 user.role === "RESELLER" ? <ResellerPanel /> : <Administration user={user} />
               }
             />
-            <Route path="*" element={<h1>{t("notFound")}</h1>} />
+            <Route path="*" element={<PageHeader title={t("notFound")} />} />
           </Routes>
         </main>
       </div>

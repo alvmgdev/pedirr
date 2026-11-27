@@ -48,12 +48,6 @@ export function Resellers() {
   const resellers = useResellers();
   return (
     <>
-      <div className="section-actions">
-        <h2>{t("resellers")}</h2>
-        <Link className="button-link" to="/admin/resellers/new">
-          {t("createReseller")}
-        </Link>
-      </div>
       <p className="muted">{t("resellersHint")}</p>
       {resellers.isPending ? (
         <Loading />
@@ -367,12 +361,6 @@ export function Packages() {
   const packages = usePackages();
   return (
     <>
-      <div className="section-actions">
-        <h2>{t("packages")}</h2>
-        <Link className="button-link" to="/admin/packages/new">
-          {t("createPackage")}
-        </Link>
-      </div>
       <p className="muted">{t("packagesHint")}</p>
       {packages.isPending ? (
         <Loading />

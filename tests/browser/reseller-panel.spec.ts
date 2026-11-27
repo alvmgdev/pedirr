@@ -95,7 +95,9 @@ async function resellerAdmin(page: Page, maxUsers: number | null = null) {
 test("a reseller administrator creates a client with a plan of its package", async ({ page }) => {
   const writes = await resellerAdmin(page);
   await page.goto("/k7x2p/admin");
-  await expect(page.getByRole("heading", { name: "Fight Club TV", level: 1 })).toBeVisible();
+  // The panel's sections sit under the reseller's name, which starts the breadcrumbs.
+  await expect(page.getByRole("heading", { name: "Clients", level: 1 })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Fight Club TV");
   await expect(page.locator(".address-row code")).toHaveText(/\/k7x2p\/$/);
   await expect(page.getByText("Starter", { exact: true })).toBeVisible();
   await expect(page.getByText("No clients yet.")).toBeVisible();

@@ -64,6 +64,7 @@ export function Discover({ user }: { user: User }) {
     query && category ? results.filter((item) => item.entityType === category) : results;
   return (
     <>
+      <Breadcrumbs current={t("discover")} />
       <div className="discover-head">
         <h1>{t("discover")}</h1>
         <form

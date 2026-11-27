@@ -15,6 +15,7 @@ import {
   Breadcrumbs,
   ErrorMessage,
   Loading,
+  PageHeader,
   Pager,
   PartsDialog,
   Status,
@@ -40,10 +41,9 @@ export function Requests() {
     setParams({ ...Object.fromEntries(params), page: "1", ...values });
   return (
     <>
-      <header className="page-heading">
-        <h1>{t("requests")}</h1>
+      <PageHeader title={t("requests")}>
         <p>{t("requestHelp")}</p>
-      </header>
+      </PageHeader>
       <nav className="filter-tabs" aria-label={t("status")}>
         {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map((value) => (
           <button
@@ -142,7 +142,9 @@ export function RequestDetail({ user }: { user: User }) {
         current={request.entity.title}
       />
       <header className="detail-heading">
-        <div className="detail-artwork">
+        <div
+          className={`detail-artwork${request.scope.kind === "event" ? " detail-artwork-wide" : ""}`}
+        >
           <Artwork
             item={
               request.scope.event ??

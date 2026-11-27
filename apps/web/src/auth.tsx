@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, setSession, type AuthConfig, type User } from "./api";
-import { ErrorMessage, formatDateTime, QuotaNote, timezoneOf, useQuota } from "./ui";
+import { ErrorMessage, formatDateTime, PageHeader, QuotaNote, timezoneOf, useQuota } from "./ui";
 import { LanguageMenu, LinkBrand } from "./shell";
 export function Login() {
   const { t, i18n } = useTranslation();
@@ -158,10 +158,9 @@ export function Account({ user }: { user: User }) {
   });
   return (
     <>
-      <header className="page-heading">
-        <h1>{t("account")}</h1>
+      <PageHeader title={t("account")}>
         <p>{user.email}</p>
-      </header>
+      </PageHeader>
       <div className="form-columns">
         <section className="panel">
           <h2>{t("profile")}</h2>
