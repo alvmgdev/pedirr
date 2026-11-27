@@ -4,13 +4,19 @@ import { MetadataProvider } from "../metadata/provider";
 import { PagedJob, pagedSync, text } from "./paged-sync";
 
 export const LEAGUE_INDEX_JOB = "league-index";
-export const LEAGUE_INDEX_EVERY_MS = 86400000;
+/** The index is copied again once its last complete copy is older than this. */
+export const LEAGUE_INDEX_MAX_AGE_MS = 86400000;
+/** When the last complete copy finished; a copy cut short does not count. */
+export const LEAGUE_INDEX_SETTING = "index.leagues";
 
-/** Whether the index is missing or older than a day, so the worker should refresh it now. */
+/** Whether the index has never been copied completely, or not in the last day. */
 export async function leagueIndexStale(infrastructure: Infrastructure, now = Date.now()) {
-  const newest = await infrastructure.db.hubLeague.aggregate({ _max: { syncedAt: true } });
-  const at = newest._max.syncedAt?.getTime();
-  return at === undefined || now - at > LEAGUE_INDEX_EVERY_MS;
+  const setting = await infrastructure.db.setting.findUnique({
+    where: { key: LEAGUE_INDEX_SETTING },
+  });
+  const value = setting?.value as { completedAt?: unknown } | undefined;
+  const at = typeof value?.completedAt === "string" ? Date.parse(value.completedAt) : NaN;
+  return !Number.isFinite(at) || now - at > LEAGUE_INDEX_MAX_AGE_MS;
 }
 
 /** Copies Hub's leagues and their sports into the index, a page of 100 per job. */
@@ -45,10 +51,18 @@ export function indexLeagues(
           update: data,
         });
       },
-      // Leagues Hub no longer lists.
-      finish: async (startedAt) => ({
-        removed: (await db.hubLeague.deleteMany({ where: { syncedAt: { lt: startedAt } } })).count,
-      }),
+      // Leagues Hub no longer lists; then the copy counts as complete.
+      finish: async (startedAt, at) => {
+        const removed = await db.hubLeague.deleteMany({ where: { syncedAt: { lt: startedAt } } });
+        const value = { completedAt: new Date(at).toISOString() };
+        await db.setting.upsert({
+          where: { key: LEAGUE_INDEX_SETTING },
+          create: { key: LEAGUE_INDEX_SETTING, value },
+          update: { value },
+        });
+        return { removed: removed.count };
+      },
+      due: () => leagueIndexStale(infrastructure, now),
     },
     job,
     now,

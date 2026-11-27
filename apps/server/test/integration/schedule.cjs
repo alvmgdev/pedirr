@@ -111,6 +111,12 @@ async function main() {
     assert.equal(await db.hubEvent.count(), hub.length);
     assert.equal(await schedule.ready(), true);
     assert.equal(await scheduleIndexStale(infrastructure), false);
+    // The hourly check does not copy the whole window again while its last copy is fresh.
+    calls.length = 0;
+    assert.deepEqual(await indexSchedule(infrastructure, metadata, queue, { window: "full" }), {
+      skipped: "fresh",
+    });
+    assert.equal(calls.length, 0);
     const stored = await db.hubEvent.findUniqueOrThrow({ where: { id: "nba-00" } });
     assert.equal(stored.homeTeamName, "Los Angeles Lakers");
     assert.equal(stored.item.homeTeamBadgeUrl, "https://example.invalid/lakers.png");
@@ -139,7 +145,11 @@ async function main() {
       "Sparks vs Liberty (moved)",
     );
     assert.ok(await db.hubEvent.findUnique({ where: { id: "nba-69" } }));
-    // The next whole run removes what Hub no longer lists.
+    // A day later the whole window is due again, and removes what Hub no longer lists.
+    await db.setting.update({
+      where: { key: "index.schedule" },
+      data: { value: { completedAt: new Date(Date.now() - 2 * DAY).toISOString() } },
+    });
     const full = await run("full", Date.now() + 1000);
     assert.equal(full.removed, 1);
     assert.equal(await db.hubEvent.findUnique({ where: { id: "nba-69" } }), null);

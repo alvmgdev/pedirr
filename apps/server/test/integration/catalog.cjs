@@ -148,16 +148,52 @@ async function main() {
     );
     assert.ok(queued.every((item) => item.options.delay > 0));
     assert.equal(await redis.get("pedirr:index:leagues"), null);
+    // Right after a complete copy the hourly check does nothing; a day later it is due.
+    const DAY = 86400000;
+    const calls = hubCalls.length;
+    assert.deepEqual(await indexLeagues(infrastructure, metadata, queue, {}, 6000), {
+      skipped: "fresh",
+    });
+    assert.equal(hubCalls.length, calls);
+    assert.equal(await leagueIndexStale(infrastructure, 1000 + 2 * DAY), true);
     // A run that finds another one going does nothing; a stale page of an old run stops.
     await redis.set("pedirr:index:leagues", "5000");
     await redis.del("pedirr:index:pace");
-    assert.deepEqual(await indexLeagues(infrastructure, metadata, queue, {}, 6000), {
+    assert.deepEqual(await indexLeagues(infrastructure, metadata, queue, {}, 2 * DAY), {
       skipped: "running",
     });
     assert.deepEqual(
-      await indexLeagues(infrastructure, metadata, queue, { page: 2, startedAt: 1000 }, 6000),
+      await indexLeagues(infrastructure, metadata, queue, { page: 2, startedAt: 1000 }, 2 * DAY),
       { skipped: "superseded" },
     );
+    await redis.del("pedirr:index:leagues");
+    // A copy whose first page fails (Hub down) releases its lock, so a retry starts at once.
+    const leaguesFromHub = metadata.leagues;
+    metadata.leagues = async () => {
+      throw Object.assign(new Error("Hub is down"), { code: "METADATA_BUSY" });
+    };
+    await redis.del("pedirr:index:pace");
+    await assert.rejects(indexLeagues(infrastructure, metadata, queue, {}, 2 * DAY), /Hub is down/);
+    assert.equal(await redis.get("pedirr:index:leagues"), null);
+    // A copy cut short after its first page does not count as complete.
+    metadata.leagues = leaguesFromHub;
+    await db.setting.delete({ where: { key: "index.leagues" } });
+    queued.length = 0;
+    await redis.del("pedirr:index:pace");
+    const first = await indexLeagues(infrastructure, metadata, queue, {}, 3 * DAY);
+    assert.equal(first.next, 2);
+    metadata.leagues = async () => {
+      throw new Error("Hub is down");
+    };
+    await redis.del("pedirr:index:pace");
+    await assert.rejects(
+      indexLeagues(infrastructure, metadata, queue, queued.at(-1).data, 3 * DAY),
+      /Hub is down/,
+    );
+    // Its later pages keep the lock, so the queued retry of that page can resume the copy.
+    assert.equal(await redis.get("pedirr:index:leagues"), String(3 * DAY));
+    assert.equal(await leagueIndexStale(infrastructure, 3 * DAY), true);
+    metadata.leagues = leaguesFromHub;
     await redis.del("pedirr:index:leagues");
     // A complete run drops leagues Hub no longer lists.
     hubLeagues = leagues.slice(0, 4);
