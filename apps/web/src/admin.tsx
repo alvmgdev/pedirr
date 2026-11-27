@@ -197,13 +197,6 @@ const ADMIN_SECTIONS = [
   ["adminContent", ["plans", "packages"]],
   ["adminPlatform", ["policies", "sportarr", "notifications"]],
 ] as const;
-/** The sections whose title row offers creating one more. */
-const ADMIN_CREATE: Record<string, [string, string]> = {
-  users: ["/admin/users/new", "createUser"],
-  resellers: ["/admin/resellers/new", "createReseller"],
-  plans: ["/admin/plans/new", "createPlan"],
-  packages: ["/admin/packages/new", "createPackage"],
-};
 export function Administration({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params] = useSearchParams();
@@ -220,17 +213,7 @@ export function Administration({ user }: { user: User }) {
   }
   return (
     <>
-      <PageHeader
-        title={t(tab)}
-        trail={[{ label: t("admin"), to: "/admin" }]}
-        actions={
-          tab in ADMIN_CREATE && (
-            <Link className="button-link" to={ADMIN_CREATE[tab][0]}>
-              {t(ADMIN_CREATE[tab][1])}
-            </Link>
-          )
-        }
-      />
+      <PageHeader title={t(tab)} trail={[{ label: t("admin"), to: "/admin" }]} />
       <div className="admin-layout">
         <nav className="admin-menu" aria-label={t("admin")} ref={menu}>
           {ADMIN_SECTIONS.map(([group, items]) => (
@@ -290,24 +273,29 @@ function Users() {
   });
   return (
     <>
-      <label className="sort-control">
-        {t("environment")}
-        <select
-          value={tenant}
-          onChange={(event) => {
-            setTenant(event.currentTarget.value);
-            setPage(1);
-          }}
-        >
-          <option value="">{t("allEnvironments")}</option>
-          <option value="platform">{t("platform")}</option>
-          {resellers.data?.map((reseller) => (
-            <option key={reseller.id} value={reseller.id}>
-              {reseller.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="content-toolbar">
+        <label className="inline-filter">
+          {t("environment")}
+          <select
+            value={tenant}
+            onChange={(event) => {
+              setTenant(event.currentTarget.value);
+              setPage(1);
+            }}
+          >
+            <option value="">{t("allEnvironments")}</option>
+            <option value="platform">{t("platform")}</option>
+            {resellers.data?.map((reseller) => (
+              <option key={reseller.id} value={reseller.id}>
+                {reseller.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Link className="button-link" to="/admin/users/new">
+          {t("createUser")}
+        </Link>
+      </div>
       {users.isPending ? (
         <Loading />
       ) : users.error ? (

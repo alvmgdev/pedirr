@@ -64,40 +64,45 @@ export function Issues({ user }: { user: User }) {
       <PageHeader title={t("issues")}>
         <p>{t(user.role === "ADMIN" ? "issuesAdminHelp" : "issuesHelp")}</p>
       </PageHeader>
-      <nav className="filter-tabs" aria-label={t("status")}>
-        {["", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((value) => (
-          <button
-            key={value}
-            aria-pressed={status === value}
-            onClick={() => change({ status: value })}
-          >
-            {t(value || "all")}
-          </button>
-        ))}
-      </nav>
-      {user.role === "ADMIN" && (
-        <div className="filters">
-          <label>
-            {t("issueCategory")}
-            <select value={category} onChange={(event) => change({ category: event.target.value })}>
-              <option value="">{t("allCategories")}</option>
-              {ISSUE_CATEGORIES.map((value) => (
-                <option key={value} value={value}>
-                  {t(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={mine}
-              onChange={(event) => change({ mine: String(event.target.checked) })}
-            />
-            {t("myIssues")}
-          </label>
-        </div>
-      )}
+      <div className="list-toolbar">
+        <nav className="filter-tabs" aria-label={t("status")}>
+          {["", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((value) => (
+            <button
+              key={value}
+              aria-pressed={status === value}
+              onClick={() => change({ status: value })}
+            >
+              {t(value || "all")}
+            </button>
+          ))}
+        </nav>
+        {user.role === "ADMIN" && (
+          <div className="filters">
+            <label className="inline-filter">
+              {t("issueCategory")}
+              <select
+                value={category}
+                onChange={(event) => change({ category: event.target.value })}
+              >
+                <option value="">{t("allCategories")}</option>
+                {ISSUE_CATEGORIES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={mine}
+                onChange={(event) => change({ mine: String(event.target.checked) })}
+              />
+              {t("myIssues")}
+            </label>
+          </div>
+        )}
+      </div>
       {result.isPending ? (
         <Loading />
       ) : result.error ? (
@@ -190,7 +195,7 @@ export function IssueDetail({ user }: { user: User }) {
         : (entry.author.email ?? t(entry.author.role === "ADMIN" ? "administrator" : "reporter"));
   return (
     <>
-      <Breadcrumbs trail={[{ label: t("issues"), to: "/issues" }]} current={t(issue.category)} />
+      <Breadcrumbs trail={[{ label: t("issues"), to: "/issues" }]} />
       <header className="issue-heading">
         <Status value={issue.status} />
         <h1>{t(issue.category)}</h1>

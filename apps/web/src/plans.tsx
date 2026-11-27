@@ -25,7 +25,12 @@ export function Plans() {
   const plans = usePlans();
   return (
     <>
-      <p className="muted">{t("plansHint")}</p>
+      <div className="content-toolbar">
+        <p>{t("plansHint")}</p>
+        <Link className="button-link" to="/admin/plans/new">
+          {t("createPlan")}
+        </Link>
+      </div>
       {plans.isPending ? (
         <Loading />
       ) : plans.error ? (

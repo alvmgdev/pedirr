@@ -44,26 +44,28 @@ export function Requests() {
       <PageHeader title={t("requests")}>
         <p>{t("requestHelp")}</p>
       </PageHeader>
-      <nav className="filter-tabs" aria-label={t("status")}>
-        {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map((value) => (
-          <button
-            key={value}
-            aria-pressed={status === value}
-            onClick={() => change({ status: value })}
-          >
-            {t(value || "all")}
-          </button>
-        ))}
-      </nav>
-      <div className="filters">
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={mine}
-            onChange={(event) => change({ mine: String(event.target.checked) })}
-          />
-          {t("mine")}
-        </label>
+      <div className="list-toolbar">
+        <nav className="filter-tabs" aria-label={t("status")}>
+          {["", "PENDING", "APPROVED", "DOWNLOADING", "AVAILABLE", "REJECTED"].map((value) => (
+            <button
+              key={value}
+              aria-pressed={status === value}
+              onClick={() => change({ status: value })}
+            >
+              {t(value || "all")}
+            </button>
+          ))}
+        </nav>
+        <div className="filters">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={mine}
+              onChange={(event) => change({ mine: String(event.target.checked) })}
+            />
+            {t("mine")}
+          </label>
+        </div>
       </div>
       {result.isPending ? (
         <Loading />
@@ -137,10 +139,7 @@ export function RequestDetail({ user }: { user: User }) {
     }).format(new Date(date));
   return (
     <>
-      <Breadcrumbs
-        trail={[{ label: t("requests"), to: "/requests" }]}
-        current={request.entity.title}
-      />
+      <Breadcrumbs trail={[{ label: t("requests"), to: "/requests" }]} />
       <header className="detail-heading">
         <div
           className={`detail-artwork${request.scope.kind === "event" ? " detail-artwork-wide" : ""}`}
@@ -213,65 +212,70 @@ export function RequestDetail({ user }: { user: User }) {
             {t("integrationError")}
           </p>
         ))}
-      {request.parts.length > 0 && (
-        <section className="request-parts">
-          <h2>{t("parts")}</h2>
-          <ul>
-            {request.parts.map((part) => {
-              const events = request.events ?? [];
-              const covering = events.filter((event) => event.parts.includes(part.name));
-              const available = covering.filter((event) =>
-                event.availableParts.includes(part.name),
-              ).length;
-              const downloading = covering.some((event) =>
-                event.downloadingParts.includes(part.name),
-              );
-              const state =
-                part.status !== "APPROVED"
-                  ? part.status
-                  : covering.length > 0 && available === covering.length
-                    ? "AVAILABLE"
-                    : downloading
-                      ? "DOWNLOADING"
-                      : "APPROVED";
-              return (
-                <li key={part.name}>
-                  <span className="part-name">{part.name}</span>
-                  {mine(part.name) && <span className="part-mine">{t("yourPart")}</span>}
-                  <Status value={state} />
-                  {request.scope.kind === "season" && covering.length > 0 && (
-                    <span className="muted">
-                      {t("partEvents", { available, count: covering.length })}
-                    </span>
-                  )}
-                  {part.rejectionReason && <p>{part.rejectionReason}</p>}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-      {request.subscribers && request.subscribers.length > 0 && (
-        <section className="request-subscribers">
-          <h2>{t("requestedBy")}</h2>
-          <ul>
-            {request.subscribers.map((subscriber) => (
-              <li key={subscriber.email}>
-                <span className="part-name">{subscriber.email}</span>
-                <span className="muted">
-                  {subscriber.parts.length ? subscriber.parts.join(", ") : t("wholeRequest")}
-                </span>
-                <Status value={subscriber.status} />
-                <time className="muted" dateTime={subscriber.createdAt}>
-                  {format(subscriber.createdAt)}
-                </time>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <div className="workspace-columns">
-        <section>
+      {/* Parts, progress and history side by side on wide screens. */}
+      <div className="request-board">
+        {(request.parts.length > 0 || Boolean(request.subscribers?.length)) && (
+          <div className="request-column">
+            {request.parts.length > 0 && (
+              <section className="request-parts">
+                <h2>{t("parts")}</h2>
+                <ul>
+                  {request.parts.map((part) => {
+                    const events = request.events ?? [];
+                    const covering = events.filter((event) => event.parts.includes(part.name));
+                    const available = covering.filter((event) =>
+                      event.availableParts.includes(part.name),
+                    ).length;
+                    const downloading = covering.some((event) =>
+                      event.downloadingParts.includes(part.name),
+                    );
+                    const state =
+                      part.status !== "APPROVED"
+                        ? part.status
+                        : covering.length > 0 && available === covering.length
+                          ? "AVAILABLE"
+                          : downloading
+                            ? "DOWNLOADING"
+                            : "APPROVED";
+                    return (
+                      <li key={part.name}>
+                        <span className="part-name">{part.name}</span>
+                        {mine(part.name) && <span className="part-mine">{t("yourPart")}</span>}
+                        <Status value={state} />
+                        {request.scope.kind === "season" && covering.length > 0 && (
+                          <span className="muted">
+                            {t("partEvents", { available, count: covering.length })}
+                          </span>
+                        )}
+                        {part.rejectionReason && <p>{part.rejectionReason}</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+            {request.subscribers && request.subscribers.length > 0 && (
+              <section className="request-subscribers">
+                <h2>{t("requestedBy")}</h2>
+                <ul>
+                  {request.subscribers.map((subscriber) => (
+                    <li key={subscriber.email}>
+                      <span className="part-name">{subscriber.email}</span>
+                      <span className="muted">
+                        {subscriber.parts.length ? subscriber.parts.join(", ") : t("wholeRequest")}
+                      </span>
+                      <Status value={subscriber.status} />
+                      <time className="muted" dateTime={subscriber.createdAt}>
+                        {format(subscriber.createdAt)}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        )}
+        <section className="request-progress">
           <h2>{t("progress")}</h2>
           {request.events?.length ? (
             <div className="fixtures">
@@ -293,7 +297,7 @@ export function RequestDetail({ user }: { user: User }) {
             <p className="empty">{t(request.status === "PENDING" ? "PENDING" : "waiting")}</p>
           )}
         </section>
-        <section className="sidebar-note">
+        <section className="request-history">
           <h2>{t("history")}</h2>
           <ol className="history">
             {request.history?.map((entry) => (

@@ -64,9 +64,11 @@ export function Discover({ user }: { user: User }) {
     query && category ? results.filter((item) => item.entityType === category) : results;
   return (
     <>
-      <Breadcrumbs current={t("discover")} />
       <div className="discover-head">
-        <h1>{t("discover")}</h1>
+        <div className="page-path">
+          <Breadcrumbs />
+          <h1>{t("discover")}</h1>
+        </div>
         <form
           className="search-bar"
           onSubmit={(event) => {
@@ -426,7 +428,6 @@ export function CatalogDetail({ user }: { user: User }) {
             ? [{ label: item.seasonName ?? t("season"), to: "/catalog/season/" + item.seasonId }]
             : []),
         ]}
-        current={item.name}
       />
       <header className="detail-heading">
         <div className={`detail-artwork${kind === "event" ? " detail-artwork-wide" : ""}`}>

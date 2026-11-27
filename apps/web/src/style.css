@@ -141,6 +141,8 @@ time {
   height: 0.74em;
   flex-shrink: 0;
   color: var(--accent);
+  /* Centred between the tallest letter and the descender of the "p", not sitting on the baseline. */
+  transform: translateY(0.1em);
 }
 .app-shell {
   min-height: 100vh;
@@ -322,32 +324,52 @@ main {
   max-width: 1376px;
   margin: auto;
 }
-/* Page titles stay compact so the content starts high. */
+/*
+ * Page titles are the last, highlighted step of the breadcrumbs: one line instead of a trail
+ * and a repeated title.
+ */
 .page-heading,
 .page-header {
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
-.page-heading h1,
-.page-title h1 {
+.page-heading h1 {
   margin: 0;
 }
-.page-title {
+.page-path {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 24px;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
 }
-.page-title > :not(h1) {
-  margin-left: auto;
+.page-path h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.page-path .breadcrumbs {
+  margin: 0;
+}
+.page-path .breadcrumbs li:last-child:after {
+  content: "/" / "";
+  margin-left: 8px;
+  color: #5d5968;
 }
 .page-heading p,
 .page-header > p {
   color: var(--muted);
   font-size: 15px;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
 }
+.header-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+}
+/* Pages with a large title of their own show the trail alone, with room below it. */
 .breadcrumbs {
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   font-size: 14px;
 }
 .breadcrumbs ol {
@@ -372,18 +394,81 @@ main {
   color: var(--ink);
   text-decoration: underline;
 }
-.breadcrumbs [aria-current] {
-  color: var(--ink);
+/* What a section offers next to what it is: a line of description or filters, and its action. */
+.content-toolbar,
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 24px;
+}
+.content-toolbar > p {
+  flex: 1 1 320px;
+  max-width: 72ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+.content-toolbar > :is(.button-link, button, span) {
+  flex: none;
+  margin-left: auto;
+}
+.list-toolbar .filter-tabs,
+.list-toolbar .filters {
+  margin: 0;
+}
+.list-toolbar .filters {
+  gap: 20px;
+}
+.inline-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
   font-weight: 500;
-  overflow-wrap: anywhere;
+}
+.inline-filter select {
+  width: auto;
+  min-width: 200px;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--ink);
+}
+.account-cards {
+  max-width: 560px;
+}
+/* A request's parts, progress and history side by side when there is room. */
+.request-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+  gap: 32px;
+}
+.request-board > *,
+.request-column > * {
+  min-width: 0;
+  margin: 0;
+}
+.request-column {
+  display: grid;
+  gap: 32px;
+}
+.request-board :is(.request-parts, .request-subscribers) ul {
+  max-width: none;
+}
+.request-board .fixtures {
+  grid-template-columns: minmax(0, 1fr);
 }
 /* Discover: the title and the search share one row. */
 .discover-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 28px;
-  margin-bottom: 22px;
+  gap: 16px 32px;
+  margin-bottom: 24px;
 }
 .discover-head h1 {
   margin: 0;
@@ -804,11 +889,10 @@ form > .button-link {
   margin-bottom: 14px;
 }
 .detail-facts dl {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px 24px;
-  margin: 0 0 14px;
-  max-width: 900px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 48px;
+  margin: 0 0 16px;
 }
 .detail-facts dt {
   color: var(--muted);
@@ -2126,5 +2210,27 @@ th {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+}
+
+/* Sections and tabs in condensed capitals, as sports broadcasts label them. */
+.app-nav a,
+.tabs button,
+.tabs > span,
+.channel-tabs [role="tab"] {
+  font-family: "Barlow Condensed", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 16px;
+}
+.channel-state {
+  font-family: Barlow, Arial, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+@media (max-width: 650px) {
+  .app-nav a {
+    font-size: 12px;
+    letter-spacing: 0.04em;
   }
 }

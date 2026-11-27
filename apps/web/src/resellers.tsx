@@ -48,7 +48,12 @@ export function Resellers() {
   const resellers = useResellers();
   return (
     <>
-      <p className="muted">{t("resellersHint")}</p>
+      <div className="content-toolbar">
+        <p>{t("resellersHint")}</p>
+        <Link className="button-link" to="/admin/resellers/new">
+          {t("createReseller")}
+        </Link>
+      </div>
       {resellers.isPending ? (
         <Loading />
       ) : resellers.error ? (
@@ -361,7 +366,12 @@ export function Packages() {
   const packages = usePackages();
   return (
     <>
-      <p className="muted">{t("packagesHint")}</p>
+      <div className="content-toolbar">
+        <p>{t("packagesHint")}</p>
+        <Link className="button-link" to="/admin/packages/new">
+          {t("createPackage")}
+        </Link>
+      </div>
       {packages.isPending ? (
         <Loading />
       ) : packages.error ? (

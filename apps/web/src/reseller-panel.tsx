@@ -43,19 +43,7 @@ export function ResellerPanel() {
       <PageHeader
         title={t(tab === "clients" ? "clientsTitle" : "notifications")}
         trail={[{ label: t("admin"), to: "/admin" }]}
-        actions={
-          tab === "clients" &&
-          (full ? (
-            <span className="muted">{t("clientLimitReached")}</span>
-          ) : (
-            <Link className="button-link" to="/admin/clients/new">
-              {t("createClient")}
-            </Link>
-          ))
-        }
-      >
-        <p>{t(tab === "clients" ? "resellerPanelIntro" : "resellerNotificationsHint")}</p>
-      </PageHeader>
+      />
       {/* The same side menu as the platform's administration, with the reseller's sections. */}
       <div className="admin-layout">
         <nav className="admin-menu" aria-label={t("admin")}>
@@ -73,6 +61,17 @@ export function ResellerPanel() {
           </div>
         </nav>
         <div className="admin-content">
+          <div className="content-toolbar">
+            <p>{t(tab === "clients" ? "resellerPanelIntro" : "resellerNotificationsHint")}</p>
+            {tab === "clients" &&
+              (full ? (
+                <span className="muted">{t("clientLimitReached")}</span>
+              ) : (
+                <Link className="button-link" to="/admin/clients/new">
+                  {t("createClient")}
+                </Link>
+              ))}
+          </div>
           {tab === "notifications" ? (
             <NotificationSettings base="/reseller/notifications" />
           ) : (
