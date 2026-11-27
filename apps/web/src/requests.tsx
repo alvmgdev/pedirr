@@ -139,7 +139,10 @@ export function RequestDetail({ user }: { user: User }) {
     }).format(new Date(date));
   return (
     <>
-      <Breadcrumbs trail={[{ label: t("requests"), to: "/requests" }]} />
+      <Breadcrumbs
+        trail={[{ label: t("requests"), to: "/requests" }]}
+        current={request.entity.title}
+      />
       <header className="detail-heading">
         <div
           className={`detail-artwork${request.scope.kind === "event" ? " detail-artwork-wide" : ""}`}

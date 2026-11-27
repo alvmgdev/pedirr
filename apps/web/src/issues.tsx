@@ -195,7 +195,7 @@ export function IssueDetail({ user }: { user: User }) {
         : (entry.author.email ?? t(entry.author.role === "ADMIN" ? "administrator" : "reporter"));
   return (
     <>
-      <Breadcrumbs trail={[{ label: t("issues"), to: "/issues" }]} />
+      <Breadcrumbs trail={[{ label: t("issues"), to: "/issues" }]} current={t(issue.category)} />
       <header className="issue-heading">
         <Status value={issue.status} />
         <h1>{t(issue.category)}</h1>
