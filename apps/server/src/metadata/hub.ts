@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Infrastructure, logger } from "../infrastructure";
-import { appVersion, hubBudget } from "../config";
+import { appVersion, hubBudget, hubTimings } from "../config";
 import {
   EventFilters,
   LeagueSearch,
@@ -127,6 +127,7 @@ export function retrySeconds(value: string | null): number {
 @Injectable()
 export class HubProvider extends MetadataProvider {
   private readonly budget: number;
+  private readonly timings = hubTimings();
   constructor(private readonly infrastructure: Infrastructure) {
     super();
     this.budget = hubBudget();
@@ -172,9 +173,9 @@ export class HubProvider extends MetadataProvider {
     }
     const lock = key + ":lock";
     const owner = randomUUID();
-    if (!(await redis.set(lock, owner, "EX", 15, "NX"))) {
+    if (!(await redis.set(lock, owner, "EX", this.timings.lockSeconds, "NX"))) {
       // Share the completed result across API replicas instead of rejecting overlapping reads.
-      const deadline = Date.now() + 11000;
+      const deadline = Date.now() + this.timings.waitMs;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 100));
         const shared = await redis.get(key);
@@ -217,7 +218,7 @@ export class HubProvider extends MetadataProvider {
       let response: Response;
       try {
         response = await fetch(url, {
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(this.timings.timeoutMs),
           redirect: "error",
           headers: { Accept: "application/json", "User-Agent": `Pedirr/${appVersion}` },
         });
