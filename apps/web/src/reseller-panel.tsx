@@ -5,7 +5,7 @@ import { api, client, isExpired, type User } from "./api";
 import { limits, UserLimits } from "./fields";
 import { Address } from "./resellers";
 import { NotificationSettings } from "./admin";
-import { ErrorMessage, Loading, Pager } from "./ui";
+import { ErrorMessage, Loading, PageHeader, Pager } from "./ui";
 import { useState } from "react";
 
 /** What a reseller administrator knows about its own reseller. */
@@ -158,12 +158,10 @@ export function ClientDetail({ user }: { user: User }) {
   }
   return (
     <>
-      <Link className="back" to="/admin">
-        {t("clientsTitle")}
-      </Link>
-      <header className="page-heading">
-        <h1>{t(creating ? "createClient" : "editClient")}</h1>
-      </header>
+      <PageHeader
+        title={t(creating ? "createClient" : "editClient")}
+        trail={[{ label: t("clientsTitle"), to: "/admin" }]}
+      />
       {overview.isPending || (!creating && detail.isPending) ? (
         <Loading />
       ) : overview.error || detail.error ? (

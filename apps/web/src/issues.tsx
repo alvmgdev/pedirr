@@ -12,7 +12,7 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { ErrorMessage, Loading, Pager, Status, timezoneOf } from "./ui";
+import { Breadcrumbs, ErrorMessage, Loading, Pager, Status, timezoneOf } from "./ui";
 
 /** What the issue is about: the request, plus the event and part when given. */
 function subject(issue: Issue) {
@@ -191,9 +191,7 @@ export function IssueDetail({ user }: { user: User }) {
         : (entry.author.email ?? t(entry.author.role === "ADMIN" ? "administrator" : "reporter"));
   return (
     <>
-      <Link className="back" to="/issues">
-        {t("issues")}
-      </Link>
+      <Breadcrumbs trail={[{ label: t("issues"), to: "/issues" }]} current={t(issue.category)} />
       <header className="issue-heading">
         <Status value={issue.status} />
         <h1>{t(issue.category)}</h1>

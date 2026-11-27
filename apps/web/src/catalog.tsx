@@ -13,6 +13,7 @@ import {
 } from "./api";
 import {
   Artwork,
+  Breadcrumbs,
   ErrorMessage,
   Fixture,
   Loading,
@@ -63,60 +64,74 @@ export function Discover({ user }: { user: User }) {
     query && category ? results.filter((item) => item.entityType === category) : results;
   return (
     <>
-      <header className="page-heading">
+      <div className="discover-head">
         <h1>{t("discover")}</h1>
-        <p>{t("intro")}</p>
-      </header>
-      <form
-        className="search-bar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (text.trim().length >= 2) {
-            setParams({ q: text.trim() });
-          }
-        }}
-      >
-        <label className="sr-only" htmlFor="search">
-          {t("search")}
-        </label>
-        <input
-          id="search"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder={t("searchPlaceholder")}
-          minLength={2}
-          maxLength={100}
-          required
-        />
-        <button>{t("search")}</button>
-      </form>
+        <form
+          className="search-bar"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (text.trim().length >= 2) {
+              setParams({ q: text.trim() });
+            }
+          }}
+        >
+          <label className="sr-only" htmlFor="search">
+            {t("search")}
+          </label>
+          <div className="search-field">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="9" cy="9" r="6" />
+              <path d="m14 14 4 4" />
+            </svg>
+            <input
+              id="search"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+              minLength={2}
+              maxLength={100}
+              required
+            />
+          </div>
+          <button>{t("search")}</button>
+        </form>
+      </div>
       <div className="workspace-columns">
         <section>
-          <nav className="tabs" aria-label={t("discover")}>
-            <button
-              className={!query && mode === "upcoming" ? "selected" : ""}
-              onClick={() => {
-                setText("");
-                setParams({ view: "upcoming" });
-              }}
-            >
-              {t("upcoming")}
-            </button>
-            <button
-              className={!query && mode === "leagues" ? "selected" : ""}
-              onClick={() => {
-                setText("");
-                setParams({ view: "leagues" });
-              }}
-            >
-              {t("leagues")}
-            </button>
-            {query && (
-              <span className="selected">
-                {t("search")}: {query}
-              </span>
-            )}
-          </nav>
+          <div className="tabs-row">
+            <nav className="tabs" aria-label={t("discover")}>
+              <button
+                className={!query && mode === "upcoming" ? "selected" : ""}
+                onClick={() => {
+                  setText("");
+                  setParams({ view: "upcoming" });
+                }}
+              >
+                {t("upcoming")}
+              </button>
+              <button
+                className={!query && mode === "leagues" ? "selected" : ""}
+                onClick={() => {
+                  setText("");
+                  setParams({ view: "leagues" });
+                }}
+              >
+                {t("leagues")}
+              </button>
+              {query && (
+                <span className="selected">
+                  {t("search")}: {query}
+                </span>
+              )}
+            </nav>
+            <p className="tabs-note">
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.2" />
+                <path d="M8 4.5V8l2.5 1.5" />
+              </svg>
+              {t("scheduleNote", { timezone: timezoneOf(user) })}
+            </p>
+          </div>
           {query && (
             <nav className="filter-tabs" aria-label={t("resultType")}>
               {[
@@ -135,7 +150,6 @@ export function Discover({ user }: { user: User }) {
               ))}
             </nav>
           )}
-          <p className="muted">{t("scheduleNote", { timezone: timezoneOf(user) })}</p>
           {query && user.plan && !user.plan.allContent && (
             <p className="muted">{t("planSearchNote", { name: user.plan.name })}</p>
           )}
@@ -146,6 +160,14 @@ export function Discover({ user }: { user: User }) {
             </>
           ) : result.error && !items.length ? (
             <ErrorMessage error={result.error} />
+          ) : schedule ? (
+            items.length ? (
+              <DaySchedule items={items} timezone={timezoneOf(user)} />
+            ) : (
+              <p className="empty">
+                {t(upcoming.hasNextPage ? "emptySchedulePage" : "emptySchedule")}
+              </p>
+            )
           ) : (
             <div className="catalog-shelves">
               {(query
@@ -181,17 +203,7 @@ export function Discover({ user }: { user: User }) {
                   </section>
                 );
               })}
-              {!items.length && (
-                <p className="empty">
-                  {t(
-                    schedule
-                      ? upcoming.hasNextPage
-                        ? "emptySchedulePage"
-                        : "emptySchedule"
-                      : "empty",
-                  )}
-                </p>
-              )}
+              {!items.length && <p className="empty">{t("empty")}</p>}
             </div>
           )}
           {/* Searches return a limited number of events; older ones live under their league. */}
@@ -235,35 +247,85 @@ export function Discover({ user }: { user: User }) {
             />
           )}
         </section>
-        <aside className="sidebar-note" aria-label={t("popular")}>
-          <h2>{t("popular")}</h2>
+        <aside className="popular" aria-labelledby="popular-title">
+          <h2 id="popular-title">{t("popular")}</h2>
           {popular.data?.items.length ? (
-            popular.data.items.map((item) => (
-              <Link
-                className="league-link"
-                key={item.id}
-                to={"/catalog/league/" + item.metadata.id}
-              >
-                <Artwork item={item.metadata} kind="league" />
-                <span>{item.metadata.name}</span>
-              </Link>
-            ))
+            <div className="chip-list">
+              {popular.data.items.map((item) => (
+                <Link
+                  className="league-chip"
+                  key={item.id}
+                  to={"/catalog/league/" + item.metadata.id}
+                >
+                  <Artwork item={item.metadata} kind="league" />
+                  <span>{item.metadata.name}</span>
+                </Link>
+              ))}
+            </div>
           ) : (
-            <p>{t("popularEmpty")}</p>
+            <p className="muted">{t("popularEmpty")}</p>
           )}
-          <div className="request-explainer">
-            <h2>{t("requests")}</h2>
-            <p>{t("requestHelp")}</p>
-            <Link to="/requests">{t("requests")}</Link>
-          </div>
         </aside>
       </div>
     </>
   );
 }
+/** The coming events, a section per day in the viewer's time zone. */
+function DaySchedule({ items, timezone }: { items: Item[]; timezone: string }) {
+  const { t, i18n } = useTranslation();
+  const day = (date: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: timezone,
+    }).format(date);
+  // Read once: which days are today and tomorrow does not change while the list is open.
+  const [now] = useState(() => Date.now());
+  const today = day(new Date(now));
+  const tomorrow = day(new Date(now + 86400000));
+  const days = new Map<string, Item[]>();
+  for (const item of items) {
+    const start = item.scheduledStart ? new Date(item.scheduledStart) : null;
+    const key = start && !Number.isNaN(start.getTime()) ? day(start) : "";
+    days.set(key, [...(days.get(key) ?? []), item]);
+  }
+  return (
+    <div className="day-schedule">
+      {[...days].map(([key, events]) => {
+        // Noon UTC names the calendar day the key already is in the viewer's zone.
+        const date = key ? new Date(`${key}T12:00:00Z`) : null;
+        const format = (options: Intl.DateTimeFormatOptions) =>
+          new Intl.DateTimeFormat(i18n.language, { ...options, timeZone: "UTC" }).format(date!);
+        const weekday = date ? format({ weekday: "long" }) : t("dateUnknown");
+        return (
+          <section key={key} className="day-group" aria-labelledby={`day-${key || "unknown"}`}>
+            <h2 id={`day-${key || "unknown"}`}>
+              <span className="day-name">
+                {key === today
+                  ? t("today")
+                  : key === tomorrow
+                    ? t("tomorrow")
+                    : weekday.charAt(0).toUpperCase() + weekday.slice(1)}
+              </span>
+              {date && (
+                <span className="day-date">{format({ day: "numeric", month: "long" })}</span>
+              )}
+            </h2>
+            <div className="fixtures">
+              {events.map((item) => (
+                <Fixture key={item.id} item={item} timezone={timezone} showDate={false} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
 export function CatalogDetail({ user }: { user: User }) {
   const { kind = "event", id = "" } = useParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [order, setOrder] = useState("desc");
@@ -344,28 +406,52 @@ export function CatalogDetail({ user }: { user: User }) {
     return <ErrorMessage error={detail.error} />;
   }
   const item = detail.data!;
+  const start = item.scheduledStart ? new Date(item.scheduledStart) : null;
+  const longDate = (date: Date) =>
+    new Intl.DateTimeFormat(i18n.language, {
+      dateStyle: "full",
+      timeStyle: "short",
+      timeZone: timezoneOf(user),
+    }).format(date);
   return (
     <>
-      <Link className="back" to="/">
-        {t("back")}
-      </Link>
+      <Breadcrumbs
+        trail={[
+          { label: t("discover"), to: "/" },
+          ...(kind !== "league" && item.leagueId
+            ? [{ label: item.leagueName ?? t("league"), to: "/catalog/league/" + item.leagueId }]
+            : []),
+          ...(kind === "event" && item.seasonId
+            ? [{ label: item.seasonName ?? t("season"), to: "/catalog/season/" + item.seasonId }]
+            : []),
+        ]}
+        current={item.name}
+      />
       <header className="detail-heading">
-        <div className="detail-artwork">
+        <div className={`detail-artwork${kind === "event" ? " detail-artwork-wide" : ""}`}>
           <Artwork item={item} kind={kind} />
         </div>
         <div className="detail-copy">
-          <p className="muted">
-            {t(kind)}
-            {item.sportName ? ` / ${item.sportName}` : ""}
-          </p>
           <h1>{item.name}</h1>
-          {item.leagueId && (
-            <Link to={"/catalog/league/" + item.leagueId}>{item.leagueName ?? t("league")}</Link>
-          )}
-          {item.description && <p>{item.description}</p>}
+          <p className="detail-meta">
+            {start && (
+              <span>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <rect x="2" y="3" width="12" height="11" rx="2" />
+                  <path d="M2 7h12M5 1.5v3M11 1.5v3" />
+                </svg>
+                <time dateTime={start.toISOString()}>{longDate(start)}</time>
+              </span>
+            )}
+            <span>
+              {t(kind)}
+              {item.sportName ? ` / ${item.sportName}` : ""}
+            </span>
+          </p>
+          {item.description && <p className="detail-description">{item.description}</p>}
         </div>
         {["season", "event"].includes(kind) && (
-          <div className="request-box">
+          <aside className="request-box" aria-label={t("request")}>
             {!mayRequest ? (
               <p role="status" className="notice">
                 {t("seasonRequestsNotAllowed")}
@@ -451,19 +537,37 @@ export function CatalogDetail({ user }: { user: User }) {
                 }}
               />
             )}
-          </div>
+          </aside>
         )}
       </header>
       {kind === "event" ? (
-        <section className="panel">
-          <h2>{t("details")}</h2>
-          <Fixture item={item} timezone={timezoneOf(user)} />
+        <section className="detail-facts" aria-labelledby="details-title">
+          <h2 id="details-title">{t("details")}</h2>
+          <dl>
+            {item.leagueName && (
+              <div>
+                <dt>{t("competition")}</dt>
+                <dd>{item.leagueName}</dd>
+              </div>
+            )}
+            {item.seasonName && (
+              <div>
+                <dt>{t("season")}</dt>
+                <dd>{item.seasonName}</dd>
+              </div>
+            )}
+            {item.sportName && (
+              <div>
+                <dt>{t("sport")}</dt>
+                <dd>{item.sportName}</dd>
+              </div>
+            )}
+            <div>
+              <dt>{t("startsAt")}</dt>
+              <dd>{start ? longDate(start) : t("dateUnknown")}</dd>
+            </div>
+          </dl>
           <p className="muted">{t("scheduleNote", { timezone: timezoneOf(user) })}</p>
-          {item.seasonName && (
-            <p>
-              {t("season")}: {item.seasonName}
-            </p>
-          )}
         </section>
       ) : (
         <section>

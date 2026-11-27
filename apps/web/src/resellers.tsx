@@ -12,7 +12,7 @@ import {
   type User,
 } from "./api";
 import { OptionalLimit } from "./fields";
-import { ErrorMessage, Loading } from "./ui";
+import { ErrorMessage, Loading, PageHeader } from "./ui";
 
 export const useResellers = (enabled = true) =>
   useQuery({
@@ -102,12 +102,13 @@ export function ResellerDetail({ user }: { user: User }) {
   }
   return (
     <>
-      <Link className="back" to="/admin?tab=resellers">
-        {t("resellers")}
-      </Link>
-      <header className="page-heading">
-        <h1>{creating ? t("createReseller") : (detail.data?.name ?? t("reseller"))}</h1>
-      </header>
+      <PageHeader
+        title={creating ? t("createReseller") : (detail.data?.name ?? t("reseller"))}
+        trail={[
+          { label: t("admin"), to: "/admin" },
+          { label: t("resellers"), to: "/admin?tab=resellers" },
+        ]}
+      />
       {creating ? (
         <NewReseller />
       ) : detail.isPending ? (
@@ -408,12 +409,13 @@ export function PackageDetail({ user }: { user: User }) {
   }
   return (
     <>
-      <Link className="back" to="/admin?tab=packages">
-        {t("packages")}
-      </Link>
-      <header className="page-heading">
-        <h1>{t(creating ? "createPackage" : "editPackage")}</h1>
-      </header>
+      <PageHeader
+        title={t(creating ? "createPackage" : "editPackage")}
+        trail={[
+          { label: t("admin"), to: "/admin" },
+          { label: t("packages"), to: "/admin?tab=packages" },
+        ]}
+      />
       {creating ? (
         <PackageEditor />
       ) : detail.isPending ? (

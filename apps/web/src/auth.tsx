@@ -1,35 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { api, ApiError, client, setSession, type AuthConfig, type User } from "./api";
+import { api, ApiError, setSession, type AuthConfig, type User } from "./api";
 import { ErrorMessage, formatDateTime, QuotaNote, timezoneOf, useQuota } from "./ui";
-export function Language({ user }: { user?: User | null }) {
-  const { t, i18n } = useTranslation();
-  const change = useMutation({
-    mutationFn: (locale: string) => api<User>("/me", "PATCH", { locale }),
-    onSuccess: (user) => client.setQueryData(["me"], user),
-  });
-  return (
-    <div className="language">
-      <label htmlFor="language">{t("language")}</label>
-      <select
-        id="language"
-        value={i18n.language.startsWith("es") ? "es" : "en"}
-        onChange={(event) => {
-          const locale = event.target.value;
-          void i18n.changeLanguage(locale);
-          if (user) {
-            change.mutate(locale);
-          }
-        }}
-      >
-        <option value="en">English</option>
-        <option value="es">Español</option>
-      </select>
-      <ErrorMessage error={change.error} />
-    </div>
-  );
-}
+import { LanguageMenu, LinkBrand } from "./shell";
 export function Login() {
   const { t, i18n } = useTranslation();
   const [registerSelected, setRegister] = useState(false);
@@ -78,7 +52,7 @@ export function Login() {
         </div>
       </section>
       <div className="login-main">
-        <Language />
+        <LanguageMenu />
         {unknown ? (
           <div className="login-form" role="alert">
             <h2>{t("unknownEnvironment")}</h2>
@@ -139,21 +113,6 @@ export function Login() {
         )}
       </div>
     </main>
-  );
-}
-export function LinkBrand() {
-  return (
-    <div className="brand">
-      <svg viewBox="0 0 30 34" fill="none" aria-hidden="true">
-        <path
-          d="M3 3h24v9a5 5 0 0 0 0 10v9H3v-9a5 5 0 0 0 0-10V3Z"
-          stroke="currentColor"
-          strokeWidth="2"
-        />
-        <path d="m12 11 9 6-9 6V11Z" fill="currentColor" />
-      </svg>
-      pedirr
-    </div>
   );
 }
 /** What limits the account has, so users are not surprised by them. Hidden for administrators. */

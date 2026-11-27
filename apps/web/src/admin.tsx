@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, client, isExpired, type User } from "./api";
-import { ErrorMessage, Loading, Pager } from "./ui";
+import { ErrorMessage, Loading, PageHeader, Pager } from "./ui";
 import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
 import { Packages, Resellers, useResellerPlans, useResellers } from "./resellers";
@@ -308,12 +308,13 @@ export function UserDetail({ user }: { user: User }) {
   }
   return (
     <>
-      <Link className="back" to="/admin?tab=users">
-        {t("users")}
-      </Link>
-      <header className="page-heading">
-        <h1>{t(creating ? "createUser" : "editUser")}</h1>
-      </header>
+      <PageHeader
+        title={t(creating ? "createUser" : "editUser")}
+        trail={[
+          { label: t("admin"), to: "/admin" },
+          { label: t("users"), to: "/admin?tab=users" },
+        ]}
+      />
       {creating ? (
         <form
           className="panel compact-form"

@@ -10,7 +10,16 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { Artwork, ErrorMessage, Loading, Pager, PartsDialog, Status, timezoneOf } from "./ui";
+import {
+  Artwork,
+  Breadcrumbs,
+  ErrorMessage,
+  Loading,
+  Pager,
+  PartsDialog,
+  Status,
+  timezoneOf,
+} from "./ui";
 import { ReportIssue, RequestIssueList } from "./issues";
 export function Requests() {
   const { t } = useTranslation();
@@ -128,9 +137,10 @@ export function RequestDetail({ user }: { user: User }) {
     }).format(new Date(date));
   return (
     <>
-      <Link className="back" to="/requests">
-        {t("back")}
-      </Link>
+      <Breadcrumbs
+        trail={[{ label: t("requests"), to: "/requests" }]}
+        current={request.entity.title}
+      />
       <header className="detail-heading">
         <div className="detail-artwork">
           <Artwork

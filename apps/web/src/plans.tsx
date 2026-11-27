@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { api, client, type Item, type Plan, type PlanGrant, type User } from "./api";
-import { ErrorMessage, Loading } from "./ui";
+import { ErrorMessage, Loading, PageHeader } from "./ui";
 
 export const usePlans = (enabled = true) =>
   useQuery({ queryKey: ["plans"], queryFn: () => api<Plan[]>("/admin/plans"), enabled });
@@ -67,12 +67,13 @@ export function PlanDetail({ user }: { user: User }) {
   }
   return (
     <>
-      <Link className="back" to="/admin?tab=plans">
-        {t("plans")}
-      </Link>
-      <header className="page-heading">
-        <h1>{t(creating ? "createPlan" : "editPlan")}</h1>
-      </header>
+      <PageHeader
+        title={t(creating ? "createPlan" : "editPlan")}
+        trail={[
+          { label: t("admin"), to: "/admin" },
+          { label: t("plans"), to: "/admin?tab=plans" },
+        ]}
+      />
       {creating ? (
         <PlanEditor />
       ) : detail.isPending ? (

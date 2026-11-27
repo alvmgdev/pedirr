@@ -90,7 +90,8 @@ test("login, catalog request and Spanish mobile layout", async ({ page }) => {
   await page.getByRole("button", { name: "Request this event" }).click();
   await expect(page).toHaveURL(/requests\/request-1$/);
   await expect(page.getByText("Pending approval", { exact: true }).first()).toBeVisible();
-  await page.getByLabel("Language").selectOption("es");
+  await page.getByRole("button", { name: "Language: English, EN" }).click();
+  await page.getByRole("button", { name: "Español" }).click();
   await expect(page.getByRole("link", { name: "Descubrir", exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("link", { name: "Descubrir", exact: true }).click();
