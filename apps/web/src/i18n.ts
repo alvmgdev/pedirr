@@ -5,6 +5,12 @@ const en = {
   newestFirst: "Newest first",
   oldestFirst: "Oldest first",
   editUser: "Edit user",
+  weeklyUsage: "{{used}} of {{limit}} this week",
+  noWeeklyLimit: "No limit",
+  weeklyLimitInfoLabel: "How the weekly limit works",
+  weeklyLimitInfo:
+    "The weekly limit counts the requests made in the last 7 days, not since Monday. Each request frees up again 7 days after it was made. Rejected requests don't count, and following a request someone else already made is free.",
+  weeklyListNote: "Weekly requests count the last 7 days.",
   inactive: "Inactive",
   metadataLocalLimit:
     "Pedirr has reached its catalog request limit. Wait a moment before trying again.",
@@ -39,7 +45,7 @@ const en = {
   weeklyRequestLimit: "Weekly request limit",
   weeklyRequestLimitOff: "Off: the user can start as many requests as they want.",
   weeklyRequestLimitOn:
-    "Counts the new requests the user started in the last 7 days. Following a request someone else made does not count, and a rejected request is given back.",
+    "Counts the new requests the user started in the last 7 days, not the calendar week. Following a request someone else made does not count, and a rejected request is given back.",
   weeklyRequestLimitValue: "Requests per week",
   expiresAt: "Expiration date",
   expiresAtOff: "Off: the account never expires.",
@@ -464,6 +470,12 @@ const es: Record<keyof typeof en, string> = {
   newestFirst: "Más recientes primero",
   oldestFirst: "Más antiguos primero",
   editUser: "Editar usuario",
+  weeklyUsage: "{{used}} de {{limit}} esta semana",
+  noWeeklyLimit: "Sin límite",
+  weeklyLimitInfoLabel: "Cómo funciona el límite semanal",
+  weeklyLimitInfo:
+    "El límite semanal cuenta las peticiones hechas en los últimos 7 días, no desde el lunes. Cada petición vuelve a quedar libre 7 días después de hacerla. Las rechazadas no cuentan, y sumarse a una petición que ya hizo otra persona es gratis.",
+  weeklyListNote: "Las peticiones semanales cuentan los últimos 7 días.",
   inactive: "Inactivo",
   metadataLocalLimit:
     "Pedirr ha alcanzado su límite de consultas al catálogo. Espera un momento antes de reintentarlo.",
@@ -503,7 +515,7 @@ const es: Record<keyof typeof en, string> = {
   weeklyRequestLimit: "Límite semanal de peticiones",
   weeklyRequestLimitOff: "Desactivado: el usuario puede hacer todas las peticiones que quiera.",
   weeklyRequestLimitOn:
-    "Cuenta las peticiones nuevas que el usuario ha hecho en los últimos 7 días. Seguir una petición que hizo otro no cuenta, y una petición rechazada se le devuelve.",
+    "Cuenta las peticiones nuevas que el usuario ha hecho en los últimos 7 días, no en la semana natural. Seguir una petición que hizo otro no cuenta, y una petición rechazada se le devuelve.",
   weeklyRequestLimitValue: "Peticiones por semana",
   expiresAt: "Fecha de caducidad",
   expiresAtOff: "Desactivado: la cuenta no caduca nunca.",

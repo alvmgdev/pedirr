@@ -1,6 +1,7 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { User } from "./api";
+import { WeeklyLimitInfo } from "./ui";
 
 /** A date input value (local calendar day) for an instant, and back as the end of that day. */
 export const toDay = (value: string) => {
@@ -18,6 +19,7 @@ export function OptionalLimit({
   type,
   value,
   max = 1000,
+  info,
 }: {
   /** Field name and translation key prefix (`<name>`, `<name>On`, `<name>Off`, `<name>Value`). */
   name: string;
@@ -25,22 +27,27 @@ export function OptionalLimit({
   value: string;
   /** Largest number accepted. */
   max?: number;
+  /** An explanation shown beside the switch, such as an InfoTip. */
+  info?: ReactNode;
 }) {
   const { t } = useTranslation();
   const [enabled, setEnabled] = useState(value !== "");
   const id = useId();
   return (
     <div className="optional-limit">
-      <label className="check">
-        <input
-          name={name + "Enabled"}
-          type="checkbox"
-          checked={enabled}
-          aria-describedby={id + "-hint"}
-          onChange={(event) => setEnabled(event.currentTarget.checked)}
-        />
-        {t(name)}
-      </label>
+      <div className="limit-heading">
+        <label className="check">
+          <input
+            name={name + "Enabled"}
+            type="checkbox"
+            checked={enabled}
+            aria-describedby={id + "-hint"}
+            onChange={(event) => setEnabled(event.currentTarget.checked)}
+          />
+          {t(name)}
+        </label>
+        {info}
+      </div>
       <p className="muted" id={id + "-hint"}>
         {t(name + (enabled ? "On" : "Off"))}
       </p>
@@ -76,6 +83,7 @@ export function UserLimits({ user }: { user?: User }) {
       <OptionalLimit
         name="weeklyRequestLimit"
         type="number"
+        info={<WeeklyLimitInfo />}
         value={
           user?.weeklyRequestLimit === null || user?.weeklyRequestLimit === undefined
             ? ""

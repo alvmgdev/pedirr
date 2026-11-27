@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Administrators and resellers see each account's weekly requests in their user and client lists: "1 of 3 this week", highlighted once all are used, or "No limit".
+- An "i" beside every weekly limit explains that it counts the last 7 days, not the calendar week, and that rejected and followed requests don't count.
+
 ## 2.1.1 - 2026-11-27
 
 - The page has a favicon: the brand mark, also as an Apple touch icon.

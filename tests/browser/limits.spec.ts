@@ -104,6 +104,13 @@ test("users see what is left of their weekly limit", async ({ page }) => {
   await expect(page.getByText("Your next request frees up on Dec 1, 2026")).toBeVisible();
   await expect(page.getByRole("button", { name: "Request this event" })).toBeDisabled();
 
+  // The "i" beside it explains the rolling window, on click and with the keyboard.
+  const info = page.getByRole("button", { name: "How the weekly limit works" });
+  await info.click();
+  await expect(page.getByText(/last 7 days, not since Monday/)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByText(/last 7 days, not since Monday/)).toBeHidden();
+
   await page.goto("/account");
   await expect(page.getByRole("heading", { name: "Your limits" })).toBeVisible();
   await expect(page.getByText("0 of 2 requests left this week")).toBeVisible();
@@ -121,4 +128,55 @@ test("an account without limits says so", async ({ page }) => {
   await page.goto("/account");
   await expect(page.getByText("You can make as many requests as you want.")).toBeVisible();
   await expect(page.getByText("Your account does not expire.")).toBeVisible();
+});
+
+test("administrators and resellers see each account's weekly requests", async ({ page }) => {
+  const admin = { ...viewer, id: "admin", role: "ADMIN" };
+  const row = (id: string, email: string, extra: Record<string, unknown>) => ({
+    ...viewer,
+    id,
+    email,
+    plan: null,
+    ...extra,
+  });
+  const items = [
+    row("a", "admin@example.invalid", { role: "ADMIN", weeklyRequestsUsed: null }),
+    row("b", "free@example.invalid", { weeklyRequestsUsed: null }),
+    row("c", "some@example.invalid", { weeklyRequestLimit: 3, weeklyRequestsUsed: 1 }),
+    row("d", "spent@example.invalid", { weeklyRequestLimit: 2, weeklyRequestsUsed: 2 }),
+  ];
+  let me: Record<string, unknown> = admin;
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({ json: me });
+    }
+    if (path.endsWith("/admin/users") || path.endsWith("/reseller/clients")) {
+      return route.fulfill({ json: { items, total: items.length, page: 1 } });
+    }
+    if (path.endsWith("/reseller/overview")) {
+      return route.fulfill({
+        json: { code: "k7x2p", name: "Example", maxUsers: null, package: null, clients: 4 },
+      });
+    }
+    return route.fulfill({ json: path.endsWith("/admin/resellers") ? [] : {} });
+  });
+  await page.goto("/admin?tab=users");
+  const rowOf = (email: string) => page.getByRole("link", { name: new RegExp(email) });
+  await expect(rowOf("admin@example.invalid")).toContainText("No limit");
+  await expect(rowOf("free@example.invalid")).toContainText("No limit");
+  await expect(rowOf("some@example.invalid")).toContainText("1 of 3 this week");
+  await expect(rowOf("spent@example.invalid")).toContainText("2 of 2 this week");
+  // The note above the list explains the window when hovered with a mouse.
+  await page.getByRole("button", { name: "How the weekly limit works" }).hover();
+  await expect(page.getByText(/last 7 days, not since Monday/)).toBeVisible();
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"])
+    .analyze();
+  expect(results.violations.map((item) => item.id)).toEqual([]);
+
+  me = { ...admin, role: "RESELLER", tenantId: "t1", tenant: { code: "k7x2p", name: "Example" } };
+  await page.goto("/k7x2p/admin");
+  await expect(rowOf("some@example.invalid")).toContainText("1 of 3 this week");
+  await expect(page.getByRole("button", { name: "How the weekly limit works" })).toBeVisible();
 });

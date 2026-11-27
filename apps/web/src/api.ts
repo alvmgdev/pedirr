@@ -112,6 +112,11 @@ export type User = {
   tenantId: string;
   tenant: { code: string | null; name: string };
 };
+/** An account in an administrator's list, with what it has used of its weekly limit. */
+export type ListedUser = User & {
+  /** Requests counting against the limit in the last seven days; null without a limit. */
+  weeklyRequestsUsed: number | null;
+};
 /** What the sign-in page needs to know about the environment it is in. */
 export type AuthConfig = {
   registrationEnabled: boolean;

@@ -1234,6 +1234,9 @@ progress {
 .user-row span:last-child {
   color: var(--accent);
 }
+.user-row span.used-up {
+  color: #ffc4b5;
+}
 .user-controls {
   display: grid;
   gap: 24px;
@@ -1877,7 +1880,10 @@ th {
 }
 @media (min-width: 651px) {
   .account-row {
-    grid-template-columns: minmax(0, 1fr) 150px 160px 100px auto;
+    grid-template-columns: minmax(0, 1fr) 140px 150px 150px 100px auto;
+  }
+  .client-row {
+    grid-template-columns: minmax(0, 1fr) 140px 150px 120px auto;
   }
 }
 .account-facts {
@@ -2264,4 +2270,78 @@ th {
     font-size: 11px;
     letter-spacing: 0.04em;
   }
+}
+/* A small "i" that opens a short explanation. */
+.info-tip {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.info-tip > button {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #4a4855;
+  background: transparent;
+  color: var(--muted);
+  font:
+    italic 700 12px/1 Georgia,
+    "Times New Roman",
+    serif;
+  display: inline-grid;
+  place-items: center;
+  cursor: help;
+  position: relative;
+}
+/* A larger target for fingers than the drawn circle. */
+.info-tip > button::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+.info-tip > button:hover,
+.info-tip > button[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.info-tip-bubble {
+  position: fixed;
+  z-index: 50;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid #3a3944;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+}
+.info-tip-bubble[hidden] {
+  display: none;
+}
+.quota-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.quota-line .info-tip {
+  margin-top: 1px;
+}
+.limit-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.list-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 14px;
 }
