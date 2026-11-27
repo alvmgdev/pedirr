@@ -39,14 +39,15 @@
 
 ## Screenshots
 
-|                                                                                                                           |                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| ![Sign in](docs/screenshots/sign-in.png) Sign in                                                                          | ![A league with its seasons](docs/screenshots/league.png) League and seasons             |
-| ![Choosing the parts of a fight card](docs/screenshots/parts-dialog.png) Choosing the parts of a fight card               | ![Requests and their status](docs/screenshots/requests.png) Requests and their status    |
-| ![A request with parts awaiting review](docs/screenshots/request-parts.png) Parts awaiting review, and who asked for them | ![An available request](docs/screenshots/request-available.png) A request in the library |
-| ![User administration](docs/screenshots/admin-users.png) User administration                                              | ![Discover on a phone](docs/screenshots/discover-mobile.png) On a phone                  |
+|                                                                                                                           |                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| ![Sign in](docs/screenshots/sign-in.png) Sign in                                                                          | ![A league with its seasons](docs/screenshots/league.png) League and seasons                   |
+| ![Choosing the parts of a fight card](docs/screenshots/parts-dialog.png) Choosing the parts of a fight card               | ![Requests and their status](docs/screenshots/requests.png) Requests and their status          |
+| ![A request with parts awaiting review](docs/screenshots/request-parts.png) Parts awaiting review, and who asked for them | ![An available request](docs/screenshots/request-available.png) A request in the library       |
+| ![User administration](docs/screenshots/admin-users.png) User administration                                              | ![Discover on a phone](docs/screenshots/discover-mobile.png) On a phone                        |
+| ![Notifications by channel](docs/screenshots/notifications.png) Notifications by channel                                  | ![A reseller's panel](docs/screenshots/reseller-panel.png) A reseller's panel with its clients |
 
-Screenshots come from a real installation; email addresses are replaced with example ones.
+Screenshots use example accounts, requests and resellers with real Sportarr Hub catalog data: leagues, events, dates and artwork. Events without artwork in Hub show a placeholder.
 
 ## Quick start
 

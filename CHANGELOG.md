@@ -4,6 +4,8 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 
 ## Unreleased
 
+- The page has a favicon: the brand mark, also as an Apple touch icon.
+- New README screenshots with example accounts and real Sportarr Hub catalog data, including notifications and a reseller's panel.
 - Passwords need at least 8 characters instead of 12, everywhere: the first administrator, sign-up, password changes, new users, resellers and clients. Existing passwords keep working.
 
 ## 2.1.0 - 2026-11-27
