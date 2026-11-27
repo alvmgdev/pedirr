@@ -1211,32 +1211,6 @@ progress {
   display: grid;
   gap: 8px;
 }
-.user-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 140px auto;
-  background: var(--surface);
-  color: var(--ink);
-  text-decoration: none;
-  border-radius: 6px;
-  padding: 22px;
-  gap: 16px;
-  align-items: center;
-}
-.user-row:hover {
-  background: var(--raised);
-}
-.user-row strong {
-  overflow-wrap: anywhere;
-}
-.user-row span {
-  color: var(--muted);
-}
-.user-row span:last-child {
-  color: var(--accent);
-}
-.user-row span.used-up {
-  color: #ffc4b5;
-}
 .user-controls {
   display: grid;
   gap: 24px;
@@ -1742,16 +1716,6 @@ th {
   .sort-control {
     flex-wrap: wrap;
   }
-  .user-row {
-    grid-template-columns: 1fr auto;
-    padding: 18px;
-  }
-  .user-row strong {
-    grid-column: 1/-1;
-  }
-  .user-row span:last-child {
-    grid-column: 1/-1;
-  }
   .login-page {
     display: block;
   }
@@ -1848,13 +1812,7 @@ th {
   letter-spacing: 0.02em;
   margin: 0 0 8px;
 }
-/* Five columns on wide screens; phones keep the stacked user-row layout. */
-@media (min-width: 651px) {
-  .reseller-row {
-    grid-template-columns: minmax(0, 1fr) 120px 150px 140px auto;
-  }
-}
-.reseller-row .code,
+.record-table .code,
 .address-row code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -1874,17 +1832,6 @@ th {
   overflow-wrap: anywhere;
   color: var(--ink);
   font-size: 15px;
-}
-.reseller-row span.off {
-  color: #ffc4b5;
-}
-@media (min-width: 651px) {
-  .account-row {
-    grid-template-columns: minmax(0, 1fr) 140px 150px 150px 100px auto;
-  }
-  .client-row {
-    grid-template-columns: minmax(0, 1fr) 140px 150px 120px auto;
-  }
 }
 .account-facts {
   display: flex;
@@ -2344,4 +2291,132 @@ th {
   margin: 0 0 4px;
   color: var(--muted);
   font-size: 14px;
+}
+/* Records as a table: headed columns, and each row opens its record. */
+.record-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  margin-top: -8px;
+  font-size: 16px;
+}
+/* Rows are cards, not ruled lines like the deliveries table. */
+.record-table th,
+.record-table td {
+  border-bottom: 0;
+}
+.record-table tbody th {
+  color: var(--ink);
+  font-size: 16px;
+}
+.record-table thead th {
+  padding: 8px 16px 0;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.record-table tbody tr {
+  position: relative;
+  background: var(--surface);
+}
+.record-table tbody tr:hover,
+.record-table tbody tr:focus-within {
+  background: var(--raised);
+}
+.record-table tbody th,
+.record-table td {
+  padding: 20px 16px;
+  text-align: left;
+  vertical-align: middle;
+}
+.record-table tbody th {
+  padding-left: 22px;
+  border-radius: 6px 0 0 6px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.record-table thead th:first-child {
+  padding-left: 22px;
+}
+.record-table td {
+  color: var(--muted);
+}
+.record-table td:last-child {
+  padding-right: 22px;
+  border-radius: 0 6px 6px 0;
+}
+.record-table .used-up,
+.record-table .off {
+  color: #ffc4b5;
+}
+.record-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+/* The link covers its whole row, so any part of the row opens the record. */
+.record-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+}
+.record-link:focus-visible {
+  outline: none;
+}
+.record-link:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Phones: each row becomes a card, with every value under its column's name. */
+@media (max-width: 650px) {
+  .record-table,
+  .record-table tbody,
+  .record-table tbody tr,
+  .record-table tbody th,
+  .record-table td {
+    display: block;
+  }
+  .record-table {
+    margin-top: 0;
+  }
+  .record-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .record-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+    padding: 18px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+  .record-table tbody th,
+  .record-table td,
+  .record-table td:last-child {
+    padding: 0;
+    border-radius: 0;
+  }
+  .record-table tbody th {
+    grid-column: 1/-1;
+  }
+  .record-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0.8;
+  }
 }

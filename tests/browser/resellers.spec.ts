@@ -163,9 +163,7 @@ test("a reseller can be disabled and its administrator given a new password", as
     body: { password: "another-long-password" },
   });
   await page.getByRole("link", { name: "Resellers" }).first().click();
-  await expect(
-    page.getByRole("link", { name: /Fight Club TV.*\/k7x2p\/.*Disabled/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("row", { name: /Fight Club TV.*\/k7x2p\/.*Disabled/ })).toBeVisible();
 });
 
 test("the platform administrator sees every account with its environment", async ({ page }) => {
@@ -238,9 +236,9 @@ test("the platform administrator sees every account with its environment", async
     return json({});
   });
   await page.goto("/admin?tab=users");
-  await expect(page.getByRole("link", { name: /fan@example.invalid.*Platform/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /fan@example.invalid.*Platform/ })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /client@example.invalid.*Fight Club TV/ }),
+    page.getByRole("row", { name: /client@example.invalid.*Fight Club TV/ }),
   ).toBeVisible();
   await page.getByLabel("Environment").selectOption({ label: "Fight Club TV" });
   await expect(page.getByRole("link", { name: /fan@example.invalid/ })).toHaveCount(0);

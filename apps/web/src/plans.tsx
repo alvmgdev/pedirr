@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { api, client, type Item, type Plan, type PlanGrant, type User } from "./api";
-import { ErrorMessage, Loading, PageHeader } from "./ui";
+import { ErrorMessage, Loading, PageHeader, RecordTable } from "./ui";
 
 export const usePlans = (enabled = true) =>
   useQuery({ queryKey: ["plans"], queryFn: () => api<Plan[]>("/admin/plans"), enabled });
@@ -38,15 +38,16 @@ export function Plans() {
       ) : plans.data.length === 0 ? (
         <p className="empty">{t("noPlans")}</p>
       ) : (
-        <div className="user-list">
-          {plans.data.map((plan) => (
-            <Link className="user-row plan-row" key={plan.id} to={`/admin/plans/${plan.id}`}>
-              <strong>{plan.name}</strong>
-              <span>{contentSummary(plan, t)}</span>
-              <span>{t("planUsers", { count: plan.users })}</span>
-            </Link>
-          ))}
-        </div>
+        <RecordTable
+          label={t("plans")}
+          className="plan-table"
+          columns={[t("colName"), t("colContent"), t("colUsers")]}
+          rows={plans.data.map((plan) => ({
+            key: plan.id,
+            to: `/admin/plans/${plan.id}`,
+            cells: [plan.name, contentSummary(plan, t), t("planUsers", { count: plan.users })],
+          }))}
+        />
       )}
     </>
   );

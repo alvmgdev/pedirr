@@ -13,7 +13,7 @@ import {
   PASSWORD_MIN_LENGTH,
 } from "./api";
 import { OptionalLimit } from "./fields";
-import { ErrorMessage, Loading, PageHeader } from "./ui";
+import { ErrorMessage, Loading, PageHeader, RecordTable } from "./ui";
 
 export const useResellers = (enabled = true) =>
   useQuery({
@@ -62,27 +62,34 @@ export function Resellers() {
       ) : resellers.data.length === 0 ? (
         <p className="empty">{t("noResellers")}</p>
       ) : (
-        <div className="user-list">
-          {resellers.data.map((reseller) => (
-            <Link
-              className="user-row reseller-row"
-              key={reseller.id}
-              to={`/admin/resellers/${reseller.id}`}
-            >
-              <strong>{reseller.name}</strong>
-              <span className="code">/{reseller.code}/</span>
-              <span>{reseller.package?.name ?? t("noPackage")}</span>
-              <span>
-                {reseller.maxUsers === null
-                  ? t("clients", { count: reseller.clients })
-                  : t("clientsOf", { count: reseller.clients, max: reseller.maxUsers })}
-              </span>
-              <span className={reseller.active ? undefined : "off"}>
+        <RecordTable
+          label={t("resellers")}
+          className="reseller-table"
+          columns={[
+            t("colName"),
+            t("colAddress"),
+            t("colPackage"),
+            t("colClients"),
+            t("colStatus"),
+          ]}
+          rows={resellers.data.map((reseller) => ({
+            key: reseller.id,
+            to: `/admin/resellers/${reseller.id}`,
+            cells: [
+              reseller.name,
+              <span key="code" className="code">
+                /{reseller.code}/
+              </span>,
+              reseller.package?.name ?? t("noPackage"),
+              reseller.maxUsers === null
+                ? t("clients", { count: reseller.clients })
+                : t("clientsOf", { count: reseller.clients, max: reseller.maxUsers }),
+              <span key="status" className={reseller.active ? undefined : "off"}>
                 {t(reseller.active ? "resellerActive" : "resellerDisabled")}
-              </span>
-            </Link>
-          ))}
-        </div>
+              </span>,
+            ],
+          }))}
+        />
       )}
     </>
   );
@@ -380,15 +387,20 @@ export function Packages() {
       ) : packages.data.length === 0 ? (
         <p className="empty">{t("noPackages")}</p>
       ) : (
-        <div className="user-list">
-          {packages.data.map((pack) => (
-            <Link className="user-row plan-row" key={pack.id} to={`/admin/packages/${pack.id}`}>
-              <strong>{pack.name}</strong>
-              <span>{pack.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage")}</span>
-              <span>{t("packageResellers", { count: pack.resellers })}</span>
-            </Link>
-          ))}
-        </div>
+        <RecordTable
+          label={t("packages")}
+          className="plan-table"
+          columns={[t("colName"), t("colPlans"), t("colResellers")]}
+          rows={packages.data.map((pack) => ({
+            key: pack.id,
+            to: `/admin/packages/${pack.id}`,
+            cells: [
+              pack.name,
+              pack.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage"),
+              t("packageResellers", { count: pack.resellers }),
+            ],
+          }))}
+        />
       )}
     </>
   );
