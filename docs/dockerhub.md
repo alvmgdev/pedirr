@@ -1,15 +1,17 @@
 # Pedirr
 
-Sports content requests for [Sportarr](https://sportarr.net). Users browse the Sportarr Hub catalog, request single events (administrators can also request whole seasons), and Pedirr monitors and searches for them in your Sportarr instance once approved.
+Sports content requests for [Sportarr](https://sportarr.net). Users browse the Sportarr Hub catalog, request single events (administrators can also request whole seasons), and Pedirr monitors and searches for them in your Sportarr instance once approved. One installation can also be resold: resellers get their own address and clients, all served by the same Sportarr.
 
-- Search leagues, teams, seasons and events, with a seven-day upcoming schedule
-- Season and event requests with deduplication, shared subscriptions and availability checks
+- Search leagues, teams, seasons and events, with this week's schedule from a local copy of Hub that the worker keeps up to date
+- Event and season requests with deduplication, shared subscriptions and availability checks
 - Fight cards requested by part (Early Prelims, Prelims, Main Card…), with each user's own status
+- Plans as content packages (whole sports or single leagues), and optional weekly request limits and expiration dates per user
+- Resellers: separate environments at `APP_ORIGIN/<code>/` with their own clients, a package of plans, an optional client limit and their own notification settings, isolated from each other
 - Manual review or automatic approval by role and by user
 - Private issue reports with comments and a resolution workflow
 - Background fulfillment that never changes your existing league monitoring settings
-- Email (SMTP), Discord and Telegram notifications
-- English and Spanish interface; registration closed by default
+- Email (SMTP), Discord and Telegram notifications; one Telegram bot for the platform, with a group or channel per environment
+- English and Spanish interface, dates in each browser's time zone, registration closed by default
 
 Writes to Sportarr require Sportarr 4.1.11 or a later 4.1 release.
 
@@ -143,7 +145,7 @@ Open `APP_ORIGIN`, sign in, and configure Sportarr and notifications from the ad
 
 The Pedirr containers are stateless. All data lives in two named volumes:
 
-- `postgres-data`: users, sessions, requests and history, encrypted settings and notification records. Back this up.
+- `postgres-data`: users, resellers and plans, sessions, requests and history, encrypted settings, notification records and the local copy of Hub's leagues and schedule. Back this up.
 - `redis-data`: queues, caches and rate limits. Pending work is recovered from PostgreSQL if it is lost.
 
 ```sh
@@ -154,11 +156,23 @@ docker compose exec -T postgres pg_dump -U pedirr pedirr > pedirr-$(date +%F).sq
 
 ## Upgrading
 
+Back up the database first (see above), then:
+
 ```sh
 docker compose pull && docker compose up -d
 ```
 
 Migrations run automatically before the API and worker start.
+
+### From 1.x to 2.0
+
+- Existing accounts keep working, and so do their sessions. Administrators become the platform administrators, and users become platform users with no plan or limits, so they can request everything as before.
+- Requests, issues and settings are kept, including the encrypted Sportarr, SMTP and Discord credentials. No new environment variables are needed.
+- Whole seasons can only be requested by administrators; the per-user season permission is gone. Users request single events.
+- Users no longer set a time zone: dates follow each browser's.
+- After the upgrade the worker copies Hub's leagues and the schedule from a week back to two weeks ahead, paced to a share of `HUB_REQUESTS_PER_MINUTE`. Until the copy completes, the catalog reads Hub directly. If Hub is down, the copy is retried every hour.
+- Reseller addresses are paths on the same origin (`APP_ORIGIN/<code>/`), so a reverse proxy that already serves Pedirr needs no change.
+- Telegram, if you set it up, needs outbound HTTPS from the worker to `api.telegram.org`. Pedirr polls the bot only while a group or channel is being linked, so it needs no public address.
 
 ## Health and API
 
