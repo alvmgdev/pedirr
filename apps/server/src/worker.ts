@@ -12,6 +12,7 @@ import { Fulfillment, errorCode } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
 import { LEAGUE_INDEX_EVERY_MS, LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
 import { SCHEDULE_INDEX_JOB, SCHEDULE_WINDOWS, scheduleIndexStale } from "./jobs/schedule-index";
+import { TELEGRAM_POLL_EVERY_MS, TELEGRAM_POLL_JOB } from "./jobs/telegram-poll";
 
 async function main() {
   // Fail at startup rather than on the first search.
@@ -33,10 +34,11 @@ async function main() {
     metadata,
     new SportarrSettings(infrastructure),
   );
-  const notifications = new Notifications(infrastructure, new NotificationSettings(infrastructure));
+  const settings = new NotificationSettings(infrastructure);
+  const notifications = new Notifications(infrastructure, settings);
   const worker = new Worker(
     "pedirr-work",
-    createProcessor(infrastructure, queue, fulfillment, notifications, metadata),
+    createProcessor(infrastructure, queue, fulfillment, notifications, metadata, settings),
     {
       connection,
       concurrency: 1,
@@ -83,6 +85,17 @@ async function main() {
       window === "full" && (await scheduleIndexStale(infrastructure)),
     );
   }
+  // Reads what reaches the platform's Telegram bot to link groups and channels, only while a link
+  // code is pending; otherwise a run is one Redis lookup. It keeps no history of its runs.
+  await queue.upsertJobScheduler(
+    TELEGRAM_POLL_JOB,
+    { every: TELEGRAM_POLL_EVERY_MS },
+    {
+      name: TELEGRAM_POLL_JOB,
+      data: {},
+      opts: { attempts: 1, removeOnComplete: true, removeOnFail: true },
+    },
+  );
   const beat = () =>
     connection
       .set("pedirr:worker:heartbeat", String(Date.now()), "EX", 60)
