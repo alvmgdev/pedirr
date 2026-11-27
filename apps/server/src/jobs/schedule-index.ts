@@ -3,16 +3,18 @@ import { Prisma } from "@prisma/client";
 import { Infrastructure } from "../infrastructure";
 import { MetadataProvider } from "../metadata/provider";
 import { DAY, isoDay, SCHEDULE_SETTING, scheduleCompletedAt } from "../metadata/schedule";
-import { PagedJob, pagedSync, text } from "./paged-sync";
+import { INDEX_CHECK_EVERY_MS, PagedJob, pagedSync, text } from "./paged-sync";
 
 export const SCHEDULE_INDEX_JOB = "schedule-index";
 /**
  * The whole window once a day, and today and tomorrow every hour, since that is where start
  * times and cancellations change most. Only a whole run removes events and makes the copy usable.
+ * The whole window is checked every hour and copied when its last complete copy is a day old, so
+ * a copy that failed is retried within the hour.
  */
 export const SCHEDULE_WINDOWS = {
-  full: { pastDays: 7, futureDays: 14, everyMs: DAY, whole: true },
-  near: { pastDays: 0, futureDays: 1, everyMs: 3600000, whole: false },
+  full: { pastDays: 7, futureDays: 14, everyMs: INDEX_CHECK_EVERY_MS, maxAgeMs: DAY, whole: true },
+  near: { pastDays: 0, futureDays: 1, everyMs: 3600000, maxAgeMs: 0, whole: false },
 } as const;
 type ScheduleJob = PagedJob & { window: keyof typeof SCHEDULE_WINDOWS };
 
@@ -22,7 +24,7 @@ const date = (value: unknown) =>
 /** Whether the whole window should be copied now: never done, or not in the last day. */
 export async function scheduleIndexStale(infrastructure: Infrastructure, now = Date.now()) {
   const at = await scheduleCompletedAt(infrastructure);
-  return at === undefined || now - at > SCHEDULE_WINDOWS.full.everyMs;
+  return at === undefined || now - at > SCHEDULE_WINDOWS.full.maxAgeMs;
 }
 
 /**
@@ -88,6 +90,8 @@ export function indexSchedule(
         });
         return { removed: removed.count };
       },
+      // Today and tomorrow are copied on every run; the whole window only when a day old.
+      ...(window.whole ? { due: () => scheduleIndexStale(infrastructure, now) } : {}),
     },
     job,
     now,

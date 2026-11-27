@@ -7,6 +7,11 @@ import { MetadataItem, MetadataPage } from "../metadata/provider";
 /** Background copies use at most this share of the Hub budget, leaving the rest to people. */
 const BACKGROUND_SHARE = 0.3;
 const LOCK_SECONDS = 7200;
+/**
+ * How often the worker checks whether a daily copy is due. A copy that failed, for example while
+ * Hub was down, is retried within this time instead of the next day.
+ */
+export const INDEX_CHECK_EVERY_MS = 3600000;
 /** One pace for every background copy, so copies running at once never add up past the share. */
 const PACE = "pedirr:index:pace";
 
@@ -32,6 +37,8 @@ type PagedRun = {
   row: (item: MetadataItem, syncedAt: Date) => Prisma.PrismaPromise<unknown>;
   /** Runs after the last page, with the run's start, e.g. to remove what was not seen again. */
   finish: (startedAt: Date, now: number) => Promise<Record<string, unknown>>;
+  /** Whether a new run is due; asked only when a run would start, never for its later pages. */
+  due?: () => Promise<boolean>;
 };
 
 /**
@@ -52,6 +59,9 @@ export async function pagedSync<T extends PagedJob>(
   const lock = `pedirr:index:${run.key}`;
   let { page, startedAt } = job;
   if (page === undefined || startedAt === undefined) {
+    if (run.due && !(await run.due())) {
+      return { skipped: "fresh" as const };
+    }
     page = 1;
     startedAt = now;
     if (!(await redis.set(lock, String(startedAt), "EX", LOCK_SECONDS, "NX"))) {
@@ -71,9 +81,24 @@ export async function pagedSync<T extends PagedJob>(
     });
     return { page, waiting: wait };
   }
-  const result = await run.fetch(page, startedAt);
-  const syncedAt = new Date(now);
-  await infrastructure.db.$transaction(result.items.map((item) => run.row(item, syncedAt)));
+  let result: MetadataPage;
+  try {
+    result = await run.fetch(page, startedAt);
+    const syncedAt = new Date(now);
+    await infrastructure.db.$transaction(result.items.map((item) => run.row(item, syncedAt)));
+  } catch (error) {
+    // A run that fails on its first page has copied nothing: let a retry start at once instead
+    // of leaving the lock to block every attempt for hours.
+    if (page === 1) {
+      await redis.eval(
+        `if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end; return 0`,
+        1,
+        lock,
+        String(startedAt),
+      );
+    }
+    throw error;
+  }
   if (result.page < result.totalPages) {
     await queue.add(
       run.name,

@@ -10,7 +10,8 @@ import { HubProvider } from "./metadata/hub";
 import { SportarrSettings } from "./settings/sportarr";
 import { Fulfillment, errorCode } from "./jobs/fulfillment";
 import { createProcessor } from "./jobs/processor";
-import { LEAGUE_INDEX_EVERY_MS, LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
+import { LEAGUE_INDEX_JOB, leagueIndexStale } from "./jobs/league-index";
+import { INDEX_CHECK_EVERY_MS } from "./jobs/paged-sync";
 import { SCHEDULE_INDEX_JOB, SCHEDULE_WINDOWS, scheduleIndexStale } from "./jobs/schedule-index";
 import { TELEGRAM_POLL_EVERY_MS, TELEGRAM_POLL_JOB } from "./jobs/telegram-poll";
 
@@ -68,10 +69,11 @@ async function main() {
       await queue.add(name, data, { jobId: `${id}-startup-${Date.now()}` });
     }
   }
-  // The league index and the local schedule narrow the catalog to plans and page "upcoming".
+  // The league index and the local schedule narrow the catalog to plans and page "upcoming". The
+  // daily copies are checked every hour and run only when due, so a failed copy recovers quickly.
   await recurring(
     LEAGUE_INDEX_JOB,
-    LEAGUE_INDEX_EVERY_MS,
+    INDEX_CHECK_EVERY_MS,
     LEAGUE_INDEX_JOB,
     {},
     await leagueIndexStale(infrastructure),
