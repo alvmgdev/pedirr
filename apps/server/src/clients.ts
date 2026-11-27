@@ -37,6 +37,7 @@ import {
   ResellerAdmin,
 } from "./auth";
 import { Infrastructure } from "./infrastructure";
+import { withWeeklyUsage } from "./requests/quota";
 import { UserPage } from "./users";
 
 /** What a reseller administrator may set on a client; never the role or approval. */
@@ -143,7 +144,12 @@ export class ClientsService {
       }),
       this.infrastructure.db.user.count({ where }),
     ]);
-    return { items, total, page, pageSize: 50 };
+    return {
+      items: await withWeeklyUsage(this.infrastructure.db, items),
+      total,
+      page,
+      pageSize: 50,
+    };
   }
   async detail(tenantId: string, id: string) {
     const client = await this.infrastructure.db.user.findFirst({

@@ -28,6 +28,7 @@ import { Type } from "class-transformer";
 import * as argon2 from "argon2";
 import { Admin, Credentials, passwordOptions, publicUserSelect, Viewer } from "./auth";
 import { Infrastructure } from "./infrastructure";
+import { withWeeklyUsage } from "./requests/quota";
 import { PLATFORM_TENANT } from "./tenants";
 
 export class UserUpdate {
@@ -137,7 +138,12 @@ export class UsersService {
       }),
       this.infrastructure.db.user.count({ where }),
     ]);
-    return { items, total, page, pageSize: 50 };
+    return {
+      items: await withWeeklyUsage(this.infrastructure.db, items),
+      total,
+      page,
+      pageSize: 50,
+    };
   }
   async detail(id: string) {
     const user = await this.infrastructure.db.user.findUnique({
