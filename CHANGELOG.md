@@ -2,6 +2,10 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- `HUB_TIMEOUT_SECONDS` sets how long a Hub call may take before Pedirr gives up (default 10, as before; 1-120), for when Hub is slow. The lock shared by identical reads and the wait of the reads behind it follow it, so overlapping reads still call Hub once.
+
 ## 2.0.0 - 2026-11-27
 
 Upgrading from 1.x keeps accounts and their sessions, requests, issues and settings, and needs no new environment variables; back up the database first. Administrators become the platform administrators and users become platform users with no plan or limits. Whole seasons are now requested by administrators only, and users no longer set a time zone. See [upgrading from 1.x](https://github.com/alvmgdev/pedirr/blob/main/docs/dockerhub.md#from-1x-to-20).

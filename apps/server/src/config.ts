@@ -24,6 +24,19 @@ export function hubBudget(raw = process.env.HUB_REQUESTS_PER_MINUTE): number {
   return value;
 }
 
+/**
+ * How long a Hub call may take before Pedirr gives up, and the two times tied to it: the lock
+ * that lets one of several identical reads call Hub must outlast the call, or the others would
+ * call too and spend the budget; and those others wait for its result a little longer than it.
+ */
+export function hubTimings(raw = process.env.HUB_TIMEOUT_SECONDS) {
+  const seconds = Number(raw === undefined || raw === "" ? 10 : raw);
+  if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > 120) {
+    throw new Error("Invalid HUB_TIMEOUT_SECONDS");
+  }
+  return { timeoutMs: seconds * 1000, lockSeconds: seconds + 5, waitMs: (seconds + 1) * 1000 };
+}
+
 export function port(): number {
   const value = Number(process.env.PORT ?? 3000);
   if (!Number.isInteger(value) || value < 1 || value > 65535) {

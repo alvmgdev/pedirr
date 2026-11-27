@@ -52,7 +52,14 @@ test("the reported version is the package version", () => {
 });
 
 test("the Hub budget defaults to 20 calls a minute and rejects nonsense", () => {
-  const { hubBudget } = require("../dist/config");
+  const { hubBudget, hubTimings } = require("../dist/config");
+  // The lock outlasts the call and the others wait just past it, whatever the timeout.
+  assert.deepEqual(hubTimings(undefined), { timeoutMs: 10000, lockSeconds: 15, waitMs: 11000 });
+  assert.deepEqual(hubTimings(""), { timeoutMs: 10000, lockSeconds: 15, waitMs: 11000 });
+  assert.deepEqual(hubTimings("20"), { timeoutMs: 20000, lockSeconds: 25, waitMs: 21000 });
+  for (const bad of ["0", "121", "2.5", "ten"]) {
+    assert.throws(() => hubTimings(bad), /HUB_TIMEOUT_SECONDS/);
+  }
   assert.equal(hubBudget(undefined), 20);
   assert.equal(hubBudget("60"), 60);
   for (const value of ["0", "1001", "1.5", "lots"]) {
