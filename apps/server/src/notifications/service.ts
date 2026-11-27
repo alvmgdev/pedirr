@@ -4,6 +4,7 @@ import { Infrastructure } from "../infrastructure";
 import { NotificationConfig, NotificationSettings } from "../settings/notifications";
 import { PLATFORM_TENANT } from "../tenants";
 import { DiscordChannel, EmailChannel, NotificationChannel, renderNotice } from "./channels";
+import { TelegramChannel } from "./telegram";
 import { errorCode } from "../jobs/fulfillment";
 import { required } from "../config";
 import { OutboxEvent } from "@prisma/client";
@@ -36,6 +37,7 @@ export class Notifications {
     private readonly settings: NotificationSettings,
     private readonly email: NotificationChannel = new EmailChannel(),
     private readonly discord: NotificationChannel = new DiscordChannel(),
+    private readonly telegram: NotificationChannel = new TelegramChannel(),
   ) {}
   async run(eventId: string) {
     const { db, redis } = this.infrastructure;
@@ -58,8 +60,14 @@ export class Notifications {
     for (const tenantId of tenants) {
       configs.set(tenantId, await this.settings.configuration(tenantId));
     }
+    // Every environment posts to Telegram with the platform's bot; without one, nobody does.
+    const telegramToken = [...configs.values()].some(
+      (config) => config.telegramEnabled && config.telegramChatId,
+    )
+      ? (configs.get(PLATFORM_TENANT) ?? (await this.settings.configuration())).telegramToken
+      : "";
     const deliveries: {
-      channel: "email" | "discord";
+      channel: "email" | "discord" | "telegram";
       recipient: string;
       locale: string;
       tenantId: string;
@@ -87,6 +95,22 @@ export class Notifications {
           channel: "discord",
           recipient: createHash("sha256").update(config.discordWebhook).digest("hex"),
           locale: config.discordLocale,
+          tenantId,
+        });
+      }
+      // A linked Telegram group or channel hears what a Discord channel would.
+      if (
+        channels.has(tenantId) &&
+        telegramToken &&
+        config.telegramEnabled &&
+        config.telegramChatId &&
+        event.type !== "issue.updated" &&
+        event.createdAt >= new Date(config.telegramSince)
+      ) {
+        deliveries.push({
+          channel: "telegram",
+          recipient: config.telegramChatId,
+          locale: config.telegramLocale,
           tenantId,
         });
       }
@@ -132,8 +156,9 @@ export class Notifications {
           where: { id: record.id },
           data: { status: "sending", attempts: { increment: 1 }, lastError: null },
         });
-        await (target.channel === "email" ? this.email : this.discord).send(
-          configs.get(target.tenantId)!,
+        const channel = { email: this.email, discord: this.discord, telegram: this.telegram };
+        await channel[target.channel].send(
+          { ...configs.get(target.tenantId)!, telegramToken },
           target.recipient,
           renderNotice(target.locale, title, status, origin + prefixes.get(target.tenantId) + path),
           record.id,
