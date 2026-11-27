@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 2.1.1 - 2026-11-27
 
 - The page has a favicon: the brand mark, also as an Apple touch icon.
 - New README screenshots with example accounts and real Sportarr Hub catalog data, including notifications and a reseller's panel.
