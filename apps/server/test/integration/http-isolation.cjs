@@ -91,6 +91,8 @@ const ROUTES = {
     "GET admin/settings/notifications",
     "PUT admin/settings/notifications",
     "GET admin/settings/notifications/deliveries",
+    "POST admin/settings/notifications/telegram/link",
+    "DELETE admin/settings/notifications/telegram/link",
   ],
   // A reseller's administrator only, always for its own reseller.
   reseller: [
@@ -103,6 +105,8 @@ const ROUTES = {
     "GET reseller/notifications",
     "PUT reseller/notifications",
     "GET reseller/notifications/deliveries",
+    "POST reseller/notifications/telegram/link",
+    "DELETE reseller/notifications/telegram/link",
   ],
 };
 

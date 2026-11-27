@@ -5,6 +5,8 @@ import { dispatch } from "./dispatch";
 import { Fulfillment } from "./fulfillment";
 import { indexLeagues, LEAGUE_INDEX_JOB } from "./league-index";
 import { indexSchedule, SCHEDULE_INDEX_JOB } from "./schedule-index";
+import { pollTelegram, TELEGRAM_POLL_JOB } from "./telegram-poll";
+import { NotificationSettings } from "../settings/notifications";
 import { MetadataProvider } from "../metadata/provider";
 
 export function createProcessor(
@@ -13,6 +15,7 @@ export function createProcessor(
   fulfillment: Fulfillment,
   notifications: Notifications,
   metadata: MetadataProvider,
+  settings?: NotificationSettings,
 ) {
   return async (job: Job) => {
     if (job.name === "dispatch") {
@@ -28,6 +31,9 @@ export function createProcessor(
     }
     if (job.name === LEAGUE_INDEX_JOB) {
       return indexLeagues(infrastructure, metadata, queue, job.data);
+    }
+    if (job.name === TELEGRAM_POLL_JOB && settings) {
+      return pollTelegram(infrastructure, settings);
     }
     if (job.name === SCHEDULE_INDEX_JOB) {
       return indexSchedule(infrastructure, metadata, queue, job.data);

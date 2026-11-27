@@ -148,6 +148,11 @@ const schemas: Record<string, SchemaObject> = {
     admin: nullable(object({ id: uuid, email: string })),
     clients: integer,
   }),
+  TelegramLink: object({
+    code: { ...string, description: 'Post "/link CODE" in the group or channel to link.' },
+    bot: { ...string, description: "The bot to add there as an administrator first." },
+    expiresInSeconds: integer,
+  }),
   Ok: object({ ok: { type: "boolean", enum: [true] } }),
   CsrfToken: object({
     token: {
@@ -360,11 +365,30 @@ const schemas: Record<string, SchemaObject> = {
     discordSince: date,
     hasSmtpPassword: boolean,
     hasDiscordWebhook: boolean,
+    telegramEnabled: boolean,
+    telegramLocale: enumeration("en", "es"),
+    telegramSince: date,
+    hasTelegramToken: {
+      ...boolean,
+      description: "The platform's bot token is set; platform only.",
+    },
+    telegramBot: {
+      ...nullable(string),
+      description: "The platform bot's @username, which every environment posts with.",
+    },
+    telegramChat: {
+      ...nullable(object({ title: string })),
+      description: "The linked Telegram group or channel.",
+    },
+    telegramLinkPending: {
+      ...boolean,
+      description: "A link code was issued and is neither used nor expired.",
+    },
   }),
   NotificationDelivery: object({
     id: uuid,
     eventId: uuid,
-    channel: enumeration("email", "discord"),
+    channel: enumeration("email", "discord", "telegram"),
     recipient: {
       type: "string",
       description: "Email address or SHA-256 webhook fingerprint; never a webhook URL.",
@@ -476,6 +500,10 @@ const responses: Record<string, Schema> = {
   "GET reseller/notifications": ref("NotificationSettingsResult"),
   "PUT reseller/notifications": ref("NotificationSettingsResult"),
   "GET reseller/notifications/deliveries": array(ref("NotificationDelivery")),
+  "POST admin/settings/notifications/telegram/link": ref("TelegramLink"),
+  "DELETE admin/settings/notifications/telegram/link": ref("NotificationSettingsResult"),
+  "POST reseller/notifications/telegram/link": ref("TelegramLink"),
+  "DELETE reseller/notifications/telegram/link": ref("NotificationSettingsResult"),
 };
 
 export function completeOpenApi(document: OpenAPIObject, origin: string): OpenAPIObject {
