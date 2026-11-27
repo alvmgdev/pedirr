@@ -19,4 +19,5 @@ jobs:
           password: ${{ secrets.DOCKERHUB_DESCRIPTION_TOKEN }}
           repository: ${{ vars.DOCKERHUB_USERNAME }}/pedirr
           readme-filepath: docs/dockerhub.md
-          short-description: "Sports content requests for Sportarr: browse the Hub catalog, request seasons or events, and fulfill them automatically."
+          # Docker Hub keeps at most 100 bytes; longer text is cut mid-sentence.
+          short-description: "Sports content requests for Sportarr: request Hub events and seasons, fulfilled automatically."
