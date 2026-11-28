@@ -6,6 +6,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 
 - Request cards say who asked first and when: the platform administrator sees the person, their environment and how many more follow; a reseller's administrator sees its own first client and the date they asked, never other environments; users only see the date.
 - The platform administrator can narrow the request list to one environment.
+- A request's detail groups its followers by environment for the platform administrator; users see when they asked instead of how many people follow, and their follower counts only include themselves.
 
 ## 2.3.0 - 2026-11-27
 

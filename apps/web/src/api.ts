@@ -212,8 +212,8 @@ export type RequestRecord = {
   _count: { subscribers: number };
   /** Requested parts; empty when the whole event was requested. */
   parts: { name: string; status: string; rejectionReason: string | null }[];
-  /** The viewer's own parts and status when they follow the request. */
-  subscription: { parts: string[]; status: string } | null;
+  /** The viewer's own parts and status when they follow the request; details add the date. */
+  subscription: { parts: string[]; status: string; createdAt?: string } | null;
   /**
    * Lists only: the first follower the viewer may see and when they asked. Users get just
    * the date; the environment is only named for platform administrators.
@@ -225,7 +225,16 @@ export type RequestRecord = {
     others: number;
   } | null;
   /** Administrators only: who follows the request, with their parts and status. */
-  subscribers?: { email: string; parts: string[]; status: string; createdAt: string }[] | null;
+  subscribers?:
+    | {
+        email: string;
+        /** Platform administrators only: the follower's environment. */
+        environment?: { code: string | null; name: string } | null;
+        parts: string[];
+        status: string;
+        createdAt: string;
+      }[]
+    | null;
   history?: {
     id: string;
     action: string;
