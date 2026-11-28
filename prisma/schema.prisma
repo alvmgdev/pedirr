@@ -36,6 +36,8 @@ model User {
   role               Role                @default(USER)
   active             Boolean             @default(true)
   locale             String              @default("en")
+  // Colour theme: "dark", "light" or "system" (follows the device).
+  theme              String              @default("dark")
   timezone           String              @default("UTC")
   autoApprove        Boolean?
   // New requests a user may start in any rolling seven days; null means no limit.

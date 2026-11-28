@@ -256,3 +256,15 @@ test("passwords need at least 8 characters", async () => {
   assert.equal(errors(PasswordUpdate, { currentPassword: "old", newPassword: "1234567" }), 1);
   assert.equal(errors(PasswordUpdate, { currentPassword: "old", newPassword: "12345678" }), 0);
 });
+
+test("profiles accept the three colour themes and nothing else", () => {
+  const { plainToInstance } = require("class-transformer");
+  const { validateSync } = require("class-validator");
+  const { ProfileUpdate } = require("../dist/auth");
+  const errors = (value) => validateSync(plainToInstance(ProfileUpdate, value)).length;
+  for (const theme of ["dark", "light", "system"]) {
+    assert.equal(errors({ theme }), 0);
+  }
+  assert.equal(errors({ theme: "blue" }), 1);
+  assert.equal(errors({}), 0);
+});
