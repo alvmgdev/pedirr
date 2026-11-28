@@ -108,6 +108,10 @@ const schemas: Record<string, SchemaObject> = {
     role: enumeration("ADMIN", "RESELLER", "USER"),
     active: boolean,
     locale: enumeration("en", "es"),
+    theme: {
+      ...enumeration("dark", "light", "system"),
+      description: "Colour theme; system follows the device.",
+    },
     timezone: string,
     autoApprove: nullable(boolean),
     weeklyRequestLimit: {

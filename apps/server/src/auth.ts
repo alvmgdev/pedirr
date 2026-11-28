@@ -38,6 +38,7 @@ export const publicUserSelect = {
   role: true,
   active: true,
   locale: true,
+  theme: true,
   timezone: true,
   autoApprove: true,
   weeklyRequestLimit: true,
@@ -52,6 +53,7 @@ export type Viewer = {
   role: "ADMIN" | "RESELLER" | "USER";
   active: boolean;
   locale: string;
+  theme: string;
   timezone: string;
   autoApprove: boolean | null;
   weeklyRequestLimit: number | null;
@@ -93,6 +95,10 @@ export class ProfileUpdate {
   @ValidateIf((_, value) => value !== undefined)
   @IsIn(["en", "es"])
   locale?: string;
+  @ApiProperty({ enum: ["dark", "light", "system"], required: false })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsIn(["dark", "light", "system"])
+  theme?: string;
   @ApiProperty({ required: false })
   @ValidateIf((_, value) => value !== undefined)
   @IsString()
