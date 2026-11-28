@@ -2,6 +2,11 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
+## Unreleased
+
+- Request cards say who asked first and when: the platform administrator sees the person, their environment and how many more follow; a reseller's administrator sees its own first client and the date they asked, never other environments; users only see the date.
+- The platform administrator can narrow the request list to one environment.
+
 ## 2.3.0 - 2026-11-27
 
 - Administration lists (users, a reseller's clients, resellers, plans and packages) are tables with column headers; the whole row still opens the record, and on phones each row stacks its values under their column names.

@@ -214,6 +214,16 @@ export type RequestRecord = {
   parts: { name: string; status: string; rejectionReason: string | null }[];
   /** The viewer's own parts and status when they follow the request. */
   subscription: { parts: string[]; status: string } | null;
+  /**
+   * Lists only: the first follower the viewer may see and when they asked. Users get just
+   * the date; the environment is only named for platform administrators.
+   */
+  requestedBy?: {
+    at: string;
+    email: string | null;
+    environment: { code: string | null; name: string } | null;
+    others: number;
+  } | null;
   /** Administrators only: who follows the request, with their parts and status. */
   subscribers?: { email: string; parts: string[]; status: string; createdAt: string }[] | null;
   history?: {

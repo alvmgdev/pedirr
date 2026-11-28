@@ -22,15 +22,46 @@ import {
   timezoneOf,
 } from "./ui";
 import { ReportIssue, RequestIssueList } from "./issues";
-export function Requests() {
+import { useResellers } from "./resellers";
+/** Who asked first and when: "Requested by ana@… (Fight Club TV) · Nov 12 · +2 more". */
+function RequestedBy({ request, user }: { request: RequestRecord; user: User }) {
+  const { t, i18n } = useTranslation();
+  const by = request.requestedBy;
+  if (!by) {
+    return null;
+  }
+  const date = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: "medium",
+    timeZone: timezoneOf(user),
+  }).format(new Date(by.at));
+  if (!by.email) {
+    return <p className="requested-by">{t("requestedOn", { date })}</p>;
+  }
+  return (
+    <p className="requested-by">
+      {by.environment
+        ? t("requestedByIn", { email: by.email, environment: by.environment.name, date })
+        : t("requestedByLine", { email: by.email, date })}
+      {by.others > 0 && <span className="others"> {t("andOthers", { count: by.others })}</span>}
+    </p>
+  );
+}
+export function Requests({ user }: { user: User }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const page = Number(params.get("page") ?? 1) || 1;
   const status = params.get("status") ?? "";
   const mine = params.get("mine") === "true";
+  // Platform administrators may narrow the list to one environment.
+  const platformAdmin = user.role === "ADMIN";
+  const environment = platformAdmin ? (params.get("environment") ?? "") : "";
+  const resellers = useResellers(platformAdmin);
   const query = new URLSearchParams({ page: String(page), mine: String(mine) });
   if (status) {
     query.set("status", status);
+  }
+  if (environment) {
+    query.set("environment", environment);
   }
   const result = useQuery({
     queryKey: ["requests", query.toString()],
@@ -57,6 +88,23 @@ export function Requests() {
           ))}
         </nav>
         <div className="filters">
+          {platformAdmin && (
+            <label className="inline-filter">
+              {t("environment")}
+              <select
+                value={environment}
+                onChange={(event) => change({ environment: event.currentTarget.value })}
+              >
+                <option value="">{t("allEnvironments")}</option>
+                <option value="platform">{t("platform")}</option>
+                {resellers.data?.map((reseller) => (
+                  <option key={reseller.id} value={reseller.id}>
+                    {reseller.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="check">
             <input
               type="checkbox"
@@ -88,6 +136,7 @@ export function Requests() {
                 {request.subscription?.parts.length ? (
                   <p>{request.subscription.parts.join(", ")}</p>
                 ) : null}
+                <RequestedBy request={request} user={user} />
               </div>
               <Status value={request.subscription?.status ?? request.status} />
             </Link>

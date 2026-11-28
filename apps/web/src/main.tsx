@@ -85,7 +85,7 @@ function App() {
               path="/catalog/:kind/:id"
               element={<CatalogDetail key={location.pathname} user={user} />}
             />
-            <Route path="/requests" element={<Requests />} />
+            <Route path="/requests" element={<Requests user={user} />} />
             <Route
               path="/requests/:id"
               element={<RequestDetail key={location.pathname} user={user} />}

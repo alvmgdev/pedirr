@@ -1006,6 +1006,15 @@ form > .button-link {
   color: var(--muted);
   margin: 0;
 }
+.request-row .requested-by {
+  margin-top: 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.request-row .requested-by .others {
+  color: var(--ink);
+  font-weight: 600;
+}
 .request-row .status {
   grid-column: 2;
   justify-self: start;
