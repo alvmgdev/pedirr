@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,6 +20,9 @@ import {
   PartsDialog,
   Status,
   timezoneOf,
+  SearchBox,
+  SortSelect,
+  useListParams,
 } from "./ui";
 import { ReportIssue, RequestIssueList } from "./issues";
 import { useResellers } from "./resellers";
@@ -61,18 +64,16 @@ function RequestedBy({ request, user }: { request: RequestRecord; user: User }) 
 }
 export function Requests({ user }: { user: User }) {
   const { t } = useTranslation();
-  const [params, setParams] = useSearchParams();
-  const page = Number(params.get("page") ?? 1) || 1;
-  const status = params.get("status") ?? "";
-  const mine = params.get("mine") === "true";
+  const list = useListParams();
+  const page = list.page;
+  const status = list.get("status");
+  const mine = list.get("mine") === "true";
   // Platform administrators may narrow the list to one environment.
   const platformAdmin = user.role === "ADMIN";
-  const environment = platformAdmin ? (params.get("environment") ?? "") : "";
+  const environment = platformAdmin ? list.get("environment") : "";
   const resellers = useResellers(platformAdmin);
-  const query = new URLSearchParams({ page: String(page), mine: String(mine) });
-  if (status) {
-    query.set("status", status);
-  }
+  const query = new URLSearchParams(list.query(["status", "q", "order"]));
+  query.set("mine", String(mine));
   if (environment) {
     query.set("environment", environment);
   }
@@ -80,9 +81,9 @@ export function Requests({ user }: { user: User }) {
     queryKey: ["requests", query.toString()],
     queryFn: () => api<{ items: RequestRecord[]; total: number }>("/requests?" + query),
     refetchInterval: 30000,
+    placeholderData: (previous) => previous,
   });
-  const change = (values: Record<string, string>) =>
-    setParams({ ...Object.fromEntries(params), page: "1", ...values });
+  const change = list.set;
   return (
     <>
       <PageHeader title={t("requests")}>
@@ -101,6 +102,18 @@ export function Requests({ user }: { user: User }) {
           ))}
         </nav>
         <div className="filters">
+          <SearchBox
+            value={list.get("q")}
+            label={t("searchTitle")}
+            onSearch={(text) => change({ q: text })}
+          />
+          <SortSelect
+            list={list}
+            sorts={[
+              ["", "", "sortNewest"],
+              ["", "asc", "sortOldest"],
+            ]}
+          />
           {platformAdmin && (
             <label className="inline-filter">
               {t("environment")}
@@ -122,7 +135,7 @@ export function Requests({ user }: { user: User }) {
             <input
               type="checkbox"
               checked={mine}
-              onChange={(event) => change({ mine: String(event.target.checked) })}
+              onChange={(event) => change({ mine: event.target.checked ? "true" : "" })}
             />
             {t("mine")}
           </label>
@@ -154,13 +167,21 @@ export function Requests({ user }: { user: User }) {
               <Status value={request.subscription?.status ?? request.status} />
             </Link>
           ))}
-          {!result.data?.items.length && <p className="empty">{t("requestEmpty")}</p>}
+          {!result.data?.items.length && (
+            <p className="empty">
+              {t(
+                ["q", "status", "mine", "environment"].some((key) => list.get(key))
+                  ? "noMatches"
+                  : "requestEmpty",
+              )}
+            </p>
+          )}
         </div>
       )}
       <Pager
         page={page}
         more={page * 30 < (result.data?.total ?? 0)}
-        onChange={(page) => setParams({ ...Object.fromEntries(params), page: String(page) })}
+        onChange={(page) => change({ page: String(page) })}
       />
     </>
   );

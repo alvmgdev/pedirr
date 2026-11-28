@@ -320,6 +320,105 @@ const SORTS = [
   ["expires", "asc", "sortExpiring"],
 ] as const;
 /**
+ * A list's search box, its filters (children) and "Clear filters", which empties `clear`.
+ * Every list of records uses it, so they all look and behave alike.
+ */
+export function ListToolbar({
+  list,
+  searchLabel,
+  clear,
+  children,
+}: {
+  list: ReturnType<typeof useListParams>;
+  searchLabel: string;
+  clear: string[];
+  children?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const filtered = clear.some((key) => list.get(key));
+  return (
+    <div className="list-toolbar record-filters">
+      <SearchBox
+        value={list.get("q")}
+        label={searchLabel}
+        onSearch={(text) => list.set({ q: text })}
+      />
+      <div className="filters">
+        {children}
+        {filtered && (
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => list.set(Object.fromEntries(clear.map((key) => [key, ""])))}
+          >
+            {t("clearFilters")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+/** A labelled select that writes one key of the list's state. */
+export function FilterSelect({
+  list,
+  name,
+  label,
+  options,
+}: {
+  list: ReturnType<typeof useListParams>;
+  name: string;
+  label: string;
+  options: [value: string, label: string][];
+}) {
+  return (
+    <label className="inline-filter">
+      {label}
+      <select
+        value={list.get(name)}
+        onChange={(event) => list.set({ [name]: event.currentTarget.value })}
+      >
+        {options.map(([value, text]) => (
+          <option key={value} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+/**
+ * An order select over `sorts`, each [sort, order, label]; the first is the default and is
+ * written as empty keys, so default views keep a clean address.
+ */
+export function SortSelect({
+  list,
+  sorts,
+}: {
+  list: ReturnType<typeof useListParams>;
+  sorts: readonly (readonly [sort: string, order: string, label: string])[];
+}) {
+  const { t } = useTranslation();
+  const current = `${list.get("sort")}:${list.get("order")}`;
+  return (
+    <label className="inline-filter">
+      {t("sortBy")}
+      <select
+        value={sorts.some(([sort, order]) => `${sort}:${order}` === current) ? current : ":"}
+        onChange={(event) => {
+          const [sort, order] = event.currentTarget.value.split(":");
+          list.set({ sort, order });
+        }}
+      >
+        {sorts.map(([sort, order, label]) => (
+          <option key={label} value={`${sort}:${order}`}>
+            {t(label)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+/**
  * Search, filters and order for an account list (users or a reseller's clients). `extra`
  * holds filters only one list has, such as the environment or the role.
  */
@@ -333,82 +432,76 @@ export function AccountFilters({
   extra?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const sortValue = `${list.get("sort")}:${list.get("order")}`;
-  const filtered = ["q", "status", "plan", "tenant", "role"].some((key) => list.get(key));
   return (
-    <div className="list-toolbar account-filters">
-      <SearchBox
-        value={list.get("q")}
-        label={t("searchEmail")}
-        onSearch={(text) => list.set({ q: text })}
+    <ListToolbar
+      list={list}
+      searchLabel={t("searchEmail")}
+      clear={["q", "status", "plan", "tenant", "role"]}
+    >
+      {extra}
+      <FilterSelect
+        list={list}
+        name="status"
+        label={t("colStatus")}
+        options={[
+          ["", t("anyStatus")],
+          ["active", t("statusActive")],
+          ["inactive", t("inactive")],
+          ["expired", t("expired")],
+        ]}
       />
-      <div className="filters">
-        {extra}
-        <label className="inline-filter">
-          {t("colStatus")}
-          <select
-            value={list.get("status")}
-            onChange={(event) => list.set({ status: event.currentTarget.value })}
-          >
-            <option value="">{t("anyStatus")}</option>
-            <option value="active">{t("statusActive")}</option>
-            <option value="inactive">{t("inactive")}</option>
-            <option value="expired">{t("expired")}</option>
-          </select>
-        </label>
-        <label className="inline-filter">
-          {t("plan")}
-          <select
-            value={list.get("plan")}
-            onChange={(event) => list.set({ plan: event.currentTarget.value })}
-          >
-            <option value="">{t("anyPlan")}</option>
-            <option value="none">{t("noPlanShort")}</option>
-            {plans.map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="inline-filter">
-          {t("sortBy")}
-          <select
-            value={
-              SORTS.some(([sort, order]) => `${sort}:${order}` === sortValue) ? sortValue : ":"
-            }
-            onChange={(event) => {
-              const [sort, order] = event.currentTarget.value.split(":");
-              list.set({ sort, order });
-            }}
-          >
-            {SORTS.map(([sort, order, label]) => (
-              <option key={label} value={`${sort}:${order}`}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {filtered && (
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => list.set({ q: "", status: "", plan: "", tenant: "", role: "" })}
-          >
-            {t("clearFilters")}
-          </button>
-        )}
-      </div>
-    </div>
+      <FilterSelect
+        list={list}
+        name="plan"
+        label={t("plan")}
+        options={[
+          ["", t("anyPlan")],
+          ["none", t("noPlanShort")],
+          ...plans.map((plan): [string, string] => [plan.id, plan.name]),
+        ]}
+      />
+      <SortSelect list={list} sorts={SORTS} />
+    </ListToolbar>
   );
 }
-/** Clickable headers for an account list: email and expiration. */
-export const accountSort = (list: ReturnType<typeof useListParams>): RecordSort => ({
-  key: list.get("sort") || "email",
+/**
+ * Filters and orders a short list in the browser from the list's state: `q` against
+ * `text`, each filter key against its test, and `sort`/`order` with `sorts` (the first is
+ * the default). Long lists are filtered by the server instead.
+ */
+export function localList<T>(
+  items: T[],
+  list: ReturnType<typeof useListParams>,
+  {
+    text,
+    filters = {},
+    sorts,
+  }: {
+    text: (item: T) => string;
+    filters?: Record<string, (item: T, value: string) => boolean>;
+    sorts: Record<string, (a: T, b: T) => number>;
+  },
+) {
+  const q = list.get("q").toLocaleLowerCase();
+  const keys = Object.keys(sorts);
+  const compare = sorts[list.get("sort")] ?? sorts[keys[0]];
+  const direction = list.get("order") === "desc" ? -1 : 1;
+  return items
+    .filter((item) => !q || text(item).toLocaleLowerCase().includes(q))
+    .filter((item) =>
+      Object.entries(filters).every(([key, test]) => !list.get(key) || test(item, list.get(key))),
+    )
+    .sort((a, b) => direction * compare(a, b));
+}
+/** Header sorting over a list's state; `first` is the default key, kept out of the address. */
+export const listSort = (list: ReturnType<typeof useListParams>, first: string): RecordSort => ({
+  key: list.get("sort") || first,
   order: list.get("order") === "desc" ? "desc" : "asc",
   onChange: (sort, order) =>
-    list.set({ sort: sort === "email" ? "" : sort, order: order === "asc" ? "" : order }),
+    list.set({ sort: sort === first ? "" : sort, order: order === "asc" ? "" : order }),
 });
+/** Clickable headers for an account list: email and expiration. */
+export const accountSort = (list: ReturnType<typeof useListParams>) => listSort(list, "email");
 /** A search field that updates the list a moment after typing stops. */
 export function SearchBox({
   value,

@@ -13,7 +13,17 @@ import {
   PASSWORD_MIN_LENGTH,
 } from "./api";
 import { OptionalLimit } from "./fields";
-import { ErrorMessage, Loading, PageHeader, RecordTable } from "./ui";
+import {
+  ErrorMessage,
+  Loading,
+  PageHeader,
+  RecordTable,
+  ListToolbar,
+  FilterSelect,
+  listSort,
+  localList,
+  useListParams,
+} from "./ui";
 
 export const useResellers = (enabled = true) =>
   useQuery({
@@ -47,6 +57,20 @@ const maxUsers = (data: FormData) =>
 export function Resellers() {
   const { t } = useTranslation();
   const resellers = useResellers();
+  const packages = usePackages();
+  const list = useListParams();
+  const shown = localList(resellers.data ?? [], list, {
+    text: (reseller) => `${reseller.name} ${reseller.code} ${reseller.admin?.email ?? ""}`,
+    filters: {
+      status: (reseller, value) => reseller.active === (value === "active"),
+      package: (reseller, value) =>
+        value === "none" ? reseller.package === null : reseller.package?.id === value,
+    },
+    sorts: {
+      name: (a, b) => a.name.localeCompare(b.name),
+      clients: (a, b) => a.clients - b.clients || a.name.localeCompare(b.name),
+    },
+  });
   return (
     <>
       <div className="content-toolbar">
@@ -62,34 +86,67 @@ export function Resellers() {
       ) : resellers.data.length === 0 ? (
         <p className="empty">{t("noResellers")}</p>
       ) : (
-        <RecordTable
-          label={t("resellers")}
-          className="reseller-table"
-          columns={[
-            t("colName"),
-            t("colAddress"),
-            t("colPackage"),
-            t("colClients"),
-            t("colStatus"),
-          ]}
-          rows={resellers.data.map((reseller) => ({
-            key: reseller.id,
-            to: `/admin/resellers/${reseller.id}`,
-            cells: [
-              reseller.name,
-              <span key="code" className="code">
-                /{reseller.code}/
-              </span>,
-              reseller.package?.name ?? t("noPackage"),
-              reseller.maxUsers === null
-                ? t("clients", { count: reseller.clients })
-                : t("clientsOf", { count: reseller.clients, max: reseller.maxUsers }),
-              <span key="status" className={reseller.active ? undefined : "off"}>
-                {t(reseller.active ? "resellerActive" : "resellerDisabled")}
-              </span>,
-            ],
-          }))}
-        />
+        <>
+          <ListToolbar
+            list={list}
+            searchLabel={t("searchReseller")}
+            clear={["q", "status", "package"]}
+          >
+            <FilterSelect
+              list={list}
+              name="status"
+              label={t("colStatus")}
+              options={[
+                ["", t("anyStatus")],
+                ["active", t("resellerActive")],
+                ["disabled", t("resellerDisabled")],
+              ]}
+            />
+            <FilterSelect
+              list={list}
+              name="package"
+              label={t("colPackage")}
+              options={[
+                ["", t("anyPackage")],
+                ["none", t("noPackage")],
+                ...(packages.data ?? []).map((pack): [string, string] => [pack.id, pack.name]),
+              ]}
+            />
+          </ListToolbar>
+          {shown.length === 0 ? (
+            <p className="empty">{t("noMatches")}</p>
+          ) : (
+            <RecordTable
+              label={t("resellers")}
+              className="reseller-table"
+              sort={listSort(list, "name")}
+              columns={[
+                { label: t("colName"), sort: "name" },
+                t("colAddress"),
+                t("colPackage"),
+                { label: t("colClients"), sort: "clients" },
+                t("colStatus"),
+              ]}
+              rows={shown.map((reseller) => ({
+                key: reseller.id,
+                to: `/admin/resellers/${reseller.id}`,
+                cells: [
+                  reseller.name,
+                  <span key="code" className="code">
+                    /{reseller.code}/
+                  </span>,
+                  reseller.package?.name ?? t("noPackage"),
+                  reseller.maxUsers === null
+                    ? t("clients", { count: reseller.clients })
+                    : t("clientsOf", { count: reseller.clients, max: reseller.maxUsers }),
+                  <span key="status" className={reseller.active ? undefined : "off"}>
+                    {t(reseller.active ? "resellerActive" : "resellerDisabled")}
+                  </span>,
+                ],
+              }))}
+            />
+          )}
+        </>
       )}
     </>
   );
@@ -372,6 +429,14 @@ function ResellerEditor({ reseller }: { reseller: Reseller }) {
 export function Packages() {
   const { t } = useTranslation();
   const packages = usePackages();
+  const list = useListParams();
+  const shown = localList(packages.data ?? [], list, {
+    text: (pack) => `${pack.name} ${pack.plans.map((plan) => plan.name).join(" ")}`,
+    sorts: {
+      name: (a, b) => a.name.localeCompare(b.name),
+      resellers: (a, b) => a.resellers - b.resellers || a.name.localeCompare(b.name),
+    },
+  });
   return (
     <>
       <div className="content-toolbar">
@@ -387,20 +452,32 @@ export function Packages() {
       ) : packages.data.length === 0 ? (
         <p className="empty">{t("noPackages")}</p>
       ) : (
-        <RecordTable
-          label={t("packages")}
-          className="plan-table"
-          columns={[t("colName"), t("colPlans"), t("colResellers")]}
-          rows={packages.data.map((pack) => ({
-            key: pack.id,
-            to: `/admin/packages/${pack.id}`,
-            cells: [
-              pack.name,
-              pack.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage"),
-              t("packageResellers", { count: pack.resellers }),
-            ],
-          }))}
-        />
+        <>
+          <ListToolbar list={list} searchLabel={t("searchName")} clear={["q"]} />
+          {shown.length === 0 ? (
+            <p className="empty">{t("noMatches")}</p>
+          ) : (
+            <RecordTable
+              label={t("packages")}
+              className="plan-table"
+              sort={listSort(list, "name")}
+              columns={[
+                { label: t("colName"), sort: "name" },
+                t("colPlans"),
+                { label: t("colResellers"), sort: "resellers" },
+              ]}
+              rows={shown.map((pack) => ({
+                key: pack.id,
+                to: `/admin/packages/${pack.id}`,
+                cells: [
+                  pack.name,
+                  pack.plans.map((plan) => plan.name).join(", ") || t("noPlansInPackage"),
+                  t("packageResellers", { count: pack.resellers }),
+                ],
+              }))}
+            />
+          )}
+        </>
       )}
     </>
   );

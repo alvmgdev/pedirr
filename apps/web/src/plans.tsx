@@ -4,7 +4,16 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { api, client, type Item, type Plan, type PlanGrant, type User } from "./api";
-import { ErrorMessage, Loading, PageHeader, RecordTable } from "./ui";
+import {
+  ErrorMessage,
+  Loading,
+  PageHeader,
+  RecordTable,
+  ListToolbar,
+  listSort,
+  localList,
+  useListParams,
+} from "./ui";
 
 export const usePlans = (enabled = true) =>
   useQuery({ queryKey: ["plans"], queryFn: () => api<Plan[]>("/admin/plans"), enabled });
@@ -23,6 +32,14 @@ function contentSummary(plan: Plan, t: TFunction) {
 export function Plans() {
   const { t } = useTranslation();
   const plans = usePlans();
+  const list = useListParams();
+  const shown = localList(plans.data ?? [], list, {
+    text: (plan) => plan.name,
+    sorts: {
+      name: (a, b) => a.name.localeCompare(b.name),
+      users: (a, b) => a.users - b.users || a.name.localeCompare(b.name),
+    },
+  });
   return (
     <>
       <div className="content-toolbar">
@@ -38,16 +55,28 @@ export function Plans() {
       ) : plans.data.length === 0 ? (
         <p className="empty">{t("noPlans")}</p>
       ) : (
-        <RecordTable
-          label={t("plans")}
-          className="plan-table"
-          columns={[t("colName"), t("colContent"), t("colUsers")]}
-          rows={plans.data.map((plan) => ({
-            key: plan.id,
-            to: `/admin/plans/${plan.id}`,
-            cells: [plan.name, contentSummary(plan, t), t("planUsers", { count: plan.users })],
-          }))}
-        />
+        <>
+          <ListToolbar list={list} searchLabel={t("searchName")} clear={["q"]} />
+          {shown.length === 0 ? (
+            <p className="empty">{t("noMatches")}</p>
+          ) : (
+            <RecordTable
+              label={t("plans")}
+              className="plan-table"
+              sort={listSort(list, "name")}
+              columns={[
+                { label: t("colName"), sort: "name" },
+                t("colContent"),
+                { label: t("colUsers"), sort: "users" },
+              ]}
+              rows={shown.map((plan) => ({
+                key: plan.id,
+                to: `/admin/plans/${plan.id}`,
+                cells: [plan.name, contentSummary(plan, t), t("planUsers", { count: plan.users })],
+              }))}
+            />
+          )}
+        </>
       )}
     </>
   );
