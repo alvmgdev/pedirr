@@ -2445,3 +2445,122 @@ th {
     opacity: 0.8;
   }
 }
+/* Search, filters and order above an account list: one compact row that wraps. */
+.account-filters {
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.account-filters .filters {
+  gap: 12px 16px;
+}
+/* Labels sit above compact selects, so several fit on one line. */
+.account-filters .inline-filter {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.account-filters .inline-filter select {
+  min-width: 140px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 15px;
+  font-weight: 400;
+}
+.account-filters .link-button {
+  align-self: flex-end;
+}
+.search-box {
+  position: relative;
+  flex: 0 1 280px;
+  align-self: flex-end;
+}
+.search-box input {
+  min-height: 40px;
+}
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-box input {
+  width: 100%;
+  padding-left: 38px;
+}
+.link-button {
+  background: transparent;
+  color: var(--accent);
+  padding: 8px 4px;
+  min-height: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.link-button:hover {
+  background: transparent;
+  color: var(--ink);
+}
+/* Sortable headers look like the others until hovered. */
+.record-table thead th[aria-sort] {
+  padding: 0;
+}
+.record-table thead th[aria-sort]:first-child {
+  padding-left: 6px;
+}
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0 16px;
+  min-height: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  border-radius: 4px;
+}
+.record-table thead th[aria-sort]:first-child .sort-button {
+  padding-left: 16px;
+}
+.sort-button:hover {
+  background: transparent;
+  color: var(--ink);
+}
+.sort-arrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.record-table thead th[aria-sort="ascending"],
+.record-table thead th[aria-sort="descending"] {
+  color: var(--ink);
+}
+/* Phones: filters two by two under the search. */
+@media (max-width: 650px) {
+  .search-box {
+    flex: 1 1 100%;
+  }
+  .account-filters .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .account-filters .inline-filter {
+    flex: none;
+  }
+  .account-filters .inline-filter select {
+    min-width: 0;
+    width: 100%;
+  }
+  .account-filters .link-button {
+    justify-self: start;
+  }
+}

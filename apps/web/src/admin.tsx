@@ -12,6 +12,10 @@ import {
   WeeklyUsage,
   RecordTable,
   ExpiresOn,
+  AccountFilters,
+  ACCOUNT_LIST_KEYS,
+  accountSort,
+  useListParams,
 } from "./ui";
 import { limits, UserLimits } from "./fields";
 import { Plans, usePlans } from "./plans";
@@ -272,57 +276,82 @@ const environmentName = (user: User, platform: string) =>
 
 function Users() {
   const { t } = useTranslation();
-  const [page, setPage] = useState(1);
-  const [tenant, setTenant] = useState("");
+  const list = useListParams();
   const resellers = useResellers();
-  const path = `/admin/users?page=${page}${tenant ? `&tenant=${tenant}` : ""}`;
+  const plans = usePlans();
+  const path = "/admin/users?" + list.query([...ACCOUNT_LIST_KEYS, "tenant", "role"]);
   const users = useQuery({
-    queryKey: ["users", page, tenant],
+    queryKey: ["users", path],
     queryFn: () => api<{ items: ListedUser[]; total: number }>(path),
+    placeholderData: (previous) => previous,
   });
   return (
     <>
       <div className="content-toolbar">
-        <label className="inline-filter">
-          {t("environment")}
-          <select
-            value={tenant}
-            onChange={(event) => {
-              setTenant(event.currentTarget.value);
-              setPage(1);
-            }}
-          >
-            <option value="">{t("allEnvironments")}</option>
-            <option value="platform">{t("platform")}</option>
-            {resellers.data?.map((reseller) => (
-              <option key={reseller.id} value={reseller.id}>
-                {reseller.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <p>{t("usersHelp")}</p>
         <Link className="button-link" to="/admin/users/new">
           {t("createUser")}
         </Link>
       </div>
+      <AccountFilters
+        list={list}
+        plans={plans.data ?? []}
+        extra={
+          <>
+            <label className="inline-filter">
+              {t("environment")}
+              <select
+                value={list.get("tenant")}
+                onChange={(event) => list.set({ tenant: event.currentTarget.value })}
+              >
+                <option value="">{t("allEnvironments")}</option>
+                <option value="platform">{t("platform")}</option>
+                {resellers.data?.map((reseller) => (
+                  <option key={reseller.id} value={reseller.id}>
+                    {reseller.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-filter">
+              {t("role")}
+              <select
+                value={list.get("role")}
+                onChange={(event) => list.set({ role: event.currentTarget.value })}
+              >
+                <option value="">{t("anyRole")}</option>
+                {["ADMIN", "RESELLER", "USER"].map((role) => (
+                  <option key={role} value={role}>
+                    {t(role)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        }
+      />
       {users.isPending ? (
         <Loading />
       ) : users.error ? (
         <ErrorMessage error={users.error} />
+      ) : users.data.items.length === 0 ? (
+        <p className="empty">{t("noMatches")}</p>
       ) : (
         <div className="user-list">
           <p className="list-note">
-            {t("weeklyListNote")} <WeeklyLimitInfo />
+            <strong>{t("accounts", { count: users.data.total })}</strong> {t("weeklyListNote")}{" "}
+            <WeeklyLimitInfo />
           </p>
           <RecordTable
             label={t("users")}
             className="account-table"
+            sort={accountSort(list)}
             columns={[
-              t("colEmail"),
+              { label: t("colEmail"), sort: "email" },
               t("colEnvironment"),
               t("colPlan"),
               t("colWeekly"),
-              t("colExpires"),
+              { label: t("colExpires"), sort: "expires" },
               t("colStatus"),
             ]}
             rows={(users.data?.items ?? []).map((user) => ({
@@ -340,7 +369,11 @@ function Users() {
           />
         </div>
       )}
-      <Pager page={page} more={page * 50 < (users.data?.total ?? 0)} onChange={setPage} />
+      <Pager
+        page={list.page}
+        more={list.page * 50 < (users.data?.total ?? 0)}
+        onChange={(page) => list.set({ page: String(page) })}
+      />
     </>
   );
 }

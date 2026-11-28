@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   api,
@@ -190,30 +190,68 @@ export function WeeklyLimitInfo() {
 }
 /** One row of a RecordTable: the first cell names the record and links to it. */
 export type RecordRow = { key: string; to: string; cells: ReactNode[] };
+/** A column's heading; with `sort`, clicking it orders the list by that key. */
+export type RecordColumn = string | { label: string; sort: string };
+/** The list's current order, and how to change it. */
+export type RecordSort = {
+  key: string;
+  order: "asc" | "desc";
+  onChange: (key: string, order: "asc" | "desc") => void;
+};
+const columnLabel = (column: RecordColumn) => (typeof column === "string" ? column : column.label);
 /**
  * Records as a table with headed columns. The whole row opens the record through the
  * link in its first cell; on phones each row stacks its cells, labelled by their column.
+ * Sortable columns are buttons that toggle the order, announced with aria-sort.
  */
 export function RecordTable({
   label,
   columns,
   rows,
   className,
+  sort,
 }: {
   label: string;
-  columns: string[];
+  columns: RecordColumn[];
   rows: RecordRow[];
   className?: string;
+  sort?: RecordSort;
 }) {
   return (
     <table className={className ? `record-table ${className}` : "record-table"} aria-label={label}>
       <thead>
         <tr>
-          {columns.map((column) => (
-            <th key={column} scope="col">
-              {column}
-            </th>
-          ))}
+          {columns.map((column) => {
+            const name = columnLabel(column);
+            if (typeof column === "string" || !sort) {
+              return (
+                <th key={name} scope="col">
+                  {name}
+                </th>
+              );
+            }
+            const active = sort.key === column.sort;
+            return (
+              <th
+                key={name}
+                scope="col"
+                aria-sort={active ? (sort.order === "asc" ? "ascending" : "descending") : "none"}
+              >
+                <button
+                  type="button"
+                  className="sort-button"
+                  onClick={() =>
+                    sort.onChange(column.sort, active && sort.order === "asc" ? "desc" : "asc")
+                  }
+                >
+                  {name}
+                  <span className="sort-arrow" aria-hidden="true">
+                    {active ? (sort.order === "asc" ? "▲" : "▼") : "↕"}
+                  </span>
+                </button>
+              </th>
+            );
+          })}
         </tr>
       </thead>
       <tbody>
@@ -227,7 +265,7 @@ export function RecordTable({
                   </Link>
                 </th>
               ) : (
-                <td key={index} data-label={columns[index]}>
+                <td key={index} data-label={columnLabel(columns[index])}>
                   {cell}
                 </td>
               ),
@@ -236,6 +274,173 @@ export function RecordTable({
         ))}
       </tbody>
     </table>
+  );
+}
+/**
+ * A list's search, filters, order and page, kept in the address so Back and shared links
+ * keep them. Changing anything but the page goes back to the first page.
+ */
+export function useListParams() {
+  const [params, setParams] = useSearchParams();
+  const get = (key: string) => params.get(key) ?? "";
+  const page = Number(params.get("page") ?? 1) || 1;
+  const set = (values: Record<string, string>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(values)) {
+      if (value) {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+    }
+    if (!("page" in values)) {
+      next.delete("page");
+    }
+    setParams(next, { replace: true });
+  };
+  /** The API query for these keys, with the page. */
+  const query = (keys: string[]) => {
+    const result = new URLSearchParams({ page: String(page) });
+    for (const key of keys) {
+      if (get(key)) {
+        result.set(key, get(key));
+      }
+    }
+    return result.toString();
+  };
+  return { get, page, set, query };
+}
+/** The keys an account list sends to the API. */
+export const ACCOUNT_LIST_KEYS = ["q", "status", "plan", "sort", "order"];
+const SORTS = [
+  ["", "", "sortEmailAsc"],
+  ["email", "desc", "sortEmailDesc"],
+  ["created", "desc", "sortNewest"],
+  ["created", "asc", "sortOldest"],
+  ["expires", "asc", "sortExpiring"],
+] as const;
+/**
+ * Search, filters and order for an account list (users or a reseller's clients). `extra`
+ * holds filters only one list has, such as the environment or the role.
+ */
+export function AccountFilters({
+  list,
+  plans,
+  extra,
+}: {
+  list: ReturnType<typeof useListParams>;
+  plans: { id: string; name: string }[];
+  extra?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const sortValue = `${list.get("sort")}:${list.get("order")}`;
+  const filtered = ["q", "status", "plan", "tenant", "role"].some((key) => list.get(key));
+  return (
+    <div className="list-toolbar account-filters">
+      <SearchBox
+        value={list.get("q")}
+        label={t("searchEmail")}
+        onSearch={(text) => list.set({ q: text })}
+      />
+      <div className="filters">
+        {extra}
+        <label className="inline-filter">
+          {t("colStatus")}
+          <select
+            value={list.get("status")}
+            onChange={(event) => list.set({ status: event.currentTarget.value })}
+          >
+            <option value="">{t("anyStatus")}</option>
+            <option value="active">{t("statusActive")}</option>
+            <option value="inactive">{t("inactive")}</option>
+            <option value="expired">{t("expired")}</option>
+          </select>
+        </label>
+        <label className="inline-filter">
+          {t("plan")}
+          <select
+            value={list.get("plan")}
+            onChange={(event) => list.set({ plan: event.currentTarget.value })}
+          >
+            <option value="">{t("anyPlan")}</option>
+            <option value="none">{t("noPlanShort")}</option>
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="inline-filter">
+          {t("sortBy")}
+          <select
+            value={
+              SORTS.some(([sort, order]) => `${sort}:${order}` === sortValue) ? sortValue : ":"
+            }
+            onChange={(event) => {
+              const [sort, order] = event.currentTarget.value.split(":");
+              list.set({ sort, order });
+            }}
+          >
+            {SORTS.map(([sort, order, label]) => (
+              <option key={label} value={`${sort}:${order}`}>
+                {t(label)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {filtered && (
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => list.set({ q: "", status: "", plan: "", tenant: "", role: "" })}
+          >
+            {t("clearFilters")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+/** Clickable headers for an account list: email and expiration. */
+export const accountSort = (list: ReturnType<typeof useListParams>): RecordSort => ({
+  key: list.get("sort") || "email",
+  order: list.get("order") === "desc" ? "desc" : "asc",
+  onChange: (sort, order) =>
+    list.set({ sort: sort === "email" ? "" : sort, order: order === "asc" ? "" : order }),
+});
+/** A search field that updates the list a moment after typing stops. */
+export function SearchBox({
+  value,
+  label,
+  onSearch,
+}: {
+  value: string;
+  label: string;
+  onSearch: (text: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => {
+    if (text.trim() === value) {
+      return;
+    }
+    const timer = setTimeout(() => onSearch(text.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [text, value, onSearch]);
+  return (
+    <label className="search-box">
+      <span className="sr-only">{label}</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="m20 20-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <input
+        type="search"
+        value={text}
+        placeholder={label}
+        onChange={(event) => setText(event.currentTarget.value)}
+      />
+    </label>
   );
 }
 /** When an account stops working, in the viewer's time zone, or "Never". */

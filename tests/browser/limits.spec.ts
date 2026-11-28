@@ -163,7 +163,9 @@ test("administrators and resellers see each account's weekly requests", async ({
         json: { code: "k7x2p", name: "Example", maxUsers: null, package: null, clients: 4 },
       });
     }
-    return route.fulfill({ json: path.endsWith("/admin/resellers") ? [] : {} });
+    return route.fulfill({
+      json: path.endsWith("/admin/resellers") || path.endsWith("/admin/plans") ? [] : {},
+    });
   });
   await page.goto("/admin?tab=users");
   const rowOf = (email: string) => page.getByRole("row", { name: new RegExp(email) });
@@ -188,4 +190,66 @@ test("administrators and resellers see each account's weekly requests", async ({
   await page.goto("/k7x2p/admin");
   await expect(rowOf("some@example.invalid")).toContainText("1 of 3 this week");
   await expect(page.getByRole("button", { name: "How the weekly limit works" })).toBeVisible();
+});
+
+test("account lists search, filter and sort through the address", async ({ page }) => {
+  const admin = { ...viewer, id: "admin", role: "ADMIN" };
+  const asked: URLSearchParams[] = [];
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/auth/me")) {
+      return route.fulfill({ json: admin });
+    }
+    if (url.pathname.endsWith("/admin/users")) {
+      asked.push(url.searchParams);
+      const items = [
+        { ...viewer, id: "u1", email: "ana@example.invalid", plan: null, weeklyRequestsUsed: null },
+      ];
+      return route.fulfill({ json: { items, total: 1, page: 1 } });
+    }
+    if (url.pathname.endsWith("/admin/plans")) {
+      return route.fulfill({
+        json: [{ id: "11111111-1111-4111-8111-111111111111", name: "Fights" }],
+      });
+    }
+    return route.fulfill({ json: path(url) });
+  });
+  const path = (url: URL) => (url.pathname.endsWith("/admin/resellers") ? [] : {});
+  const last = () => asked.at(-1)!;
+  await page.goto("/admin?tab=users");
+  await expect(page.getByText("1 account")).toBeVisible();
+
+  await page.getByRole("searchbox", { name: "Search by email" }).fill("ana");
+  await expect.poll(() => last().get("q")).toBe("ana");
+  await expect(page).toHaveURL(/q=ana/);
+  await page.getByLabel("Status").selectOption("expired");
+  await expect.poll(() => last().get("status")).toBe("expired");
+  await page.getByRole("combobox", { name: "Plan", exact: true }).selectOption({ label: "Fights" });
+  await expect.poll(() => last().get("plan")).toBe("11111111-1111-4111-8111-111111111111");
+  await page.getByLabel("Role").selectOption("USER");
+  await expect.poll(() => last().get("role")).toBe("USER");
+
+  // Clicking a header sorts by it, then reverses; the header says so.
+  const expires = page.getByRole("columnheader", { name: /Expires/ });
+  await expires.getByRole("button").click();
+  await expect.poll(() => [last().get("sort"), last().get("order")]).toEqual(["expires", null]);
+  await expect(expires).toHaveAttribute("aria-sort", "ascending");
+  await expires.getByRole("button").click();
+  await expect.poll(() => last().get("order")).toBe("desc");
+  await expect(expires).toHaveAttribute("aria-sort", "descending");
+  await page.getByLabel("Sort by").selectOption({ label: "Newest first" });
+  await expect.poll(() => [last().get("sort"), last().get("order")]).toEqual(["created", "desc"]);
+
+  // The address keeps the view across a reload; "Clear filters" empties them.
+  await page.reload();
+  await expect(page.getByLabel("Status")).toHaveValue("expired");
+  await expect(page.getByRole("searchbox", { name: "Search by email" })).toHaveValue("ana");
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect
+    .poll(() => [last().get("q"), last().get("status"), last().get("role")])
+    .toEqual([null, null, null]);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "best-practice"])
+    .analyze();
+  expect(results.violations.map((item) => item.id)).toEqual([]);
 });
