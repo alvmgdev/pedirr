@@ -27,8 +27,14 @@ const reseller = {
   admin: { id: "owner", email: "owner@example.invalid" },
   clients: 3,
 };
-for (const locale of ["en", "es"]) {
-  test(`main screens are accessible in ${locale}`, async ({ page }) => {
+// Every screen in both languages and both colour themes, contrast included.
+for (const [locale, theme] of [
+  ["en", "dark"],
+  ["es", "dark"],
+  ["en", "light"],
+  ["es", "light"],
+]) {
+  test(`main screens are accessible in ${locale}, ${theme} theme`, async ({ page }) => {
     test.setTimeout(120000);
     const user = {
       id: "admin-1",
@@ -89,7 +95,13 @@ for (const locale of ["en", "es"]) {
       comments: 1,
     };
     let signedIn = false;
-    await page.addInitScript((value) => localStorage.setItem("pedirr.locale", value), locale);
+    await page.addInitScript(
+      ([language, colours]) => {
+        localStorage.setItem("pedirr.locale", language);
+        localStorage.setItem("pedirr.theme", colours);
+      },
+      [locale, theme],
+    );
     await page.route("**/api/v1/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
       let body: unknown;

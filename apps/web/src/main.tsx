@@ -20,6 +20,7 @@ import { RequestDetail, Requests } from "./requests";
 import { IssueDetail, Issues } from "./issues";
 import { ErrorMessage, Loading, PageHeader } from "./ui";
 import { basename } from "./environment";
+import { applyTheme } from "./theme";
 function App() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -53,6 +54,12 @@ function App() {
       void i18n.changeLanguage(me.data.locale);
     }
   }, [me.data?.locale, i18n]);
+  // The profile's theme follows the person to every device.
+  useEffect(() => {
+    if (me.data?.theme) {
+      applyTheme(me.data.theme);
+    }
+  }, [me.data?.theme]);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
