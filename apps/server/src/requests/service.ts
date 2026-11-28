@@ -3,7 +3,7 @@ import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./p
 import { refreshSubscribers } from "./subscribers";
 import { isExpired, quota, weeklyLimitReached } from "./quota";
 import { planAllows, planNotAllowed, userAccess } from "../plans";
-import { followersVisibleTo, requestsVisibleTo } from "./visibility";
+import { followersInScope, followersVisibleTo, requestsVisibleTo } from "./visibility";
 import {
   BadRequestException,
   ConflictException,
@@ -37,6 +37,30 @@ const shown = (viewer: Pick<Viewer, "role" | "tenantId">) => ({
   ...include,
   _count: { select: { subscribers: { where: followersVisibleTo(viewer) } } },
 });
+/**
+ * Who asked first and when, among the followers the viewer may see. Users only get the date:
+ * never another person's email, nor how many follow.
+ */
+function requestedBy(
+  viewer: Pick<Viewer, "role">,
+  first:
+    | { createdAt: Date; user: { email: string; tenant: { code: string | null; name: string } } }
+    | undefined,
+  followers: number,
+) {
+  if (!first) {
+    return null;
+  }
+  return viewer.role === "USER"
+    ? { at: first.createdAt, email: null, environment: null, others: 0 }
+    : {
+        at: first.createdAt,
+        email: first.user.email,
+        // Resellers' administrators only ever see their own environment, so it goes unsaid.
+        environment: viewer.role === "ADMIN" ? first.user.tenant : null,
+        others: Math.max(0, followers - 1),
+      };
+}
 const sameName = (left: string) => (right: { name: string } | string) =>
   partKey(typeof right === "string" ? right : right.name) === partKey(left);
 type PartState = "none" | "requested" | "downloading" | "available";
@@ -452,7 +476,15 @@ export class RequestsService {
   quota(viewer: Viewer) {
     return quota(this.infrastructure.db, viewer.id);
   }
-  async list(viewer: Viewer, page: number, status?: RequestStatus, mine = false) {
+  async list(
+    viewer: Viewer,
+    page: number,
+    status?: RequestStatus,
+    mine = false,
+    environment?: string,
+  ) {
+    // Only platform administrators choose an environment; everyone else is limited to theirs.
+    const scope = followersInScope(viewer, environment);
     // Personal lists filter on the user's own status; the shared list on the request status,
     // where new parts awaiting review also count as pending.
     const where: Prisma.RequestWhereInput = mine
@@ -460,16 +492,19 @@ export class RequestsService {
       : {
           AND: [
             requestsVisibleTo(viewer),
+            viewer.role === "ADMIN" && environment ? { subscribers: { some: scope } } : {},
             status === "PENDING"
               ? { OR: [{ status }, { parts: { some: { status: "PENDING" } } }] }
               : { status },
           ],
         };
-    const [items, total] = await this.infrastructure.db.$transaction([
-      this.infrastructure.db.request.findMany({
+    const { db } = this.infrastructure;
+    const [items, total] = await db.$transaction([
+      db.request.findMany({
         where,
         include: {
-          ...shown(viewer),
+          ...include,
+          _count: { select: { subscribers: { where: scope } } },
           subscribers: {
             where: { userId: viewer.id },
             select: { userId: true, parts: true, status: true },
@@ -479,11 +514,27 @@ export class RequestsService {
         skip: (page - 1) * 30,
         take: 30,
       }),
-      this.infrastructure.db.request.count({ where }),
+      db.request.count({ where }),
     ]);
+    // The first follower in scope, per request: the date and the person shown on its card.
+    const firsts = new Map(
+      (
+        await db.requestSubscriber.findMany({
+          where: { requestId: { in: items.map((item) => item.id) }, ...scope },
+          distinct: ["requestId"],
+          orderBy: [{ requestId: "asc" }, { createdAt: "asc" }, { userId: "asc" }],
+          select: {
+            requestId: true,
+            createdAt: true,
+            user: { select: { email: true, tenant: { select: { code: true, name: true } } } },
+          },
+        })
+      ).map((first) => [first.requestId, first]),
+    );
     return {
       items: items.map(({ subscribers, ...request }) => ({
         ...request,
+        requestedBy: requestedBy(viewer, firsts.get(request.id), request._count.subscribers),
         subscribed: subscribers.length > 0,
         subscription: subscribers[0]
           ? { parts: subscribers[0].parts, status: subscribers[0].status }

@@ -248,7 +248,23 @@ const schemas: Record<string, SchemaObject> = {
     ],
   },
   ContentRequest: object(requestProperties),
-  RequestListItem: object({ ...requestProperties, subscribed: boolean, subscription }),
+  RequestListItem: object({
+    ...requestProperties,
+    subscribed: boolean,
+    subscription,
+    requestedBy: {
+      ...nullable(
+        object({
+          at: date,
+          email: { ...nullable({ type: "string", format: "email" }) },
+          environment: nullable(object({ code: nullable(string), name: string })),
+          others: integer,
+        }),
+      ),
+      description:
+        "The first follower the viewer may see (of the chosen environment, for platform administrators) and when they asked. Users only get the date; resellers' administrators get their own clients without an environment.",
+    },
+  }),
   RequestDetail: object({
     ...requestProperties,
     subscribed: boolean,
