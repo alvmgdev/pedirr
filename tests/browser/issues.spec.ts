@@ -260,7 +260,10 @@ test("issues waiting for an answer stand out and can be listed alone", async ({ 
   const row = page.getByRole("listitem").filter({ hasText: "UFC 334" });
   await expect(row).toContainText("Waiting for you");
   await expect(row).toContainText("ana@example.invalid (Fight Club TV)");
-  await page.getByRole("checkbox", { name: "Waiting for you" }).check();
+  // The checkbox follows the address, which updates just after the click.
+  const waiting = page.getByRole("checkbox", { name: "Waiting for you" });
+  await waiting.click();
+  await expect(waiting).toBeChecked();
   await expect.poll(() => asked.at(-1)?.get("awaiting")).toBe("true");
   await page.getByLabel("Environment").selectOption({ label: "Fight Club TV" });
   await expect
