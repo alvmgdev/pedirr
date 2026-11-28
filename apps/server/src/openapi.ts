@@ -46,7 +46,11 @@ const requestProperties = {
   updatedAt: date,
   closed: boolean,
   parts: array(object({ name: string, status, rejectionReason: nullable(string) })),
-  _count: object({ subscribers: integer }),
+  _count: {
+    ...object({ subscribers: integer }),
+    description:
+      "Followers the viewer may know about: everyone's for platform administrators, a reseller's own clients for its administrator, and only themselves for users.",
+  },
 };
 const issueStatus = enumeration("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED");
 const issueProperties = {
@@ -268,12 +272,15 @@ const schemas: Record<string, SchemaObject> = {
   RequestDetail: object({
     ...requestProperties,
     subscribed: boolean,
-    subscription,
     subscribers: {
       ...nullable(
         array(
           object({
             email: { type: "string", format: "email" },
+            environment: {
+              ...nullable(object({ code: nullable(string), name: string })),
+              description: "Platform administrators only: the subscriber's environment.",
+            },
             parts: array(string),
             status,
             createdAt: date,
@@ -281,7 +288,11 @@ const schemas: Record<string, SchemaObject> = {
         ),
       ),
       description:
-        "Administrators only: every subscriber with their parts (empty for the whole request) and status.",
+        "Administrators only: the subscribers they may know about (a reseller's administrator, its own clients) with their parts (empty for the whole request) and status.",
+    },
+    subscription: {
+      ...nullable(object({ parts: array(string), status, createdAt: date })),
+      description: "The viewer's own parts, status and when they asked.",
     },
     events: array(
       object({

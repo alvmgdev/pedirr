@@ -140,6 +140,35 @@ async function main() {
     );
     assert.equal(asOwner._count.subscribers, 1);
     assert.equal((await requests.detail(shared.id, clientA)).subscribers, null);
+    // The platform administrator sees each follower's environment; a reseller only its own.
+    assert.deepEqual(
+      (await requests.detail(shared.id, admin)).subscribers
+        .map((item) => [item.email, item.environment.name])
+        .sort(),
+      [
+        ["ana@example.invalid", "Fight Club TV"],
+        ["bea@example.invalid", "Other Sports"],
+      ],
+    );
+    assert.equal(asOwner.subscribers[0].environment, null);
+    // Users see when they asked, but never how many others follow.
+    const asAna = await requests.detail(shared.id, clientA);
+    assert.equal(asAna._count.subscribers, 1);
+    assert.ok(asAna.subscription.createdAt instanceof Date);
+    const asAlex = await requests.detail(shared.id, otherA);
+    assert.deepEqual([asAlex._count.subscribers, asAlex.subscription], [0, null]);
+    assert.equal(
+      (await requests.list(otherA, 1)).items.find((item) => item.id === shared.id)._count
+        .subscribers,
+      0,
+    );
+    // The history names nobody: no actor, email or environment reaches any viewer.
+    for (const viewer of [clientB, ownerB]) {
+      for (const entry of (await requests.detail(shared.id, viewer)).history) {
+        assert.deepEqual(Object.keys(entry).sort(), ["action", "createdAt", "details", "id"]);
+        assert.doesNotMatch(JSON.stringify(entry), /@|Fight Club|k7x2p/);
+      }
+    }
     assert.deepEqual(
       (await requests.detail(shared.id, admin)).subscribers.map((item) => item.email).sort(),
       ["ana@example.invalid", "bea@example.invalid"],

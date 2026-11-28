@@ -260,7 +260,10 @@ async function main() {
     assert.equal(adminView.subscription, null);
     const aliceView = await requests.detail(id, alice);
     assert.equal(aliceView.subscribers, null);
-    assert.deepEqual(aliceView.subscription, { parts: ["Main Card"], status: "APPROVED" });
+    const { createdAt, ...aliceOwn } = aliceView.subscription;
+    assert.deepEqual(aliceOwn, { parts: ["Main Card"], status: "APPROVED" });
+    // The detail also says when she asked.
+    assert.ok(createdAt instanceof Date);
     assert.ok(!JSON.stringify(aliceView).includes(bob.email));
 
     // The Main Card arrives: Alice is done while Bob's Prelims still wait.

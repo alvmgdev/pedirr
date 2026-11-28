@@ -3,7 +3,12 @@ import { canonicalParts, isOptionalPart, partKey, partsRequestStatus } from "./p
 import { refreshSubscribers } from "./subscribers";
 import { isExpired, quota, weeklyLimitReached } from "./quota";
 import { planAllows, planNotAllowed, userAccess } from "../plans";
-import { followersInScope, followersVisibleTo, requestsVisibleTo } from "./visibility";
+import {
+  followersCounted,
+  followersInScope,
+  followersVisibleTo,
+  requestsVisibleTo,
+} from "./visibility";
 import {
   BadRequestException,
   ConflictException,
@@ -33,9 +38,9 @@ const include = {
   },
 } as const;
 /** A request as shown, counting only the followers the viewer may know about. */
-const shown = (viewer: Pick<Viewer, "role" | "tenantId">) => ({
+const shown = (viewer: Pick<Viewer, "id" | "role" | "tenantId">) => ({
   ...include,
-  _count: { select: { subscribers: { where: followersVisibleTo(viewer) } } },
+  _count: { select: { subscribers: { where: followersCounted(viewer) } } },
 });
 /**
  * Who asked first and when, among the followers the viewer may see. Users only get the date:
@@ -504,7 +509,7 @@ export class RequestsService {
         where,
         include: {
           ...include,
-          _count: { select: { subscribers: { where: scope } } },
+          _count: { select: { subscribers: { where: followersCounted(viewer, environment) } } },
           subscribers: {
             where: { userId: viewer.id },
             select: { userId: true, parts: true, status: true },
@@ -559,7 +564,7 @@ export class RequestsService {
             parts: true,
             status: true,
             createdAt: true,
-            user: { select: { email: true } },
+            user: { select: { email: true, tenant: { select: { code: true, name: true } } } },
           },
           orderBy: [{ createdAt: "asc" }, { userId: "asc" }],
         },
@@ -590,13 +595,15 @@ export class RequestsService {
     return {
       ...result,
       subscribed: own !== undefined,
-      subscription: own ? { parts: own.parts, status: own.status } : null,
+      subscription: own ? { parts: own.parts, status: own.status, createdAt: own.createdAt } : null,
       // Who asked for what, so administrators can review and answer (a reseller's administrator
       // for its own clients); never shown to users.
       subscribers:
         viewer.role !== "USER"
           ? subscribers.map((subscriber) => ({
               email: subscriber.user.email,
+              // Only platform administrators see several environments, so only they are told.
+              environment: viewer.role === "ADMIN" ? subscriber.user.tenant : null,
               parts: subscriber.parts,
               status: subscriber.status,
               createdAt: subscriber.createdAt,
