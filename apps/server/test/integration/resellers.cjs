@@ -174,7 +174,7 @@ async function main() {
     assert.equal((await plans.detail(hoops.id)).packages, 1);
 
     // The platform administrator sees every account with its environment, and can filter.
-    const everyone = await users.list(1);
+    const everyone = await users.list({ page: 1 });
     // Same email in three environments; their order among themselves follows the ID.
     assert.deepEqual(
       everyone.items.map((item) => String(item.tenant.code)).sort(),
@@ -182,11 +182,11 @@ async function main() {
     );
     assert.equal(everyone.total, 3);
     assert.deepEqual(
-      (await users.list(1, "platform")).items.map((item) => item.tenant.code),
+      (await users.list({ page: 1, tenant: "platform" })).items.map((item) => item.tenant.code),
       [null],
     );
     assert.deepEqual(
-      (await users.list(1, generated.id)).items.map((item) => item.role),
+      (await users.list({ page: 1, tenant: generated.id })).items.map((item) => item.role),
       ["RESELLER"],
     );
     assert.equal((await users.detail(owner.id)).tenant.code, generated.code);

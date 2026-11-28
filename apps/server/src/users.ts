@@ -24,11 +24,12 @@ import {
   Min,
   ValidateIf,
 } from "class-validator";
-import { Type } from "class-transformer";
 import * as argon2 from "argon2";
+import { Prisma } from "@prisma/client";
 import { Admin, Credentials, passwordOptions, publicUserSelect, Viewer } from "./auth";
 import { Infrastructure } from "./infrastructure";
 import { withWeeklyUsage } from "./requests/quota";
+import { AccountListQuery, accountFilters, accountOrder } from "./account-list";
 import { PLATFORM_TENANT } from "./tenants";
 
 export class UserUpdate {
@@ -101,13 +102,11 @@ const planMissing = (error: unknown) =>
   (error as { code?: string }).code === "P2003"
     ? new BadRequestException({ code: "PLAN_NOT_FOUND", message: "Plan not found" })
     : error;
-export class UserPage {
-  @ApiProperty({ required: false, default: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(1000000)
-  page = 1;
+export class UserPage extends AccountListQuery {
+  @ApiProperty({ required: false, enum: ["ADMIN", "RESELLER", "USER"] })
+  @ValidateIf((_, value) => value !== undefined && value !== "")
+  @IsIn(["ADMIN", "RESELLER", "USER"])
+  role?: "ADMIN" | "RESELLER" | "USER";
   @ApiProperty({
     required: false,
     description: 'Only accounts of this environment: "platform" or a reseller\'s ID.',
@@ -125,14 +124,21 @@ export class AccessPolicy {
 @Injectable()
 export class UsersService {
   constructor(private readonly infrastructure: Infrastructure) {}
-  /** Every account, or those of one environment, with the environment each belongs to. */
-  async list(page: number, tenant?: string) {
-    const where = tenant ? { tenantId: tenant } : {};
+  /** Every account matching the list's search and filters, with the environment of each. */
+  async list(query: UserPage) {
+    const page = query.page;
+    const where: Prisma.UserWhereInput = {
+      AND: [
+        query.tenant ? { tenantId: query.tenant } : {},
+        query.role ? { role: query.role } : {},
+        accountFilters(query),
+      ],
+    };
     const [items, total] = await this.infrastructure.db.$transaction([
       this.infrastructure.db.user.findMany({
         where,
         select: publicUserSelect,
-        orderBy: [{ email: "asc" }, { id: "asc" }],
+        orderBy: accountOrder(query),
         skip: (page - 1) * 50,
         take: 50,
       }),
@@ -274,7 +280,7 @@ export class UsersService {
 export class UsersController {
   constructor(private readonly users: UsersService) {}
   @Get("users") list(@Query() query: UserPage) {
-    return this.users.list(query.page, query.tenant || undefined);
+    return this.users.list(query);
   }
   @Get("users/:id") detail(@Param("id", ParseUUIDPipe) id: string) {
     return this.users.detail(id);

@@ -10,6 +10,7 @@ const { Test } = require("@nestjs/testing");
 const { AppModule } = require("../../dist/app.module");
 const { Infrastructure } = require("../../dist/infrastructure");
 const { ClientsService } = require("../../dist/clients");
+const { UsersService } = require("../../dist/users");
 const { RequestsService } = require("../../dist/requests/service");
 const { environmentPrefix } = require("../../dist/tenants");
 
@@ -105,9 +106,62 @@ async function main() {
     const theirFan = await clients.create(other.id, { email: "fan@example.invalid", password });
 
     // A reseller only ever sees and changes its own clients.
-    const mine = await clients.list(fightClub.id, 1);
+    const mine = await clients.list(fightClub.id, { page: 1 });
     assert.equal(mine.total, 3);
     assert.ok(mine.items.every((item) => item.tenant.code === "k7x2p" && item.role === "USER"));
+
+    // Search, filters and order, always within the reseller's own clients.
+    const raceWinner = mine.items.find((item) => item.email.startsWith("race")).email;
+    const emails = async (query) =>
+      (await clients.list(fightClub.id, { page: 1, ...query })).items.map((item) => item.email);
+    assert.deepEqual(await emails({ q: "FAN" }), ["fan@example.invalid"]);
+    assert.deepEqual(await emails({ plan: fights.id }), ["fan@example.invalid"]);
+    assert.deepEqual(await emails({ plan: "none" }), ["planless@example.invalid", raceWinner]);
+    await db.user.update({ where: { id: planless.id }, data: { active: false } });
+    await db.user.updateMany({
+      where: { email: raceWinner, tenantId: fightClub.id },
+      data: { expiresAt: new Date(Date.now() - 60000) },
+    });
+    await db.user.update({
+      where: { id: fan.id },
+      data: { expiresAt: new Date(Date.now() + 86400000) },
+    });
+    assert.deepEqual(await emails({ status: "active" }), ["fan@example.invalid"]);
+    assert.deepEqual(await emails({ status: "inactive" }), ["planless@example.invalid"]);
+    assert.deepEqual(await emails({ status: "expired" }), [raceWinner]);
+    // Accounts that never expire come last, in either direction.
+    assert.deepEqual(await emails({ sort: "expires" }), [
+      raceWinner,
+      "fan@example.invalid",
+      "planless@example.invalid",
+    ]);
+    assert.deepEqual(await emails({ sort: "expires", order: "desc" }), [
+      "fan@example.invalid",
+      raceWinner,
+      "planless@example.invalid",
+    ]);
+    assert.deepEqual(await emails({ order: "desc" }), [
+      raceWinner,
+      "planless@example.invalid",
+      "fan@example.invalid",
+    ]);
+    // The platform's list adds the environment and the role to the same filters.
+    const users = new UsersService({ db });
+    const everyone = async (query) =>
+      (await users.list({ page: 1, ...query })).items.map((item) => [item.email, item.tenant.code]);
+    // Same email in both: their order between them is arbitrary.
+    assert.deepEqual((await everyone({ role: "RESELLER" })).sort(), [
+      ["owner@example.invalid", "k7x2p"],
+      ["owner@example.invalid", "other"],
+    ]);
+    assert.deepEqual(await everyone({ q: "fan", tenant: other.id }), [
+      ["fan@example.invalid", "other"],
+    ]);
+    assert.equal((await users.list({ page: 1, status: "expired" })).total, 1);
+    await db.user.updateMany({
+      where: { tenantId: fightClub.id, role: "USER" },
+      data: { active: true, expiresAt: null },
+    });
     for (const attempt of [
       () => clients.detail(fightClub.id, theirFan.id),
       () => clients.update(fightClub.id, theirFan.id, { active: false }),

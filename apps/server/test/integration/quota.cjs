@@ -81,7 +81,7 @@ async function main() {
 
     // Administrators' lists show what each account has used of its limit.
     const listed = new Map(
-      (await new UsersService({ db }).list(1)).items.map((user) => [user.id, user]),
+      (await new UsersService({ db }).list({ page: 1 })).items.map((user) => [user.id, user]),
     );
     assert.equal(listed.get(limited.id).weeklyRequestsUsed, 2);
     assert.equal(listed.get(other.id).weeklyRequestsUsed, null);
