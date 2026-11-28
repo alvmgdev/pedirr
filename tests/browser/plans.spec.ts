@@ -261,3 +261,64 @@ test("users on a plan search its leagues and see why other leagues are closed", 
   await page.goto("/catalog/league/league-nba");
   await expect(page.getByRole("alert")).toHaveText("Your plan does not include this league.");
 });
+
+test("short lists search, filter and sort in the browser", async ({ page }) => {
+  const reseller = (id: string, name: string, code: string, clients: number, active = true) => ({
+    id,
+    name,
+    code,
+    active,
+    maxUsers: null,
+    package: active ? { id: "p1", name: "Combat" } : null,
+    admin: { id: `a-${id}`, email: `owner@${code}.invalid` },
+    clients,
+  });
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/auth/me")) {
+      return route.fulfill({
+        json: {
+          id: "admin",
+          email: "admin@example.invalid",
+          role: "ADMIN",
+          active: true,
+          locale: "en",
+          timezone: "UTC",
+          tenantId: "platform",
+          tenant: { code: null, name: "Pedirr" },
+        },
+      });
+    }
+    if (path.endsWith("/admin/resellers")) {
+      return route.fulfill({
+        json: [
+          reseller("r1", "Fight Club TV", "k7x2p", 4),
+          reseller("r2", "Arena Plus", "arena", 9),
+          reseller("r3", "Old Sports", "olds1", 0, false),
+        ],
+      });
+    }
+    if (path.endsWith("/admin/packages")) {
+      return route.fulfill({ json: [{ id: "p1", name: "Combat", plans: [], resellers: 2 }] });
+    }
+    return route.fulfill({ json: [] });
+  });
+  await page.goto("/admin?tab=resellers");
+  const names = () => page.locator("tbody th").allInnerTexts();
+  await expect.poll(names).toEqual(["Arena Plus", "Fight Club TV", "Old Sports"]);
+  // Clients, most first.
+  const clients = page.getByRole("columnheader", { name: /Clients/ }).getByRole("button");
+  await clients.click();
+  await clients.click();
+  await expect.poll(names).toEqual(["Arena Plus", "Fight Club TV", "Old Sports"]);
+  await clients.click();
+  await expect.poll(names).toEqual(["Old Sports", "Fight Club TV", "Arena Plus"]);
+  await page.getByLabel("Status").selectOption("disabled");
+  await expect.poll(names).toEqual(["Old Sports"]);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  // The search also finds the code and the administrator's email.
+  await page.getByRole("searchbox", { name: "Search by name, code or email" }).fill("k7x2p");
+  await expect.poll(names).toEqual(["Fight Club TV"]);
+  await page.getByRole("searchbox", { name: "Search by name, code or email" }).fill("nothing");
+  await expect(page.getByText("Nothing matches these filters.")).toBeVisible();
+});

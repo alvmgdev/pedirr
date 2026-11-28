@@ -150,9 +150,9 @@ export type Reseller = {
   admin: { id: string; email: string } | null;
   clients: number;
 };
-/** Where a reseller's clients sign in. */
 /** The shortest password the server accepts; kept in step with the server's. */
 export const PASSWORD_MIN_LENGTH = 8;
+/** Where a reseller's clients sign in. */
 export const resellerAddress = (code: string) => `${window.location.origin}/${code}/`;
 /** The viewer's weekly limit and what is left of it; `limit` is null without a limit. */
 export type Quota = {

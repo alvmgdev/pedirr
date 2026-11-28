@@ -112,8 +112,36 @@ test("request status tabs preserve personal filtering and reset pagination", asy
   );
   await expect.poll(() => queries.at(-1)).toContain("status=AVAILABLE");
   expect(new URL(page.url()).searchParams.get("mine")).toBe("true");
-  expect(new URL(page.url()).searchParams.get("page")).toBe("1");
+  // Back to the first page, which needs no page in the address.
+  expect(new URL(page.url()).searchParams.get("page")).toBeNull();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/request-tabs-mobile.png", fullPage: true });
+});
+
+test("requests search by title and switch to oldest first", async ({ page }) => {
+  const queries: URLSearchParams[] = [];
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/requests")) {
+      queries.push(url.searchParams);
+    }
+    return route.fulfill({
+      json: url.pathname.endsWith("/auth/me")
+        ? {
+            id: "viewer",
+            email: "viewer@example.invalid",
+            role: "USER",
+            locale: "en",
+            timezone: "UTC",
+          }
+        : { items: [], total: 0 },
+    });
+  });
+  await page.goto("/requests");
+  await page.getByRole("searchbox", { name: "Search by title" }).fill("ufc");
+  await expect.poll(() => queries.at(-1)?.get("q")).toBe("ufc");
+  await page.getByLabel("Sort by").selectOption({ label: "Oldest first" });
+  await expect.poll(() => queries.at(-1)?.get("order")).toBe("asc");
+  await expect(page).toHaveURL(/q=ufc/);
 });
