@@ -52,6 +52,14 @@ export class RequestList {
   @ValidateIf((_, v) => v !== undefined)
   @IsIn(["true", "false"])
   mine?: string;
+  @ApiProperty({
+    required: false,
+    description:
+      'Platform administrators only: requests followed by this environment, "platform" or a reseller\'s ID. Ignored for everyone else.',
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== "")
+  @Matches(/^(platform|[0-9a-f-]{36})$/)
+  environment?: string;
 }
 export class ReviewRequest {
   @ApiProperty({ enum: ["approve", "reject"] }) @IsIn(["approve", "reject"]) decision!:
@@ -74,7 +82,13 @@ export class RequestsController {
     return this.requests.create(input, req.viewer!);
   }
   @Get() list(@Query() query: RequestList, @Req() req: AuthRequest) {
-    return this.requests.list(req.viewer!, query.page, query.status, query.mine === "true");
+    return this.requests.list(
+      req.viewer!,
+      query.page,
+      query.status,
+      query.mine === "true",
+      query.environment || undefined,
+    );
   }
   @Get("lookup") async lookup(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);

@@ -69,6 +69,60 @@ async function main() {
     assert.equal(await count(clientA), 1);
     assert.equal(await count(admin), 2);
 
+    // Cards say who asked first and when, among the followers each viewer may see.
+    await db.requestSubscriber.update({
+      where: { requestId_userId: { requestId: shared.id, userId: clientA.id } },
+      data: { createdAt: new Date(Date.now() - 3600000) },
+    });
+    const beaJoined = (
+      await db.requestSubscriber.findUniqueOrThrow({
+        where: { requestId_userId: { requestId: shared.id, userId: clientB.id } },
+      })
+    ).createdAt;
+    const card = async (viewer, environment) =>
+      (await requests.list(viewer, 1, undefined, false, environment)).items.find(
+        (item) => item.id === shared.id,
+      );
+    const asPlatform = (await card(admin)).requestedBy;
+    assert.equal(asPlatform.email, "ana@example.invalid");
+    assert.deepEqual(asPlatform.environment, { code: "k7x2p", name: "Fight Club TV" });
+    assert.equal(asPlatform.others, 1);
+    // Reseller B sees its own client and the date she asked: nothing hints that A was first.
+    assert.deepEqual((await card(ownerB)).requestedBy, {
+      at: beaJoined,
+      email: "bea@example.invalid",
+      environment: null,
+      others: 0,
+    });
+    // Users get only the date, never who or how many.
+    assert.deepEqual((await card(clientB)).requestedBy, {
+      at: beaJoined,
+      email: null,
+      environment: null,
+      others: 0,
+    });
+    // The platform administrator may choose an environment; the cards follow it.
+    const chosen = async (environment) =>
+      (await requests.list(admin, 1, undefined, false, environment)).items
+        .map((item) => item.entity.title)
+        .sort();
+    assert.deepEqual(await chosen(b.id), ["ev-b", "ev-shared"]);
+    assert.deepEqual(await chosen("platform"), ["ev-p"]);
+    const inB = (await card(admin, b.id)).requestedBy;
+    assert.deepEqual(
+      [inB.email, inB.environment.name, inB.others],
+      ["bea@example.invalid", "Other Sports", 0],
+    );
+    // Anyone else asking for another environment is ignored and keeps seeing their own.
+    assert.deepEqual(
+      (await requests.list(ownerA, 1, undefined, false, b.id)).items
+        .map((item) => item.entity.title)
+        .sort(),
+      ["ev-a", "ev-shared"],
+    );
+    assert.equal((await card(ownerA, b.id)).requestedBy.email, "ana@example.invalid");
+    assert.equal((await card(ownerA, b.id))._count.subscribers, 1);
+
     // Another environment's request does not exist for them; a shared one shows only their own.
     for (const [id, viewer] of [
       [onlyB.id, clientA],
