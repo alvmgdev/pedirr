@@ -14,8 +14,11 @@ import {
   WeeklyUsage,
   RecordTable,
   ExpiresOn,
+  AccountFilters,
+  ACCOUNT_LIST_KEYS,
+  accountSort,
+  useListParams,
 } from "./ui";
-import { useState } from "react";
 
 /** What a reseller administrator knows about its own reseller. */
 type Overview = {
@@ -34,10 +37,12 @@ export function ResellerPanel() {
   const [params] = useSearchParams();
   const tab = params.get("tab") === "notifications" ? "notifications" : "clients";
   const overview = useOverview();
-  const [page, setPage] = useState(1);
+  const list = useListParams();
+  const path = "/reseller/clients?" + list.query(ACCOUNT_LIST_KEYS);
   const clients = useQuery({
-    queryKey: ["clients", page],
-    queryFn: () => api<{ items: ListedUser[]; total: number }>(`/reseller/clients?page=${page}`),
+    queryKey: ["clients", path],
+    queryFn: () => api<{ items: ListedUser[]; total: number }>(path),
+    placeholderData: (previous) => previous,
   });
   if (overview.isPending) {
     return <Loading />;
@@ -106,25 +111,30 @@ export function ResellerPanel() {
                     ? t("clients", { count: info.clients })
                     : t("clientsOf", { count: info.clients, max: info.maxUsers })}
                 </p>
+                {info.clients > 0 && (
+                  <AccountFilters list={list} plans={info.package?.plans ?? []} />
+                )}
                 {clients.isPending ? (
                   <Loading />
                 ) : clients.error ? (
                   <ErrorMessage error={clients.error} />
                 ) : clients.data.items.length === 0 ? (
-                  <p className="empty">{t("noClients")}</p>
+                  <p className="empty">{t(info.clients > 0 ? "noMatches" : "noClients")}</p>
                 ) : (
                   <div className="user-list">
                     <p className="list-note">
+                      <strong>{t("accounts", { count: clients.data.total })}</strong>
                       {t("weeklyListNote")} <WeeklyLimitInfo />
                     </p>
                     <RecordTable
                       label={t("clientsTitle")}
                       className="client-table"
+                      sort={accountSort(list)}
                       columns={[
-                        t("colEmail"),
+                        { label: t("colEmail"), sort: "email" },
                         t("colPlan"),
                         t("colWeekly"),
-                        t("colExpires"),
+                        { label: t("colExpires"), sort: "expires" },
                         t("colStatus"),
                       ]}
                       rows={clients.data.items.map((item) => ({
@@ -142,9 +152,9 @@ export function ResellerPanel() {
                   </div>
                 )}
                 <Pager
-                  page={page}
-                  more={page * 50 < (clients.data?.total ?? 0)}
-                  onChange={setPage}
+                  page={list.page}
+                  more={list.page * 50 < (clients.data?.total ?? 0)}
+                  onChange={(page) => list.set({ page: String(page) })}
                 />
               </section>
             </div>
