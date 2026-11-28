@@ -52,7 +52,8 @@ test("the theme menu switches, saves and keeps the colour theme", async ({ page 
   await menu.click();
   await page.getByRole("button", { name: "Light" }).click();
   await expect.poll(() => theme(page)).toBe("light");
-  expect(writes).toEqual([{ theme: "light" }]);
+  // Saved to the profile too; the request leaves just after the click.
+  await expect.poll(() => writes).toEqual([{ theme: "light" }]);
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#f6f4ef");
   // A reload paints light straight away, before the app loads.
   await page.reload();
