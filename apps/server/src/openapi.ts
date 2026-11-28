@@ -70,8 +70,22 @@ const issueProperties = {
   updatedAt: date,
   resolvedAt: nullable(date),
   mine: boolean,
+  awaitingYou: {
+    ...boolean,
+    description:
+      "Waiting for the caller: for platform administrators, the reporter acted last; for the reporter, an administrator did.",
+  },
   reporter: {
-    ...nullable(object({ id: uuid, email: { type: "string", format: "email" } })),
+    ...nullable(
+      object({
+        id: uuid,
+        email: { type: "string", format: "email" },
+        environment: {
+          ...nullable(object({ code: nullable(string), name: string })),
+          description: "Platform administrators only.",
+        },
+      }),
+    ),
     description: "Shown to administrators only.",
   },
   request: object({
@@ -524,7 +538,10 @@ const responses: Record<string, Schema> = {
   "GET requests/quota": ref("Quota"),
   "POST requests/{id}/issues": ref("Issue"),
   "GET issues": page(ref("Issue"), 30),
-  "GET issues/open": object({ open: integer }),
+  "GET issues/open": object({
+    open: integer,
+    awaiting: { ...integer, description: "Issues waiting for the caller's answer." },
+  }),
   "GET issues/{id}": ref("IssueDetail"),
   "POST issues/{id}/comments": ref("IssueDetail"),
   "PATCH issues/{id}": ref("IssueDetail"),

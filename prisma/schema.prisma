@@ -240,6 +240,11 @@ enum IssueStatus {
   CLOSED
 }
 
+enum IssueActor {
+  ADMIN
+  REPORTER
+}
+
 enum IssueCategory {
   WRONG_CONTENT
   MISSING_CONTENT
@@ -265,12 +270,15 @@ model Issue {
   status         IssueStatus    @default(OPEN)
   description    String
   resolvedAt     DateTime?
+  // Who acted last: the side that did not is the one the issue is waiting for.
+  lastActor      IssueActor     @default(REPORTER)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   comments       IssueComment[]
 
   @@index([reporterId, status, updatedAt])
   @@index([status, updatedAt])
+  @@index([status, lastActor, updatedAt])
   @@index([requestId])
 }
 
