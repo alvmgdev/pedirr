@@ -276,8 +276,14 @@ export type Issue = {
   updatedAt: string;
   resolvedAt: string | null;
   mine: boolean;
-  /** Administrators only. */
-  reporter: { id: string; email: string } | null;
+  /** Waiting for the viewer's answer. */
+  awaitingYou: boolean;
+  /** Administrators only; the environment for platform administrators only. */
+  reporter: {
+    id: string;
+    email: string;
+    environment?: { code: string | null; name: string } | null;
+  } | null;
   request: { id: string; title: string; kind: "event" | "season"; season: string | null };
   event: { id: string; name: string | null } | null;
   comments: number;

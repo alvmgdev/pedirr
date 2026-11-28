@@ -77,7 +77,10 @@ async function fixtures(page: Page, user: object, state: { current: ReturnType<t
       return route.fulfill({ json: request });
     }
     if (path.endsWith("/issues/open")) {
-      return route.fulfill({ json: { open: 1 } });
+      return route.fulfill({ json: { open: 1, awaiting: 1 } });
+    }
+    if (path.endsWith("/admin/resellers")) {
+      return route.fulfill({ json: [] });
     }
     if (path.endsWith(`/issues/${issueId}/comments`)) {
       const body = call.postDataJSON() as { body: string };
@@ -205,4 +208,66 @@ test("issues read well on a phone in Spanish", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Reabrir" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/issue-mobile-es.png", fullPage: true });
+});
+
+test("issues waiting for an answer stand out and can be listed alone", async ({ page }) => {
+  const asked: URLSearchParams[] = [];
+  const listed = {
+    id: "i9",
+    status: "OPEN",
+    category: "QUALITY",
+    part: null,
+    description: "Blurry",
+    createdAt: "2026-11-14T10:00:00Z",
+    updatedAt: "2026-11-14T10:00:00Z",
+    resolvedAt: null,
+    mine: false,
+    awaitingYou: true,
+    reporter: {
+      id: "c1",
+      email: "ana@example.invalid",
+      environment: { code: "k7x2p", name: "Fight Club TV" },
+    },
+    request: { id: "r1", title: "UFC 334", kind: "event", season: null },
+    event: null,
+    comments: 0,
+  };
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/auth/me")) {
+      return route.fulfill({ json: admin });
+    }
+    if (url.pathname.endsWith("/issues/open")) {
+      return route.fulfill({ json: { open: 5, awaiting: 2 } });
+    }
+    if (url.pathname.endsWith("/admin/resellers")) {
+      return route.fulfill({
+        json: [
+          { id: "11111111-1111-4111-8111-111111111111", name: "Fight Club TV", code: "k7x2p" },
+        ],
+      });
+    }
+    if (url.pathname.endsWith("/issues")) {
+      asked.push(url.searchParams);
+      return route.fulfill({ json: { items: [listed], total: 1 } });
+    }
+    return route.fulfill({ json: {} });
+  });
+  await page.goto("/issues");
+  // The menu counts the issues waiting for this administrator, not every open one.
+  await expect(page.getByRole("link", { name: /Issues/ }).first()).toContainText("2");
+  await expect(page.getByText("2 issues waiting for you")).toBeAttached();
+  const row = page.getByRole("listitem").filter({ hasText: "UFC 334" });
+  await expect(row).toContainText("Waiting for you");
+  await expect(row).toContainText("ana@example.invalid (Fight Club TV)");
+  await page.getByRole("checkbox", { name: "Waiting for you" }).check();
+  await expect.poll(() => asked.at(-1)?.get("awaiting")).toBe("true");
+  await page.getByLabel("Environment").selectOption({ label: "Fight Club TV" });
+  await expect
+    .poll(() => asked.at(-1)?.get("environment"))
+    .toBe("11111111-1111-4111-8111-111111111111");
+  await page.getByRole("searchbox", { name: "Search by title or email" }).fill("ana");
+  await expect.poll(() => asked.at(-1)?.get("q")).toBe("ana");
+  await page.getByLabel("Sort by").selectOption({ label: "Oldest first" });
+  await expect.poll(() => asked.at(-1)?.get("sort")).toBe("oldest");
 });

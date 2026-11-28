@@ -271,13 +271,15 @@ function NavItem({
 /** The one bar above every page; on phones its sections move to a bar at the bottom. */
 export function TopBar({ user }: { user: User }) {
   const { t } = useTranslation();
-  // Issues waiting for attention: open ones for administrators, the user's own active ones.
+  // Issues waiting for the viewer's answer. A reseller's administrator only reads its clients'
+  // issues, so it sees how many of them are active instead.
   const openIssues = useQuery({
     queryKey: ["issues", "open"],
-    queryFn: () => api<{ open: number }>("/issues/open"),
+    queryFn: () => api<{ open: number; awaiting: number }>("/issues/open"),
     refetchInterval: 60000,
   });
-  const open = openIssues.data?.open ?? 0;
+  const reader = user.role === "RESELLER";
+  const open = (reader ? openIssues.data?.open : openIssues.data?.awaiting) ?? 0;
   return (
     <header className="app-header">
       <NavLink to="/" aria-label="Pedirr" className="app-brand">
@@ -295,7 +297,9 @@ export function TopBar({ user }: { user: User }) {
           {open > 0 && (
             <span className="nav-count">
               <span aria-hidden="true">{open}</span>
-              <span className="sr-only">{t("openIssues", { count: open })}</span>
+              <span className="sr-only">
+                {t(reader ? "openIssues" : "awaitingIssues", { count: open })}
+              </span>
             </span>
           )}
         </NavItem>

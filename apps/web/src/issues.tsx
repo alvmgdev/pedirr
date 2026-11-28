@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,7 +12,20 @@ import {
   type RequestRecord,
   type User,
 } from "./api";
-import { Breadcrumbs, ErrorMessage, Loading, PageHeader, Pager, Status, timezoneOf } from "./ui";
+import {
+  Breadcrumbs,
+  ErrorMessage,
+  FilterSelect,
+  Loading,
+  PageHeader,
+  Pager,
+  SearchBox,
+  SortSelect,
+  Status,
+  timezoneOf,
+  useListParams,
+} from "./ui";
+import { useResellers } from "./resellers";
 
 /** What the issue is about: the request, plus the event and part when given. */
 function subject(issue: Issue) {
@@ -37,71 +50,103 @@ const refresh = () => {
 export function Issues({ user }: { user: User }) {
   const { t } = useTranslation();
   const format = useDate(user);
-  const [params, setParams] = useSearchParams();
-  const page = Number(params.get("page") ?? 1) || 1;
-  const status = params.get("status") ?? "";
-  const category = params.get("category") ?? "";
-  const mine = params.get("mine") === "true";
-  const query = new URLSearchParams({ page: String(page) });
-  for (const [key, value] of [
-    ["status", status],
-    ["category", category],
-    ["mine", mine ? "true" : ""],
-  ]) {
-    if (value) {
-      query.set(key, value);
-    }
+  const list = useListParams();
+  const admin = user.role === "ADMIN";
+  // A reseller's administrator reads its clients' issues but never answers them.
+  const answers = user.role !== "RESELLER";
+  const resellers = useResellers(admin);
+  const keys = ["status", "q", "awaiting", "sort"];
+  if (admin) {
+    keys.push("category", "mine", "environment");
   }
+  const query = list.query(keys);
   const result = useQuery({
-    queryKey: ["issues", query.toString()],
+    queryKey: ["issues", query],
     queryFn: () => api<{ items: Issue[]; total: number }>("/issues?" + query),
     refetchInterval: 30000,
+    placeholderData: (previous) => previous,
   });
-  const change = (values: Record<string, string>) =>
-    setParams({ ...Object.fromEntries(params), page: "1", ...values });
+  const filtered = keys.some((key) => key !== "sort" && list.get(key));
   return (
     <>
       <PageHeader title={t("issues")}>
-        <p>{t(user.role === "ADMIN" ? "issuesAdminHelp" : "issuesHelp")}</p>
+        <p>{t(admin ? "issuesAdminHelp" : "issuesHelp")}</p>
       </PageHeader>
       <div className="list-toolbar">
         <nav className="filter-tabs" aria-label={t("status")}>
           {["", "OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((value) => (
             <button
               key={value}
-              aria-pressed={status === value}
-              onClick={() => change({ status: value })}
+              aria-pressed={list.get("status") === value}
+              onClick={() => list.set({ status: value })}
             >
               {t(value || "all")}
             </button>
           ))}
         </nav>
-        {user.role === "ADMIN" && (
-          <div className="filters">
-            <label className="inline-filter">
-              {t("issueCategory")}
-              <select
-                value={category}
-                onChange={(event) => change({ category: event.target.value })}
-              >
-                <option value="">{t("allCategories")}</option>
-                {ISSUE_CATEGORIES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(value)}
-                  </option>
-                ))}
-              </select>
-            </label>
+      </div>
+      <div className="list-toolbar record-filters">
+        <SearchBox
+          value={list.get("q")}
+          label={t(user.role === "USER" ? "searchTitle" : "searchIssues")}
+          onSearch={(text) => list.set({ q: text })}
+        />
+        <div className="filters">
+          {admin && (
+            <>
+              <FilterSelect
+                list={list}
+                name="category"
+                label={t("issueCategory")}
+                options={[
+                  ["", t("allCategories")],
+                  ...ISSUE_CATEGORIES.map((value): [string, string] => [value, t(value)]),
+                ]}
+              />
+              <FilterSelect
+                list={list}
+                name="environment"
+                label={t("environment")}
+                options={[
+                  ["", t("allEnvironments")],
+                  ["platform", t("platform")],
+                  ...(resellers.data ?? []).map((reseller): [string, string] => [
+                    reseller.id,
+                    reseller.name,
+                  ]),
+                ]}
+              />
+            </>
+          )}
+          <SortSelect
+            list={list}
+            sorts={[
+              ["", "", "sortActivity"],
+              ["newest", "", "sortNewest"],
+              ["oldest", "", "sortOldest"],
+            ]}
+          />
+          {answers && (
             <label className="check">
               <input
                 type="checkbox"
-                checked={mine}
-                onChange={(event) => change({ mine: String(event.target.checked) })}
+                checked={list.get("awaiting") === "true"}
+                onChange={(event) => list.set({ awaiting: event.target.checked ? "true" : "" })}
+              />
+              {t("awaitingYou")}
+            </label>
+          )}
+          {admin && (
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={list.get("mine") === "true"}
+                onChange={(event) => list.set({ mine: event.target.checked ? "true" : "" })}
               />
               {t("myIssues")}
             </label>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {result.isPending ? (
         <Loading />
@@ -110,30 +155,36 @@ export function Issues({ user }: { user: User }) {
       ) : (
         <ul className="issue-list">
           {result.data?.items.map((issue) => (
-            <li key={issue.id}>
+            <li key={issue.id} className={issue.awaitingYou ? "awaiting" : undefined}>
               <Link to={"/issues/" + issue.id}>
                 <span className="issue-category">{t(issue.category)}</span>
                 <span className="issue-subject">{subject(issue)}</span>
               </Link>
+              {issue.awaitingYou && <span className="awaiting-badge">{t("awaitingYou")}</span>}
               <Status value={issue.status} />
               <span className="muted">
-                {issue.reporter ? `${issue.reporter.email} · ` : ""}
+                {issue.reporter
+                  ? `${issue.reporter.email}${
+                      issue.reporter.environment ? ` (${issue.reporter.environment.name})` : ""
+                    } · `
+                  : ""}
                 {t("issueUpdated", { date: format(issue.updatedAt) })}
               </span>
             </li>
           ))}
-          {!result.data?.items.length && <li className="empty">{t("issueEmpty")}</li>}
+          {!result.data?.items.length && (
+            <li className="empty">{t(filtered ? "noMatches" : "issueEmpty")}</li>
+          )}
         </ul>
       )}
       <Pager
-        page={page}
-        more={page * 30 < (result.data?.total ?? 0)}
-        onChange={(next) => setParams({ ...Object.fromEntries(params), page: String(next) })}
+        page={list.page}
+        more={list.page * 30 < (result.data?.total ?? 0)}
+        onChange={(next) => list.set({ page: String(next) })}
       />
     </>
   );
 }
-
 export function IssueDetail({ user }: { user: User }) {
   const { id = "" } = useParams();
   const { t } = useTranslation();

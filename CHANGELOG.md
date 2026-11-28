@@ -8,6 +8,7 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 - The platform administrator can narrow the request list to one environment.
 - The user and client lists can be searched by email, filtered by status and plan (and by environment and role for the platform's users), and sorted by email, creation or expiration, from the toolbar or by clicking the Email and Expires headers. The address keeps the view, and a count shows how many accounts match.
 - Resellers, plans and packages can be searched and sorted (resellers also filtered by status and package), and requests searched by title and shown oldest first.
+- Issues waiting for your answer are marked "Waiting for you" and counted in the menu (a reseller's administrator, who only reads its clients' issues, still sees how many are active). The issue list can show only those, be searched by title (and by reporter for administrators), filtered by environment and sorted by latest activity or by opening, and shows the reporter's environment to the platform administrator.
 - A request's detail groups its followers by environment for the platform administrator; users see when they asked instead of how many people follow, and their follower counts only include themselves.
 
 ## 2.3.0 - 2026-11-27

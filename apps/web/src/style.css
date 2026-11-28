@@ -1519,6 +1519,19 @@ th {
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+/* Issues waiting for the viewer stand out with a gold edge and a label. */
+.issue-list li.awaiting {
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 14px;
+}
+.awaiting-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(217 183 110 / 14%);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
 .issue-list .muted {
   flex-basis: 100%;
   font-size: 14px;
@@ -2563,4 +2576,9 @@ th {
   .record-filters .link-button {
     justify-self: start;
   }
+}
+/* Checkboxes line up with the selects beside them. */
+.record-filters .check {
+  align-self: flex-end;
+  min-height: 40px;
 }
