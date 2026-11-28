@@ -62,6 +62,21 @@ async function main() {
     assert.deepEqual(await titles(platformFan), ["ev-p"]);
     assert.deepEqual(await titles(admin), ["ev-a", "ev-b", "ev-p", "ev-shared"]);
     assert.equal((await requests.list(clientA, 1)).total, 2);
+    // Searching by title and ordering stay within what each viewer may see.
+    const found = async (viewer, options) =>
+      (await requests.list(viewer, 1, undefined, false, options)).items.map(
+        (item) => item.entity.title,
+      );
+    assert.deepEqual(await found(clientA, { q: "SHARED" }), ["ev-shared"]);
+    assert.deepEqual(await found(clientB, { q: "ev-a" }), []);
+    assert.deepEqual(await found(clientA, { order: "asc" }), ["ev-a", "ev-shared"]);
+    assert.deepEqual(await found(clientA, {}), ["ev-shared", "ev-a"]);
+    assert.deepEqual(
+      (await requests.list(clientA, 1, undefined, true, { q: "ev-a" })).items.map(
+        (item) => item.entity.title,
+      ),
+      ["ev-a"],
+    );
     // Follower counts never include other environments' people.
     const count = async (viewer) =>
       (await requests.list(viewer, 1)).items.find((item) => item.id === shared.id)._count
@@ -80,7 +95,7 @@ async function main() {
       })
     ).createdAt;
     const card = async (viewer, environment) =>
-      (await requests.list(viewer, 1, undefined, false, environment)).items.find(
+      (await requests.list(viewer, 1, undefined, false, { environment })).items.find(
         (item) => item.id === shared.id,
       );
     const asPlatform = (await card(admin)).requestedBy;
@@ -103,7 +118,7 @@ async function main() {
     });
     // The platform administrator may choose an environment; the cards follow it.
     const chosen = async (environment) =>
-      (await requests.list(admin, 1, undefined, false, environment)).items
+      (await requests.list(admin, 1, undefined, false, { environment })).items
         .map((item) => item.entity.title)
         .sort();
     assert.deepEqual(await chosen(b.id), ["ev-b", "ev-shared"]);
@@ -115,7 +130,7 @@ async function main() {
     );
     // Anyone else asking for another environment is ignored and keeps seeing their own.
     assert.deepEqual(
-      (await requests.list(ownerA, 1, undefined, false, b.id)).items
+      (await requests.list(ownerA, 1, undefined, false, { environment: b.id })).items
         .map((item) => item.entity.title)
         .sort(),
       ["ev-a", "ev-shared"],

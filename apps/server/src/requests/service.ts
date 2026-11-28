@@ -486,18 +486,31 @@ export class RequestsService {
     page: number,
     status?: RequestStatus,
     mine = false,
-    environment?: string,
+    {
+      environment,
+      q,
+      order = "desc",
+    }: { environment?: string; q?: string; order?: "asc" | "desc" } = {},
   ) {
     // Only platform administrators choose an environment; everyone else is limited to theirs.
     const scope = followersInScope(viewer, environment);
     // Personal lists filter on the user's own status; the shared list on the request status,
     // where new parts awaiting review also count as pending.
+    const titled: Prisma.RequestWhereInput = q
+      ? { entity: { title: { contains: q, mode: "insensitive" } } }
+      : {};
     const where: Prisma.RequestWhereInput = mine
-      ? { subscribers: { some: { userId: viewer.id, ...(status ? { status } : {}) } } }
+      ? {
+          AND: [
+            { subscribers: { some: { userId: viewer.id, ...(status ? { status } : {}) } } },
+            titled,
+          ],
+        }
       : {
           AND: [
             requestsVisibleTo(viewer),
             viewer.role === "ADMIN" && environment ? { subscribers: { some: scope } } : {},
+            titled,
             status === "PENDING"
               ? { OR: [{ status }, { parts: { some: { status: "PENDING" } } }] }
               : { status },
@@ -515,7 +528,7 @@ export class RequestsService {
             select: { userId: true, parts: true, status: true },
           },
         },
-        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        orderBy: [{ createdAt: order }, { id: "asc" }],
         skip: (page - 1) * 30,
         take: 30,
       }),

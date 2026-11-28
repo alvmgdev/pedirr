@@ -60,6 +60,19 @@ export class RequestList {
   @ValidateIf((_, value) => value !== undefined && value !== "")
   @Matches(/^(platform|[0-9a-f-]{36})$/)
   environment?: string;
+  @ApiProperty({ required: false, description: "Part of the title, in any case." })
+  @ValidateIf((_, value) => value !== undefined && value !== "")
+  @MaxLength(200)
+  q?: string;
+  @ApiProperty({
+    required: false,
+    enum: ["desc", "asc"],
+    default: "desc",
+    description: "Newest (desc) or oldest (asc) first.",
+  })
+  @ValidateIf((_, value) => value !== undefined && value !== "")
+  @IsIn(["desc", "asc"])
+  order?: "desc" | "asc";
 }
 export class ReviewRequest {
   @ApiProperty({ enum: ["approve", "reject"] }) @IsIn(["approve", "reject"]) decision!:
@@ -82,13 +95,11 @@ export class RequestsController {
     return this.requests.create(input, req.viewer!);
   }
   @Get() list(@Query() query: RequestList, @Req() req: AuthRequest) {
-    return this.requests.list(
-      req.viewer!,
-      query.page,
-      query.status,
-      query.mine === "true",
-      query.environment || undefined,
-    );
+    return this.requests.list(req.viewer!, query.page, query.status, query.mine === "true", {
+      environment: query.environment || undefined,
+      q: query.q?.trim() || undefined,
+      order: query.order === "asc" ? "asc" : "desc",
+    });
   }
   @Get("lookup") async lookup(@Query() query: RequestTargetQuery, @Req() req: AuthRequest) {
     await this.auth.rate(`availability:${req.viewer!.id}`, 30, 60);
