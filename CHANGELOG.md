@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org/); while the major version is 0, minor releases may include breaking changes.
 
-## Unreleased
+## 2.4.0 - 2026-11-28
 
 - A light theme. A sun and moon menu beside the language one chooses Dark (the default), Light or Same as the system; the choice is saved in the browser, so it applies before the page paints, and in the profile (PATCH `/me` with `theme`), so it follows each person to every device. Every colour is now a theme token; gold stays the brand, with a darker gold for text and focus rings on light backgrounds.
 - Content without artwork shows a placeholder drawn in the theme's colours.
