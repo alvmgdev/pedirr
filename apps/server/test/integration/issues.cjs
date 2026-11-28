@@ -124,12 +124,32 @@ async function main() {
       [bobs.id],
     );
     assert.equal((await issues.list(admin, { page: 1, requestId: request.id })).total, 2);
-    assert.deepEqual(await issues.open(admin), { open: 2 });
-    assert.deepEqual(await issues.open(alice), { open: 1 });
+    // New issues wait for the administrators, not for their reporters.
+    assert.deepEqual(await issues.open(admin), { open: 2, awaiting: 2 });
+    assert.deepEqual(await issues.open(alice), { open: 1, awaiting: 0 });
+    assert.equal(all.items.find((item) => item.id === report.id).awaitingYou, true);
+    assert.notEqual(all.items[0].reporter.environment, null);
+    // Search by title or reporter (administrators), environment, and order by opening.
+    const ids = async (viewer, query) =>
+      (await issues.list(viewer, { page: 1, ...query })).items.map((item) => item.id);
+    const title = all.items[0].request.title;
+    assert.equal((await ids(admin, { q: title.slice(1, 6).toUpperCase() })).length, 2);
+    assert.deepEqual(await ids(admin, { q: alice.email }), [report.id]);
+    assert.deepEqual(await ids(alice, { q: bob.email }), []);
+    assert.deepEqual(await ids(admin, { sort: "newest" }), [bobs.id, report.id]);
+    assert.deepEqual(await ids(admin, { sort: "oldest" }), [report.id, bobs.id]);
+    assert.equal((await ids(admin, { environment: "platform" })).length, 2);
+    assert.deepEqual(await ids(admin, { environment: "00000000-0000-4000-8000-000000000000" }), []);
 
     // Administrators move the issue along; resolving requires an explanation.
     let detail = await issues.changeStatus(report.id, { status: "IN_PROGRESS" }, admin);
     assert.equal(detail.status, "IN_PROGRESS");
+    // Once an administrator acts, the issue waits for its reporter instead.
+    assert.deepEqual(await issues.open(admin), { open: 1, awaiting: 1 });
+    assert.equal((await issues.open(alice)).awaiting, 1);
+    assert.deepEqual(await ids(alice, { awaiting: true }), [report.id]);
+    assert.deepEqual(await ids(admin, { awaiting: true }), [bobs.id]);
+    assert.equal(detail.awaitingYou, false);
     await assert.rejects(
       issues.changeStatus(report.id, { status: "RESOLVED" }, admin),
       code("COMMENT_REQUIRED"),
@@ -140,6 +160,9 @@ async function main() {
     );
     await issues.comment(report.id, "Which language do you expect?", admin);
     await issues.comment(report.id, "English, please", alice);
+    // The reporter answered: back to the administrators.
+    assert.equal((await issues.open(alice)).awaiting, 0);
+    assert.equal((await issues.open(admin)).awaiting, 2);
     detail = await issues.changeStatus(
       report.id,
       { status: "RESOLVED", comment: "Replaced the file in Sportarr" },
@@ -147,6 +170,9 @@ async function main() {
     );
     assert.equal(detail.status, "RESOLVED");
     assert.ok(detail.resolvedAt);
+    // A finished issue waits for no one.
+    assert.equal((await issues.open(alice)).awaiting, 0);
+    assert.equal((await issues.open(admin)).awaiting, 1);
 
     // The reporter sees the conversation without administrator identities.
     detail = await issues.detail(report.id, alice);

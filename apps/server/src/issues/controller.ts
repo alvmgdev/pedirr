@@ -22,6 +22,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  Matches,
 } from "class-validator";
 import { AuthRequest, AuthService } from "../auth";
 import { IssuesService } from "./service";
@@ -69,6 +70,33 @@ export class IssueList {
   @optional
   @IsUUID()
   request?: string;
+  @ApiProperty({
+    required: false,
+    enum: ["true", "false"],
+    description: "Only issues waiting for the caller's answer.",
+  })
+  @optional
+  @IsIn(["true", "false"])
+  awaiting?: string;
+  @ApiProperty({
+    required: false,
+    description: "Part of the request's title, or of the reporter's email for administrators.",
+  })
+  @optional
+  @MaxLength(200)
+  q?: string;
+  @ApiProperty({
+    required: false,
+    description:
+      'Platform administrators only: issues reported by this environment, "platform" or a reseller\'s ID.',
+  })
+  @optional
+  @Matches(/^(platform|[0-9a-f-]{36})$/)
+  environment?: string;
+  @ApiProperty({ required: false, enum: ["activity", "newest", "oldest"], default: "activity" })
+  @optional
+  @IsIn(["activity", "newest", "oldest"])
+  sort?: "activity" | "newest" | "oldest";
 }
 export class IssueComment {
   @ApiProperty({ minLength: 1, maxLength: 2000 })
@@ -108,6 +136,10 @@ export class IssuesController {
       category: query.category,
       mine: query.mine === "true",
       requestId: query.request,
+      awaiting: query.awaiting === "true",
+      q: query.q || undefined,
+      environment: query.environment || undefined,
+      sort: query.sort,
     });
   }
   @Get("issues/open") open(@Req() req: AuthRequest) {

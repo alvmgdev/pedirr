@@ -23,15 +23,26 @@ export type IssueQuery = {
   category?: IssueCategory;
   mine?: boolean;
   requestId?: string;
+  /** Only issues waiting for the viewer's answer. */
+  awaiting?: boolean;
+  /** Part of the request's title, or of the reporter's email for administrators. */
+  q?: string;
+  /** Platform administrators only: issues reported by this environment. */
+  environment?: string;
+  /** Latest activity first (default), or by when they were opened. */
+  sort?: "activity" | "newest" | "oldest";
 };
 const notFound = () =>
   new NotFoundException({ code: "ISSUE_NOT_FOUND", message: "Issue not found" });
 const issueInclude = {
   request: { include: { entity: true } },
   requestEvent: { select: { id: true, metadata: true } },
-  reporter: { select: { id: true, email: true } },
+  reporter: {
+    select: { id: true, email: true, tenant: { select: { code: true, name: true } } },
+  },
   _count: { select: { comments: true } },
 } satisfies Prisma.IssueInclude;
+const ACTIVE: IssueStatus[] = ["OPEN", "IN_PROGRESS"];
 type IssueRecord = Prisma.IssueGetPayload<{ include: typeof issueInclude }>;
 
 @Injectable()
@@ -52,6 +63,26 @@ export class IssuesService {
       : { reporterId: viewer.id };
   }
 
+  /**
+   * Issues waiting for this viewer: for platform administrators, active ones whose reporter
+   * acted last; for a reporter, their own active ones an administrator answered last. A
+   * reseller's administrator only reads its clients' issues, so none wait for it there.
+   */
+  private awaiting(viewer: Viewer): Prisma.IssueWhereInput {
+    return viewer.role === "ADMIN"
+      ? { status: { in: ACTIVE }, lastActor: "REPORTER" }
+      : { status: { in: ACTIVE }, lastActor: "ADMIN", reporterId: viewer.id };
+  }
+
+  private isAwaiting(issue: IssueRecord, viewer: Viewer) {
+    if (!ACTIVE.includes(issue.status)) {
+      return false;
+    }
+    return viewer.role === "ADMIN"
+      ? issue.lastActor === "REPORTER"
+      : issue.lastActor === "ADMIN" && issue.reporterId === viewer.id;
+  }
+
   private view(issue: IssueRecord, viewer: Viewer) {
     const scope = issue.request.scope as { kind?: string; season?: { name?: string } };
     const event = issue.requestEvent?.metadata as { name?: string } | undefined;
@@ -65,8 +96,17 @@ export class IssuesService {
       updatedAt: issue.updatedAt,
       resolvedAt: issue.resolvedAt,
       mine: issue.reporterId === viewer.id,
-      // Administrators need to know who reported it; the reporter already knows.
-      reporter: viewer.role === "USER" ? null : issue.reporter,
+      awaitingYou: this.isAwaiting(issue, viewer),
+      // Administrators need to know who reported it; the reporter already knows. Only platform
+      // administrators see several environments, so only they are told which one.
+      reporter:
+        viewer.role === "USER"
+          ? null
+          : {
+              id: issue.reporter.id,
+              email: issue.reporter.email,
+              environment: viewer.role === "ADMIN" ? issue.reporter.tenant : null,
+            },
       request: {
         id: issue.request.id,
         title: issue.request.entity.title,
@@ -164,19 +204,43 @@ export class IssuesService {
   }
 
   async list(viewer: Viewer, query: IssueQuery) {
+    const q = query.q?.trim();
     const where: Prisma.IssueWhereInput = {
-      ...this.visible(viewer),
-      ...(query.mine ? { reporterId: viewer.id } : {}),
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.category ? { category: query.category } : {}),
-      ...(query.requestId ? { requestId: query.requestId } : {}),
+      AND: [
+        this.visible(viewer),
+        query.mine ? { reporterId: viewer.id } : {},
+        query.status ? { status: query.status } : {},
+        query.category ? { category: query.category } : {},
+        query.requestId ? { requestId: query.requestId } : {},
+        query.awaiting ? this.awaiting(viewer) : {},
+        viewer.role === "ADMIN" && query.environment
+          ? { reporter: { tenantId: query.environment } }
+          : {},
+        q
+          ? {
+              OR: [
+                { request: { entity: { title: { contains: q, mode: "insensitive" } } } },
+                // Users only ever see their own issues, so only administrators search people.
+                ...(viewer.role === "USER"
+                  ? []
+                  : [{ reporter: { email: { contains: q, mode: "insensitive" as const } } }]),
+              ],
+            }
+          : {},
+      ],
     };
+    const orderBy: Prisma.IssueOrderByWithRelationInput[] =
+      query.sort === "newest"
+        ? [{ createdAt: "desc" }, { id: "asc" }]
+        : query.sort === "oldest"
+          ? [{ createdAt: "asc" }, { id: "asc" }]
+          : [{ updatedAt: "desc" }, { id: "asc" }];
     const { db } = this.infrastructure;
     const [items, total] = await db.$transaction([
       db.issue.findMany({
         where,
         include: issueInclude,
-        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        orderBy,
         skip: (query.page - 1) * 30,
         take: 30,
       }),
@@ -190,15 +254,22 @@ export class IssuesService {
     };
   }
 
-  /** Issues waiting for attention: all open ones for administrators, the user's active ones. */
+  /**
+   * Issues needing attention: `open` counts active ones (all for administrators, the viewer's
+   * visible ones otherwise) and `awaiting` those waiting for the viewer's answer.
+   */
   async open(viewer: Viewer) {
-    const count = await this.infrastructure.db.issue.count({
-      where:
-        viewer.role === "ADMIN"
-          ? { status: "OPEN" }
-          : { ...this.visible(viewer), status: { in: ["OPEN", "IN_PROGRESS"] } },
-    });
-    return { open: count };
+    const { db } = this.infrastructure;
+    const [open, awaiting] = await db.$transaction([
+      db.issue.count({
+        where:
+          viewer.role === "ADMIN"
+            ? { status: "OPEN" }
+            : { ...this.visible(viewer), status: { in: ACTIVE } },
+      }),
+      db.issue.count({ where: this.awaiting(viewer) }),
+    ]);
+    return { open, awaiting };
   }
 
   async detail(id: string, viewer: Viewer) {
@@ -246,7 +317,7 @@ export class IssuesService {
     }
     return this.change(id, viewer, async (tx, issue, actor) => {
       await tx.issueComment.create({ data: { issueId: id, authorId: viewer.id, body: text } });
-      await tx.issue.update({ where: { id }, data: { updatedAt: new Date() } });
+      await tx.issue.update({ where: { id }, data: { updatedAt: new Date(), lastActor: actor } });
       await tx.outboxEvent.create({
         data: {
           type: "issue.updated",
@@ -282,7 +353,11 @@ export class IssuesService {
       });
       await tx.issue.update({
         where: { id },
-        data: { status: input.status, resolvedAt: resolvedAtFor(input.status) },
+        data: {
+          status: input.status,
+          resolvedAt: resolvedAtFor(input.status),
+          lastActor: actor,
+        },
       });
       await tx.outboxEvent.create({
         data: {
