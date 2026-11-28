@@ -22,3 +22,13 @@ export const followersInScope = (viewer: Who, environment?: string) =>
   viewer.role === "ADMIN" && environment
     ? { user: { tenantId: environment } }
     : followersVisibleTo(viewer);
+
+/**
+ * The followers a request's count includes. Users never learn how many others follow, so
+ * theirs only counts themselves.
+ */
+export const followersCounted = (
+  viewer: Who & { id: string },
+  environment?: string,
+): Prisma.RequestSubscriberWhereInput =>
+  viewer.role === "USER" ? { userId: viewer.id } : followersInScope(viewer, environment);
