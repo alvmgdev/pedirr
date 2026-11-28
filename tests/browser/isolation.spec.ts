@@ -185,3 +185,77 @@ test("request cards say who asked and when, as far as each viewer may know", asy
   await expect(page.getByText("Requested on Nov 13, 2026")).toBeVisible();
   await expect(page.getByText(/example\.invalid/)).toHaveCount(0);
 });
+
+test("a request's followers are grouped by environment for the platform administrator only", async ({
+  page,
+}) => {
+  const detail = (role: string) => ({
+    id: "r1",
+    status: "PENDING",
+    version: 0,
+    createdAt: "2026-11-10T10:00:00Z",
+    integrationState: "idle",
+    entity: { title: "UFC 334" },
+    scope: { kind: "event", event: { id: "e1", name: "UFC 334" }, league: { id: "l1" } },
+    _count: { subscribers: role === "USER" ? 1 : 3 },
+    parts: [],
+    subscription:
+      role === "USER" ? { parts: [], status: "PENDING", createdAt: "2026-11-13T10:00:00Z" } : null,
+    subscribers:
+      role === "USER"
+        ? null
+        : [
+            {
+              email: "ana@example.invalid",
+              environment: tenant,
+              parts: [],
+              status: "PENDING",
+              createdAt: "2026-11-12T10:00:00Z",
+            },
+            {
+              email: "leo@example.invalid",
+              environment: tenant,
+              parts: [],
+              status: "PENDING",
+              createdAt: "2026-11-12T11:00:00Z",
+            },
+            {
+              email: "bea@example.invalid",
+              environment: { code: "other", name: "Other Sports" },
+              parts: [],
+              status: "PENDING",
+              createdAt: "2026-11-13T10:00:00Z",
+            },
+          ],
+    history: [],
+    events: [],
+  });
+  let me: Record<string, unknown> = {
+    ...base,
+    id: "admin",
+    email: "admin@example.invalid",
+    role: "ADMIN",
+    tenantId: "platform",
+    tenant: { code: null, name: "Pedirr" },
+  };
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^(\/k7x2p)?\/api\/v1/, "");
+    if (path === "/auth/me") {
+      return route.fulfill({ json: me });
+    }
+    if (path === "/requests/r1") {
+      return route.fulfill({ json: detail(String(me.role)) });
+    }
+    return route.fulfill({ json: { items: [], total: 0 } });
+  });
+  await page.goto("/requests/r1");
+  await expect(page.getByRole("heading", { name: /Fight Club TV/ })).toContainText("2 subscribers");
+  await expect(page.getByRole("heading", { name: /Other Sports/ })).toContainText("1 subscriber");
+  await expect(page.getByText("3 subscribers")).toBeVisible();
+
+  // Users see when they asked, and nothing about anyone else.
+  me = client;
+  await page.goto("/k7x2p/requests/r1");
+  await expect(page.getByText("You requested it on Nov 13, 2026")).toBeVisible();
+  await expect(page.getByText(/subscriber/)).toHaveCount(0);
+});

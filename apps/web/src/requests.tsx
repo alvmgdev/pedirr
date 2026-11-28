@@ -23,6 +23,19 @@ import {
 } from "./ui";
 import { ReportIssue, RequestIssueList } from "./issues";
 import { useResellers } from "./resellers";
+type Subscriber = NonNullable<RequestRecord["subscribers"]>[number];
+/**
+ * Followers grouped by environment, in order of who asked first. With a single environment
+ * (always, for a reseller's administrator) there is one group without a heading (null).
+ */
+function byEnvironment(subscribers: Subscriber[]): [string | null, Subscriber[]][] {
+  const groups = new Map<string, Subscriber[]>();
+  for (const subscriber of subscribers) {
+    const name = subscriber.environment?.name ?? "";
+    groups.set(name, [...(groups.get(name) ?? []), subscriber]);
+  }
+  return groups.size > 1 ? [...groups] : [[null, subscribers]];
+}
 /** Who asked first and when: "Requested by ana@… (Fight Club TV) · Nov 12 · +2 more". */
 function RequestedBy({ request, user }: { request: RequestRecord; user: User }) {
   const { t, i18n } = useTranslation();
@@ -208,7 +221,15 @@ export function RequestDetail({ user }: { user: User }) {
           <Status value={request.subscription?.status ?? request.status} />
           <h1>{request.entity.title}</h1>
           <p>{request.scope.season?.name ?? t("event")}</p>
-          <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
+          {user.role === "USER" ? (
+            request.subscription?.createdAt && (
+              <p className="muted">
+                {t("youRequestedOn", { date: format(request.subscription.createdAt) })}
+              </p>
+            )
+          ) : (
+            <p className="muted">{t("subscribers", { count: request._count.subscribers })}</p>
+          )}
         </div>
         <div className="request-box">
           {!request.subscription && <FollowRequest request={request} user={user} />}
@@ -309,20 +330,34 @@ export function RequestDetail({ user }: { user: User }) {
             {request.subscribers && request.subscribers.length > 0 && (
               <section className="request-subscribers">
                 <h2>{t("requestedBy")}</h2>
-                <ul>
-                  {request.subscribers.map((subscriber) => (
-                    <li key={subscriber.email}>
-                      <span className="part-name">{subscriber.email}</span>
-                      <span className="muted">
-                        {subscriber.parts.length ? subscriber.parts.join(", ") : t("wholeRequest")}
-                      </span>
-                      <Status value={subscriber.status} />
-                      <time className="muted" dateTime={subscriber.createdAt}>
-                        {format(subscriber.createdAt)}
-                      </time>
-                    </li>
-                  ))}
-                </ul>
+                {byEnvironment(request.subscribers).map(([environment, followers]) => (
+                  <div className="subscriber-group" key={environment ?? ""}>
+                    {environment !== null && (
+                      <h3>
+                        {environment}{" "}
+                        <span className="muted">
+                          {t("subscribers", { count: followers.length })}
+                        </span>
+                      </h3>
+                    )}
+                    <ul>
+                      {followers.map((subscriber) => (
+                        <li key={`${environment ?? ""}:${subscriber.email}`}>
+                          <span className="part-name">{subscriber.email}</span>
+                          <span className="muted">
+                            {subscriber.parts.length
+                              ? subscriber.parts.join(", ")
+                              : t("wholeRequest")}
+                          </span>
+                          <Status value={subscriber.status} />
+                          <time className="muted" dateTime={subscriber.createdAt}>
+                            {format(subscriber.createdAt)}
+                          </time>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </section>
             )}
           </div>
