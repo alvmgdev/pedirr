@@ -110,3 +110,78 @@ test("content another reseller requested shows its state and can be followed", a
   await page.getByRole("button", { name: "Follow this request" }).click();
   await expect(page).toHaveURL(/\/k7x2p\/requests\/r-elsewhere$/);
 });
+
+test("request cards say who asked and when, as far as each viewer may know", async ({ page }) => {
+  const card = (requestedBy: unknown) => ({
+    id: "r1",
+    status: "PENDING",
+    version: 0,
+    createdAt: "2026-11-10T10:00:00Z",
+    integrationState: "idle",
+    entity: { title: "UFC 334" },
+    scope: { kind: "event", event: { id: "e1", name: "UFC 334" }, league: { id: "l1" } },
+    _count: { subscribers: 3 },
+    parts: [],
+    subscription: null,
+    requestedBy,
+  });
+  const admin = {
+    ...base,
+    id: "admin",
+    email: "admin@example.invalid",
+    role: "ADMIN",
+    tenantId: "platform",
+    tenant: { code: null, name: "Pedirr" },
+  };
+  let me: Record<string, unknown> = admin;
+  let requestedBy: unknown = {
+    at: "2026-11-12T10:00:00Z",
+    email: "ana@example.invalid",
+    environment: tenant,
+    others: 2,
+  };
+  const asked: string[] = [];
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace("/k7x2p/api/v1", "").replace("/api/v1", "");
+    if (path === "/auth/me") {
+      return route.fulfill({ json: me });
+    }
+    if (path === "/admin/resellers") {
+      return route.fulfill({ json: [{ id: "11111111-1111-4111-8111-111111111111", ...tenant }] });
+    }
+    if (path === "/requests") {
+      asked.push(url.searchParams.get("environment") ?? "");
+      return route.fulfill({ json: { items: [card(requestedBy)], total: 1, page: 1 } });
+    }
+    return route.fulfill({ json: {} });
+  });
+  await page.goto("/requests");
+  await expect(
+    page.getByText("Requested by ana@example.invalid (Fight Club TV) · Nov 12, 2026"),
+  ).toBeVisible();
+  await expect(page.getByText("+2 more")).toBeVisible();
+  // The platform administrator narrows the list to one environment, kept in the address.
+  await page.getByLabel("Environment").selectOption({ label: "Fight Club TV" });
+  await expect(page).toHaveURL(/environment=11111111-1111-4111-8111-111111111111/);
+  await expect.poll(() => asked.at(-1)).toBe("11111111-1111-4111-8111-111111111111");
+
+  // A reseller's administrator sees its own client, with no environment and no selector.
+  me = owner;
+  requestedBy = {
+    at: "2026-11-13T10:00:00Z",
+    email: "ana@example.invalid",
+    environment: null,
+    others: 0,
+  };
+  await page.goto("/k7x2p/requests");
+  await expect(page.getByText("Requested by ana@example.invalid · Nov 13, 2026")).toBeVisible();
+  await expect(page.getByLabel("Environment")).toHaveCount(0);
+
+  // A user only sees the date.
+  me = client;
+  requestedBy = { at: "2026-11-13T10:00:00Z", email: null, environment: null, others: 0 };
+  await page.goto("/k7x2p/requests");
+  await expect(page.getByText("Requested on Nov 13, 2026")).toBeVisible();
+  await expect(page.getByText(/example\.invalid/)).toHaveCount(0);
+});
