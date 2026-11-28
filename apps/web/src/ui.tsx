@@ -682,13 +682,22 @@ export function Artwork({ item, kind = "league" }: { item: Item; kind?: string }
       className={`artwork ${photo ? "artwork-photo" : "artwork-logo"}${image ? "" : " artwork-default"}`}
       aria-hidden="true"
     >
-      <img
-        src={image ?? "/images/artwork-default.svg"}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onError={image ? () => setFailed((previous) => [...previous, image]) : undefined}
-      />
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed((previous) => [...previous, image])}
+        />
+      ) : (
+        // Drawn in the theme's colours, so it suits light and dark alike.
+        <svg className="artwork-placeholder" viewBox="0 0 96 96">
+          <rect x="27" y="29" width="42" height="38" rx="5" />
+          <circle cx="40" cy="41" r="3.5" />
+          <path d="m28 59 12-12 10 10 7-7 11 11" />
+        </svg>
+      )}
     </span>
   );
 }

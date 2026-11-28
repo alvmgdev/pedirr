@@ -35,7 +35,7 @@
 - **Sportarr**: approved content is monitored and searched in Sportarr without touching existing league settings, with progress and availability tracked.
 - **Issues**: users report problems with what they requested and follow the conversation with the administrators.
 - **Notifications**: optional email (SMTP), Discord and Telegram messages, configured per environment; one Telegram bot for the platform, with a group or channel linked per environment.
-- **Everywhere**: English and Spanish, dates in each browser's time zone, phones and desktops, Docker images for amd64 and arm64.
+- **Everywhere**: English and Spanish, dark and light themes (or the device's), dates in each browser's time zone, phones and desktops, Docker images for amd64 and arm64.
 
 ## Screenshots
 

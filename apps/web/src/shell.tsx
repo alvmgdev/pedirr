@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, client, setSession, type User } from "./api";
 import { ErrorMessage, timezoneOf } from "./ui";
+import { applyTheme, storedTheme, THEMES, type ThemeChoice } from "./theme";
 
 /** The mark and wordmark. */
 export function LinkBrand() {
@@ -170,6 +171,78 @@ export function LanguageMenu({ user }: { user?: User | null }) {
   );
 }
 
+/** Sun, moon or screen: the icon of each theme choice. */
+function ThemeIcon({ theme }: { theme: ThemeChoice }) {
+  return (
+    <svg className="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {theme === "light" ? (
+        <>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </>
+      ) : theme === "dark" ? (
+        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+      ) : (
+        <>
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M8 20h8M12 16v4" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** The colour theme, saved in this browser and to the profile when signed in. */
+export function ThemeMenu({ user }: { user?: User | null }) {
+  const { t } = useTranslation();
+  const [current, setCurrent] = useState<ThemeChoice>(() =>
+    user && THEMES.includes(user.theme as ThemeChoice)
+      ? (user.theme as ThemeChoice)
+      : storedTheme(),
+  );
+  const change = useMutation({
+    mutationFn: (theme: ThemeChoice) => api<User>("/me", "PATCH", { theme }),
+    onSuccess: (updated) => client.setQueryData(["me"], updated),
+  });
+  return (
+    <>
+      <Dropdown
+        className="theme-menu"
+        button={
+          <>
+            <ThemeIcon theme={current} />
+            <span className="sr-only">{t("themeCurrent", { name: t(`theme_${current}`) })}</span>
+          </>
+        }
+      >
+        {(close) =>
+          THEMES.map((theme) => (
+            <button
+              key={theme}
+              type="button"
+              className="dropdown-item"
+              aria-current={theme === current ? "true" : undefined}
+              onClick={() => {
+                setCurrent(theme);
+                applyTheme(theme);
+                if (user) {
+                  change.mutate(theme);
+                }
+                close();
+              }}
+            >
+              <ThemeIcon theme={theme} />
+              <span>{t(`theme_${theme}`)}</span>
+              {theme === current && <Check />}
+            </button>
+          ))
+        }
+      </Dropdown>
+      <ErrorMessage error={change.error} />
+    </>
+  );
+}
+
 /** Who is signed in, where dates come from, the account page and signing out. */
 function AccountMenu({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -314,6 +387,7 @@ export function TopBar({ user }: { user: User }) {
         )}
       </nav>
       <div className="app-tools">
+        <ThemeMenu user={user} />
         <LanguageMenu user={user} />
         <AccountMenu user={user} />
       </div>

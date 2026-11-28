@@ -100,6 +100,8 @@ export type User = {
   role: "ADMIN" | "RESELLER" | "USER";
   active: boolean;
   locale: string;
+  /** Colour theme: "dark", "light" or "system". */
+  theme?: string;
   timezone: string;
   autoApprove: boolean | null;
   /** New requests allowed in any seven days; null means no limit. */

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { api, ApiError, setSession, type AuthConfig, type User, PASSWORD_MIN_LENGTH } from "./api";
 import { ErrorMessage, formatDateTime, PageHeader, QuotaNote, timezoneOf, useQuota } from "./ui";
-import { LanguageMenu, LinkBrand } from "./shell";
+import { LanguageMenu, LinkBrand, ThemeMenu } from "./shell";
 export function Login() {
   const { t, i18n } = useTranslation();
   const [registerSelected, setRegister] = useState(false);
@@ -52,7 +52,10 @@ export function Login() {
         </div>
       </section>
       <div className="login-main">
-        <LanguageMenu />
+        <div className="login-tools">
+          <ThemeMenu />
+          <LanguageMenu />
+        </div>
         {unknown ? (
           <div className="login-form" role="alert">
             <h2>{t("unknownEnvironment")}</h2>

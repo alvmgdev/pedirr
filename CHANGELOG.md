@@ -4,6 +4,8 @@ All notable changes are recorded here. Versions follow [Semantic Versioning](htt
 
 ## Unreleased
 
+- A light theme. A sun and moon menu beside the language one chooses Dark (the default), Light or Same as the system; the choice is saved in the browser, so it applies before the page paints, and in the profile (PATCH `/me` with `theme`), so it follows each person to every device. Every colour is now a theme token; gold stays the brand, with a darker gold for text and focus rings on light backgrounds.
+- Content without artwork shows a placeholder drawn in the theme's colours.
 - Request cards say who asked first and when: the platform administrator sees the person, their environment and how many more follow; a reseller's administrator sees its own first client and the date they asked, never other environments; users only see the date.
 - The platform administrator can narrow the request list to one environment.
 - The user and client lists can be searched by email, filtered by status and plan (and by environment and role for the platform's users), and sorted by email, creation or expiration, from the toolbar or by clicking the Email and Expires headers. The address keeps the view, and a count shows how many accounts match.
