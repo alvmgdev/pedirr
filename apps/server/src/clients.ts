@@ -38,7 +38,7 @@ import {
 } from "./auth";
 import { Infrastructure } from "./infrastructure";
 import { withWeeklyUsage } from "./requests/quota";
-import { UserPage } from "./users";
+import { AccountListQuery, accountFilters, accountOrder } from "./account-list";
 
 /** What a reseller administrator may set on a client; never the role or approval. */
 class ClientFields {
@@ -132,13 +132,15 @@ export class ClientsService {
       });
     }
   }
-  async list(tenantId: string, page: number) {
-    const where = clientsOf(tenantId);
+  /** The reseller's clients matching the list's search and filters. */
+  async list(tenantId: string, query: AccountListQuery) {
+    const page = query.page;
+    const where = { AND: [clientsOf(tenantId), accountFilters(query)] };
     const [items, total] = await this.infrastructure.db.$transaction([
       this.infrastructure.db.user.findMany({
         where,
         select: publicUserSelect,
-        orderBy: [{ email: "asc" }, { id: "asc" }],
+        orderBy: accountOrder(query),
         skip: (page - 1) * 50,
         take: 50,
       }),
@@ -237,8 +239,8 @@ export class ClientsController {
   @Get("overview") overview(@Req() req: AuthRequest) {
     return this.clients.overview(req.viewer!.tenantId);
   }
-  @Get("clients") list(@Query() query: UserPage, @Req() req: AuthRequest) {
-    return this.clients.list(req.viewer!.tenantId, query.page);
+  @Get("clients") list(@Query() query: AccountListQuery, @Req() req: AuthRequest) {
+    return this.clients.list(req.viewer!.tenantId, query);
   }
   @Get("clients/:id") detail(@Param("id", ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
     return this.clients.detail(req.viewer!.tenantId, id);
